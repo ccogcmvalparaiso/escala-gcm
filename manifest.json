@@ -1,8 +1,8 @@
 {
-  "id": "/?source=pwa-escala-gcm-v2",
-  "name": "Escala 24x72, Eventos, Cartão Programa e Ponto — GCM Valparaíso de Goiás",
+  "id": "/?source=pwa-escala-gcm-v3",
+  "name": "Escala 24x72, Código Q, Cartão Programa e Ponto — GCM Valparaíso",
   "short_name": "Escala GCM",
-  "description": "Sistema de Escala 24x72 (58 guardas: 48 operacionais + 10 adm), Eventos, Cartão Programa em PDF e Folha de Ponto Antifraude.",
+  "description": "Sistema de Escala 24x72 por Cores, Código Q, Eventos, Cartão Programa e Folha de Ponto Antifraude.",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
