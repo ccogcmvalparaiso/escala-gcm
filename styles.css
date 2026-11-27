@@ -1,5 +1,5 @@
 /* =========================================================================
-   GCM VALPARAÍSO DE GOIÁS — v9.0
+   GCM VALPARAÍSO DE GOIÁS — v10.0
    Identidade Policial Tática Sóbria: Branco (Claro) e Preto (Noturno)
    ZERO AZUL · ZERO CORES CHAMATIVAS
    Insígnias Táticas: ALFA (Grafite), BRAVO (Oliva), CHARLIE (Caqui), DELTA (Bordô)
@@ -25,6 +25,7 @@ html[data-tema="claro"] {
   --eq-bravo: #365314;
   --eq-charlie: #854D0E;
   --eq-delta: #7F1D1D;
+  --btn-sec-bg: #E9E9E5; --btn-sec-hover: #DCDCD6; --btn-sec-border: #787872;
   --shadow: 0 1px 4px rgba(0,0,0,0.06);
   --radius: 8px;
 }
@@ -48,6 +49,7 @@ html[data-tema="noturno"] {
   --eq-bravo: #A3B86C;
   --eq-charlie: #D4A74A;
   --eq-delta: #DC7B7B;
+  --btn-sec-bg: #242422; --btn-sec-hover: #32322E; --btn-sec-border: #686862;
   --shadow: 0 2px 12px rgba(0,0,0,0.6);
 }
 
@@ -66,8 +68,28 @@ code { background: var(--surface-2); padding: 2px 6px; border-radius: 4px; font-
 .btn:disabled { opacity: 0.45; cursor: not-allowed; }
 .btn-primario { background: var(--accent); color: var(--accent-text); border-color: var(--accent); }
 .btn-primario:hover:not(:disabled) { background: var(--accent-hover); }
-.btn-sec { background: var(--surface); color: var(--text); border-color: var(--border); }
-.btn-sec:hover:not(:disabled) { background: var(--surface-2); border-color: var(--border-strong); }
+.btn-sec {
+  background: var(--btn-sec-bg, #E8E8E4);
+  color: var(--text);
+  border: 1.5px solid var(--btn-sec-border, #7A7A74);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12);
+}
+.btn-sec:hover:not(:disabled) {
+  background: var(--btn-sec-hover, #DCDCD6);
+  border-color: var(--border-strong);
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.16);
+}
+.btn-acao-destaque {
+  background: var(--surface);
+  color: var(--text);
+  border: 2px solid var(--border-strong);
+  font-weight: 700;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.14);
+}
+.btn-acao-destaque:hover:not(:disabled) {
+  background: var(--accent);
+  color: var(--accent-text);
+}
 .btn-perigo { background: var(--danger); color: #FFFFFF; border-color: var(--danger); }
 .btn-sm { padding: 5px 10px; font-size: 12px; }
 .btn-bloco { width: 100%; }
@@ -426,4 +448,265 @@ body[data-perfil="ESCALANTE"] .so-admin {
   border-radius: 4px;
   border: 1px solid var(--border-strong);
   cursor: pointer;
+}
+
+
+/* =========================================================================
+   V10: AVISO INTELIGENTE DE PONTO, AUDITORIA 30 DIAS, FORA VALPARAISO E MOBILE CCO
+   ========================================================================= */
+
+.banner-prioritario {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 15px;
+  border-radius: var(--radius);
+  margin-bottom: 14px;
+  border: 1.5px solid var(--border-strong);
+  border-left: 6px solid var(--border-strong);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+  flex-wrap: wrap;
+}
+.banner-prioritario.urgente {
+  border-color: var(--danger);
+  border-left-color: var(--danger);
+  background: var(--danger-bg);
+}
+.banner-prioritario.folga {
+  border-color: var(--ok);
+  border-left-color: var(--ok);
+  background: var(--ok-bg);
+}
+.banner-prioritario.auditoria {
+  border-color: var(--warn);
+  border-left-color: var(--warn);
+  background: var(--warn-bg);
+}
+.banner-prioritario-texto { flex: 1; min-width: 220px; display: flex; flex-direction: column; gap: 2px; }
+.banner-prioritario-texto strong { font-size: 13.5px; }
+.banner-prioritario-texto span { font-size: 12.5px; color: var(--text); opacity: 0.9; }
+
+.box-fora-valp {
+  border: 2px solid var(--danger);
+  border-left: 6px solid var(--danger);
+  border-radius: 7px;
+  padding: 12px;
+  background: var(--danger-bg);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.box-fora-valp h4 { color: var(--danger); }
+
+.sugestao-aud-item {
+  padding: 10px 12px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--border-strong);
+  background: var(--surface-2);
+  font-size: 13px;
+}
+.sugestao-aud-item.alerta { border-left-color: var(--danger); background: var(--danger-bg); }
+.sugestao-aud-item.atencao { border-left-color: var(--pend); background: var(--pend-bg); }
+.sugestao-aud-item.ok { border-left-color: var(--ok); background: var(--ok-bg); }
+
+/* BARRA DE NAVEGACAO INFERIOR MOBILE (ESTILO CCO VIATURAS — APENAS <= 960px) */
+.mobile-bottom-nav {
+  display: none;
+}
+
+/* RESPONSIVIDADE MOBILE COMPLETA (MESMA ERGONOMIA DO CCO VIATURAS) */
+@media (max-width: 960px) {
+  html, body {
+    max-width: 100vw;
+    overflow-x: hidden;
+  }
+  .app-shell {
+    width: 100%;
+    max-width: 100vw;
+    overflow-x: hidden;
+  }
+  .main-area {
+    width: 100%;
+    max-width: 100vw;
+    padding-bottom: calc(70px + env(safe-area-inset-bottom, 0px));
+  }
+  .topbar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+    padding: 8px 10px;
+  }
+  .topbar-esq {
+    width: 100%;
+    justify-content: flex-start;
+  }
+  .topbar-dir {
+    width: 100%;
+    display: grid;
+    grid-template-columns: 1fr auto auto;
+    gap: 6px;
+    align-items: center;
+  }
+  #btnTopoRegistrarPonto {
+    grid-column: 1 / -1;
+    width: 100%;
+    padding: 10px 12px;
+    font-size: 13.5px;
+  }
+  #btnAtualizarApp {
+    font-size: 11.5px;
+    padding: 6px 8px;
+  }
+  .conteudo {
+    padding: 10px;
+    max-width: 100vw;
+  }
+  .card {
+    padding: 12px;
+  }
+  .cab-secao {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+  .cab-secao .acoes-linha {
+    width: 100%;
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 6px;
+  }
+  .cab-secao .acoes-linha .btn {
+    width: 100%;
+  }
+  .subtabs {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 6px;
+    gap: 6px;
+  }
+  .subtab {
+    flex: 0 0 auto;
+    white-space: nowrap;
+    padding: 8px 12px;
+  }
+  .faixa-plantao {
+    flex-direction: column;
+    align-items: stretch;
+    padding: 12px;
+  }
+  .faixa-kpis {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 6px;
+    width: 100%;
+  }
+  .faixa-kpi {
+    min-width: 0;
+    padding: 6px 4px;
+  }
+  .faixa-kpi strong { font-size: 15px; }
+  .faixa-kpi span { font-size: 9.5px; }
+  .campo input, .campo select, .campo textarea {
+    font-size: 16px;
+    padding: 10px 10px;
+  }
+  .btn {
+    min-height: 40px;
+    white-space: normal;
+    text-align: center;
+  }
+  .btn-sm {
+    min-height: 34px;
+  }
+  .filtros-linha {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .filtros-linha .campo, .filtros-linha .campo-btn {
+    width: 100%;
+    flex: 1 1 auto;
+  }
+  .filtros-linha .campo-btn .btn {
+    width: 100%;
+  }
+  .grid-2, .grid-3, .grid-4, .grid-2-assimetrico {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+  .mapa-setor-box {
+    height: 270px;
+  }
+  .tabela-wrap {
+    margin: 0 -4px;
+    padding: 0 4px;
+    -webkit-overflow-scrolling: touch;
+  }
+  .tabela th, .tabela td {
+    padding: 7px 6px;
+    font-size: 12px;
+  }
+  .modal-box {
+    max-width: 100%;
+    padding: 14px;
+    max-height: 92vh;
+  }
+  .modal-rodape {
+    flex-direction: column-reverse;
+  }
+  .modal-rodape .btn {
+    width: 100%;
+  }
+  .banner-prioritario .btn {
+    width: 100%;
+  }
+  .toast-area {
+    left: 10px;
+    right: 10px;
+    bottom: calc(68px + env(safe-area-inset-bottom, 0px));
+    max-width: none;
+  }
+
+  /* Barra fixa inferior no celular */
+  .mobile-bottom-nav {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 45;
+    background: var(--surface);
+    border-top: 1.5px solid var(--border-strong);
+    padding: 4px 4px calc(4px + env(safe-area-inset-bottom, 0px));
+    box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.14);
+  }
+  .mob-nav-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    padding: 6px 2px;
+    border: none;
+    border-radius: 6px;
+    background: transparent;
+    color: var(--text-muted);
+    font-size: 10.5px;
+    font-weight: 700;
+    cursor: pointer;
+    line-height: 1.15;
+  }
+  .mob-nav-btn.ativo {
+    background: var(--accent);
+    color: var(--accent-text);
+  }
+  .mob-nav-ico {
+    font-size: 13px;
+    font-weight: 800;
+    letter-spacing: 0.02em;
+  }
 }

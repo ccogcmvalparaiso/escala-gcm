@@ -79,6 +79,7 @@
     secEquipeDetalhe: 'Detalhamento da Equipe',
     secAutenticacao: 'Validar Autenticidade (SHA-256)',
     secEfetivo: 'Efetivo da Guarda (64)',
+    secAuditoria30: 'Auditoria Operacional de 30 Dias (Admin)',
     secSistema: 'Contas, Base e Banco de Dados (Exclusivo Admin)'
   };
   const CHECKLIST_PADRAO = [
@@ -357,7 +358,7 @@
     postos.forEach(p => { cartoesModelo[p.id] = criarModeloCartaoPadrao(p); });
 
     return {
-      versao: 9,
+      versao: 10,
       config: {
         dataBaseAlfa: hojeISO(),
         horarioTroca: '07:00 às 07:00',
@@ -397,7 +398,8 @@
       pontos: [],
       justificativas: {},
       auditoriasIdentidade: {},
-      afastamentos: []
+      afastamentos: [],
+      auditorias30Dias: []
     };
   }
 
@@ -407,28 +409,183 @@
   function isAdmin() { return !!(SESSAO && SESSAO.perfil === 'ADMIN'); }
   function podeEditarEscala() { return !!(SESSAO && (SESSAO.perfil === 'ADMIN' || SESSAO.perfil === 'ESCALANTE')); }
 
-  function atualizarAlertaBotaoPonto() {
-    const btn = $('btnTopoRegistrarPonto');
-    if (!btn || !SESSAO || !ESTADO) return;
+  function avaliarObrigacaoPontoUsuario() {
+    if (!SESSAO || !ESTADO) return { precisaBater: false, tipo: 'NENHUM' };
     const hoje = hojeISO();
+    const ontem = somarDiasISO(hoje, -1);
+    const dow = diaSemanaISO(hoje);
+    const diaUtil = dow >= 1 && dow <= 5;
     const meu = agenteLogadoAtual();
-    let devePiscar = false;
 
-    if (meu) {
-      const { escalados } = obterEscaladosDaData(hoje);
-      const escHoje = escalados.find(x => x.agente.id === meu.id);
-      const r = resumirDiaAgente(hoje, meu.id, escHoje?.permutaSaida);
-      // Pisca vermelho e branco enquanto o guarda ainda nao registrou a Entrada hoje (e nao esta dispensado/justificado)
-      if (!r.ent && r.status !== 'JUSTIFICADO') {
-        devePiscar = true;
+    if (!meu) {
+      if (SESSAO.perfil === 'AGENTE') {
+        return {
+          precisaBater: true, urgente: true, tipo: 'SEM_VINCULO', batidaSugerida: 'ENTRADA',
+          titulo: 'AVISO PRIORITÁRIO: Registre sua Folha de Ponto',
+          subtexto: 'Sua conta ainda não tem Nº provisório vinculado — digite seu Nº na Folha de Ponto ou peça ao Administrador para vincular.'
+        };
       }
-    } else if (SESSAO.perfil === 'AGENTE') {
-      // Agente logado ainda sem ponto registrado hoje
-      devePiscar = true;
+      return { precisaBater: false, tipo: 'GESTAO_SEM_NUM' };
     }
 
+    // 1. Verifica se esta de Atestado / Ferias / Afastamento hoje
+    const afHoje = obterAfastamentoNaData(meu.id, hoje);
+    if (afHoje && afHoje.tipo !== 'FALTA') {
+      const rot = TIPO_AFASTAMENTO_LABEL[afHoje.tipo] || afHoje.tipo;
+      return {
+        precisaBater: false, tipo: 'AFASTADO', classe: 'folga',
+        titulo: `${rot} em andamento (${afHoje.dias} dia(s))`,
+        subtexto: `Você está afastado até ${formatarDataBR(afHoje.dataFim)}. Retorno previsto em ${formatarDataBR(afHoje.dataRetorno)} — não é necessário bater ponto hoje.`
+      };
+    }
+
+    const rHoje = resumirDiaAgente(hoje, meu.id, null);
+
+    // 2. Caso Administrativo (Segunda a Sexta — bate ponto todo dia util)
+    if (meu.equipe === 'ADM') {
+      if (!diaUtil) {
+        return {
+          precisaBater: false, tipo: 'FOLGA_ADM', classe: 'folga',
+          titulo: `Expediente Administrativo — Folga de Fim de Semana (${DIAS_SEMANA[dow]})`,
+          subtexto: 'Serviço administrativo funciona de Segunda a Sexta. Você não precisa bater ponto hoje.'
+        };
+      }
+      if (!rHoje.ent && rHoje.status !== 'JUSTIFICADO') {
+        return {
+          precisaBater: true, urgente: true, tipo: 'ADM_ENTRADA', batidaSugerida: 'ENTRADA',
+          titulo: `PONTO OBRIGATÓRIO HOJE (ADMINISTRATIVO) — Nº ${meu.matricula} ${meu.nomeGuerra}`,
+          subtexto: 'Expediente administrativo (Seg–Sex): registre sua ENTRADA na Folha de Ponto para iniciar o serviço de hoje.'
+        };
+      }
+      if (rHoje.ent && !rHoje.sai) {
+        return {
+          precisaBater: false, tipo: 'EM_SERVICO', classe: 'folga',
+          titulo: `Expediente Administrativo em andamento (Entrada às ${rHoje.ent.horaLocal.slice(0,5)})`,
+          subtexto: 'Lembre-se de registrar Almoço e Saída ao finalizar o expediente.'
+        };
+      }
+      return {
+        precisaBater: false, tipo: 'CONCLUIDO', classe: 'folga',
+        titulo: 'Folha de Ponto de hoje concluída (Entrada e Saída registradas)',
+        subtexto: `Entrada: ${rHoje.ent ? rHoje.ent.horaLocal.slice(0,5) : '—'} · Saída: ${rHoje.sai ? rHoje.sai.horaLocal.slice(0,5) : '—'}.`
+      };
+    }
+
+    // 3. Caso Escala 24x72 (ALFA, BRAVO, CHARLIE, DELTA) ou 12x36
+    // 3a. Verifica se iniciou plantao ontem e ainda precisa bater SAIDA hoje (ex: trocando turno as 07h)
+    const rOntem = resumirDiaAgente(ontem, meu.id, null);
+    const bateuSaidaHoje = !!(rHoje.sai);
+    if (rOntem.ent && !rOntem.sai && !bateuSaidaHoje) {
+      return {
+        precisaBater: true, urgente: true, tipo: 'ENCERRAR_ONTEM', batidaSugerida: 'SAIDA',
+        titulo: `ENCERRAMENTO DE PLANTÃO 24h — Nº ${meu.matricula} ${meu.nomeGuerra}`,
+        subtexto: `Você registrou ENTRADA ontem (${formatarDataBR(ontem)} às ${rOntem.ent.horaLocal.slice(0,5)}) e ainda não registrou a SAÍDA. Registre sua saída agora.`
+      };
+    }
+
+    // 3b. Verifica se esta escalado HOJE (24x72, Permuta Aprovada ou Evento)
+    const { ciclo, escalados } = obterEscaladosDaData(hoje);
+    const escHoje = escalados.find(x => x.agente.id === meu.id);
+    const estaEscaladoHoje = !!(escHoje && !escHoje.permutaSaida);
+
+    if (estaEscaladoHoje) {
+      const rEscalado = resumirDiaAgente(hoje, meu.id, escHoje.permutaSaida);
+      if (!rEscalado.ent && rEscalado.status !== 'JUSTIFICADO') {
+        return {
+          precisaBater: true, urgente: true, tipo: 'ESCALADO_24_ENTRADA', batidaSugerida: 'ENTRADA',
+          titulo: `VOCÊ ESTÁ ESCALADO HOJE (${escHoje.origem}) — Nº ${meu.matricula} ${meu.nomeGuerra}`,
+          subtexto: `Posto: ${escHoje.posto}. Registre sua ENTRADA na Folha de Ponto agora.`
+        };
+      }
+      if (rEscalado.ent && !rEscalado.sai) {
+        return {
+          precisaBater: false, tipo: 'EM_SERVICO', classe: 'folga',
+          titulo: `Plantão 24h em andamento (${escHoje.posto} · Entrada às ${rEscalado.ent.horaLocal.slice(0,5)})`,
+          subtexto: 'Ao encerrar o turno amanhã às 07h, registre sua SAÍDA na Folha de Ponto.'
+        };
+      }
+      return {
+        precisaBater: false, tipo: 'CONCLUIDO', classe: 'folga',
+        titulo: 'Plantão registrado com sucesso (Entrada e Saída confirmadas)',
+        subtexto: 'Você pode baixar sua folha autenticada em Minha Folha de Ponto (PDF).'
+      };
+    }
+
+    // 3c. Nao esta escalado hoje -> FOLGA (24x72) ou Permuta saindo! NAO pisca nem cobra ponto!
+    const stCiclo = ciclo.mapa[meu.equipe];
+    const rotFolga = escHoje?.permutaSaida ? 'Folga por Permuta Aprovada' : (stCiclo ? stCiclo.rotulo : 'Folga');
+    const proxDias = proximosDiasServico(meu.equipe, 12).split(',')[0] || 'consultar escala';
+    return {
+      precisaBater: false, tipo: 'FOLGA_24X72', classe: 'folga',
+      titulo: `Você está de FOLGA hoje (${rotFolga}) — Equipe ${meu.equipe}`,
+      subtexto: `Na escala 24x72 você não bate ponto nos dias de descanso. Próximo serviço previsto: ${proxDias}.`
+    };
+  }
+
+  function renderBannerAuditoria30Admin() {
+    const banner = $('bannerAuditoria30Admin');
+    if (!banner || !SESSAO || !ESTADO) return;
+    if (!isAdmin()) { banner.classList.add('oculto'); return; }
+    const ult = ESTADO.config?.ultimaAuditoria30Iso || '';
+    const diasPassados = ult ? diffDiasISO(hojeISO(), ult) : 30;
+    if (diasPassados >= 30) {
+      const msgCiclo = ult
+        ? `Já se passaram ${diasPassados} dias desde a última auditoria concluída (${formatarDataBR(ult)}).`
+        : 'Auditoria periódica de 30 dias disponível para primeira conferência da base de dados.';
+      banner.classList.remove('oculto');
+      banner.innerHTML = `
+        <div class="banner-prioritario-texto">
+          <strong>AUDITORIA PERIÓDICA DE 30 DIAS PRONTA (ADMINISTRADOR)</strong>
+          <span>${esc(msgCiclo)} Revise faltas, atrasos, pontos fora de Valparaíso e causas de Banco de Horas.</span>
+        </div>
+        <button type="button" class="btn btn-primario btn-sm" id="btnAbrirAud30Banner">Abrir Auditoria 30 Dias</button>
+      `;
+      const b = $('btnAbrirAud30Banner');
+      if (b) b.addEventListener('click', () => abrirAba('secAuditoria30'));
+    } else {
+      banner.classList.add('oculto');
+    }
+  }
+
+  function atualizarAlertaBotaoPonto() {
+    const btn = $('btnTopoRegistrarPonto');
+    const banner = $('bannerAvisoPontoInicial');
+    if (!btn || !SESSAO || !ESTADO) return;
+
+    const av = avaliarObrigacaoPontoUsuario();
+    const devePiscar = !!av.precisaBater;
+
     btn.classList.toggle('piscando-alerta', devePiscar);
-    btn.title = devePiscar ? 'ATENÇÃO: Você ainda não registrou sua Folha de Ponto hoje!' : 'Abrir Folha de Ponto';
+    btn.title = devePiscar ? (av.titulo || 'ATENÇÃO: Registre sua Folha de Ponto!') : 'Abrir Folha de Ponto';
+    if (av.batidaSugerida === 'SAIDA') {
+      btn.textContent = 'Registrar SAÍDA de Ponto';
+    } else {
+      btn.textContent = 'Registrar Folha de Ponto';
+    }
+
+    if (banner) {
+      if (av.tipo === 'NENHUM' || av.tipo === 'GESTAO_SEM_NUM') {
+        banner.classList.add('oculto');
+      } else {
+        banner.classList.remove('oculto', 'urgente', 'folga');
+        banner.classList.add(av.urgente ? 'urgente' : (av.classe || 'folga'));
+        banner.innerHTML = `
+          <div class="banner-prioritario-texto">
+            <strong>${esc(av.titulo)}</strong>
+            <span>${esc(av.subtexto)}</span>
+          </div>
+          ${av.precisaBater ? `<button type="button" class="btn btn-perigo btn-sm" id="btnIrBaterPontoBanner">${av.batidaSugerida === 'SAIDA' ? 'Registrar Saída Agora' : 'Registrar Ponto Agora'}</button>` : ''}
+        `;
+        const bIr = $('btnIrBaterPontoBanner');
+        if (bIr) bIr.addEventListener('click', () => {
+          abrirAba('secPonto');
+          ativarSubtab('secPonto', 'subPtRegistrar');
+          if (av.batidaSugerida && $('selPontoTipo')) $('selPontoTipo').value = av.batidaSugerida;
+          $('btnAbrirCamera')?.focus();
+        });
+      }
+    }
+    renderBannerAuditoria30Admin();
   }
 
   function aplicarPermissoesVisuais() {
@@ -575,7 +732,7 @@
   function aplicarTema(tema) {
     const t = tema === 'noturno' ? 'noturno' : 'claro';
     document.documentElement.setAttribute('data-tema', t);
-    localStorage.setItem('escala_gcm_tema_v9', t);
+    localStorage.setItem('escala_gcm_tema_v10', t);
     $('metaThemeColor')?.setAttribute('content', t === 'noturno' ? '#080808' : '#FFFFFF');
     if ($('btnTema')) $('btnTema').textContent = t === 'noturno' ? 'Modo Claro' : 'Modo Noturno';
     if ($('btnTemaAuth')) $('btnTemaAuth').textContent = t === 'noturno' ? 'Modo Claro (Branco)' : 'Modo Noturno (Preto)';
@@ -611,7 +768,7 @@
     const latStr = ponto.localizacao && typeof ponto.localizacao.lat === 'number' ? ponto.localizacao.lat.toFixed(6) : '0';
     const lonStr = ponto.localizacao && typeof ponto.localizacao.lon === 'number' ? ponto.localizacao.lon.toFixed(6) : '0';
     const payload = [
-      hashAnterior || 'GENESIS_GCM_V9',
+      hashAnterior || 'GENESIS_GCM_V10',
       ponto.protocolo || '',
       ponto.agenteMatricula || '',
       ponto.tipo || '',
@@ -629,7 +786,7 @@
     const dataCompacta = `${dt.getFullYear()}${p2(dt.getMonth()+1)}${p2(dt.getDate())}`;
     const emissor = SESSAO ? `${SESSAO.nome} (${SESSAO.login} · ${SESSAO.perfil})` : 'Sistema GCM';
     const textoLimpo = String(corpoHtml || '').replace(/\s+/g, ' ').trim();
-    const hashSha256 = window.EscalaCloud.sha256Hex(`GCM_VALP_DOC_V9|${tipoDoc}|${titulo}|${emitidoEm}|${emissor}|${qtdRegistros || 0}|${textoLimpo}`);
+    const hashSha256 = window.EscalaCloud.sha256Hex(`GCM_VALP_DOC_V10|${tipoDoc}|${titulo}|${emitidoEm}|${emissor}|${qtdRegistros || 0}|${textoLimpo}`);
     const codigo = `GCM-VALP-${dataCompacta}-${hashSha256.slice(0, 8).toUpperCase()}`;
 
     const cert = {
@@ -962,21 +1119,77 @@
     const a = Math.sin(rad(la2-la1)/2)**2 + Math.cos(rad(la1))*Math.cos(rad(la2))*Math.sin(rad(lo2-lo1)/2)**2;
     return 2 * R * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
   }
+  function normGeoTxt(s) {
+    return String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+  }
+
+  function pontoNoPoligono(lat, lon, pts) {
+    let dentro = false;
+    for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) {
+      const xi = pts[i][0], yi = pts[i][1], xj = pts[j][0], yj = pts[j][1];
+      const interc = ((yi > lon) !== (yj > lon)) && (lat < (xj - xi) * (lon - yi) / ((yj - yi) || 1e-12) + xi);
+      if (interc) dentro = !dentro;
+    }
+    return dentro;
+  }
+
+  function verificarCidadeValparaiso(cidade, bairro, uf, textoCompleto) {
+    const ufN = normGeoTxt(uf);
+    if (ufN && !['go', 'goias'].includes(ufN)) return false;
+    const cidN = normGeoTxt(cidade);
+    const baiN = normGeoTxt(bairro);
+    const txtN = normGeoTxt(textoCompleto);
+    if (cidN.includes('valparaiso de goias') || cidN === 'valparaiso') return true;
+    if (cidN && !cidN.includes('valparaiso')) return false;
+    if (baiN.includes('valparaiso de goias') || txtN.includes('valparaiso de goias')) return true;
+    return null;
+  }
+
+  function pontoDentroDeValparaiso(lat, lon, geoObj) {
+    const la = Number(lat), lo = Number(lon);
+    if (!isFinite(la) || !isFinite(lo)) return true;
+    // 1. Prioridade absoluta: municipio confirmado na consulta real
+    if (geoObj && geoObj.confirmado && typeof geoObj.ehValparaisoReal === 'boolean') {
+      return geoObj.ehValparaisoReal;
+    }
+    // 2. Poligonos dos setores oficiais de Valparaiso de Goias
+    for (const p of (ESTADO?.postos || [])) {
+      const poly = p.poligono;
+      if (Array.isArray(poly) && poly.length >= 3 && pontoNoPoligono(la, lo, poly)) return true;
+    }
+    // 3. Limite municipal estrito de Valparaiso de Goias - GO (mesmo criterio do CCO Viaturas)
+    return la >= -16.1080 && la <= -16.0380 && lo >= -48.0220 && lo <= -47.9480;
+  }
+
   async function consultarEnderecoReal(lat, lon) {
     const fj = async (u) => { const ctrl = new AbortController(), t = setTimeout(() => ctrl.abort(), 4500); try { const r = await fetch(u, { signal: ctrl.signal }); clearTimeout(t); return r.ok ? await r.json() : null; } catch (_) { clearTimeout(t); return null; } };
     const nom = await fj(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lon}&accept-language=pt-BR`);
     if (nom?.address) {
-      const a = nom.address, txt = [(a.road||a.suburb||'') + (a.house_number ? ', '+a.house_number : ''), a.suburb||a.neighbourhood||'', a.city||a.town||a.municipality||'', a.state_code||a.state||''].filter(Boolean).join(', ');
-      if (txt.trim()) return txt;
+      const a = nom.address;
+      const cid = a.city || a.town || a.municipality || a.village || '';
+      const bai = a.suburb || a.neighbourhood || a.quarter || '';
+      const uf = a.state_code || a.state || '';
+      const txt = [(a.road||bai||'') + (a.house_number ? ', '+a.house_number : ''), bai, cid, uf].filter(Boolean).join(', ');
+      if (txt.trim()) {
+        return { texto: txt, cidade: cid, bairro: bai, uf, confirmado: true, ehValparaisoReal: verificarCidadeValparaiso(cid, bai, uf, txt), regiaoResumo: [bai, cid, uf].filter(Boolean).join(', ') };
+      }
     }
     const ph = await fj(`https://photon.komoot.io/reverse?lat=${lat}&lon=${lon}`);
     if (ph?.features?.[0]?.properties) {
-      const p = ph.features[0].properties, txt = [p.street||p.name, p.district||p.locality, p.city, p.state].filter(Boolean).join(', ');
-      if (txt.trim()) return txt;
+      const p = ph.features[0].properties;
+      const cid = p.city || p.locality || '', bai = p.district || '', uf = p.state || '';
+      const txt = [p.street||p.name, bai, cid, uf].filter(Boolean).join(', ');
+      if (txt.trim()) {
+        return { texto: txt, cidade: cid, bairro: bai, uf, confirmado: true, ehValparaisoReal: verificarCidadeValparaiso(cid, bai, uf, txt), regiaoResumo: [bai, cid, uf].filter(Boolean).join(', ') };
+      }
     }
     const bdc = await fj(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lon}&localityLanguage=pt`);
-    if (bdc && (bdc.city || bdc.locality)) return [bdc.locality, bdc.city, bdc.principalSubdivision].filter(Boolean).join(', ');
-    return `Coordenadas: ${lat.toFixed(6)}, ${lon.toFixed(6)}`;
+    if (bdc && (bdc.city || bdc.locality)) {
+      const cid = bdc.city || '', bai = bdc.locality || '', uf = bdc.principalSubdivision || '';
+      const txt = [bai, cid, uf].filter(Boolean).join(', ');
+      return { texto: txt, cidade: cid, bairro: bai, uf, confirmado: true, ehValparaisoReal: verificarCidadeValparaiso(cid, bai, uf, txt), regiaoResumo: txt };
+    }
+    return { texto: `Localidade não confirmada (offline) · Lat ${lat.toFixed(6)}, Lon ${lon.toFixed(6)}`, cidade: '', bairro: '', uf: '', confirmado: false, ehValparaisoReal: null, regiaoResumo: `Lat ${lat.toFixed(5)}, Lon ${lon.toFixed(5)}` };
   }
 
   async function coletarLocalizacaoAutomatica(forcar) {
@@ -1045,18 +1258,32 @@
         if (dist > 120 && (dist / dtS) * 3.6 > 160) irregular = true;
       }
       const distBase = Math.round(distanciaMetros(ult.lat, ult.lon, Number(ESTADO.config.baseLat||-16.0658), Number(ESTADO.config.baseLon||-47.9756)));
-      const raio = Number(ESTADO.config.baseRaioMetros || 500);
       const resumoDist = distBase < 1000 ? `${distBase}m da Base` : `${(distBase/1000).toFixed(2)} km da Base`;
-      const endereco = await consultarEnderecoReal(ult.lat, ult.lon);
-      const status = irregular ? 'IRREGULAR' : (distBase <= raio ? 'OK' : 'FORA_BASE');
-      locAtualPonto = { lat: ult.lat, lon: ult.lon, accuracy: Math.round(ult.accuracy), distBase, resumoDist, endereco, status, modo: ult.modo || 'GPS' };
+      const geoObj = await consultarEnderecoReal(ult.lat, ult.lon);
+      const endereco = geoObj.texto;
+      const dentroValparaiso = pontoDentroDeValparaiso(ult.lat, ult.lon, geoObj);
+      const status = irregular ? 'IRREGULAR' : (dentroValparaiso ? 'OK' : 'FORA_VALPARAISO');
+      locAtualPonto = {
+        lat: ult.lat, lon: ult.lon, accuracy: Math.round(ult.accuracy),
+        distBase, resumoDist, endereco, regiaoResumo: geoObj.regiaoResumo || endereco,
+        dentroValparaiso, status, modo: ult.modo || 'GPS'
+      };
       locAtualTs = Date.now();
 
-      const stLabel = status === 'OK' ? 'Local Automático OK' : (status === 'FORA_BASE' ? 'Fora da Base' : 'Sinal Irregular');
-      const stCls = status === 'OK' ? 'badge-ok' : (status === 'FORA_BASE' ? 'badge-pendente' : 'badge-erro');
+      const stLabel = status === 'OK' ? 'Valparaíso-GO OK' : (status === 'FORA_VALPARAISO' ? 'Fora de Valparaíso' : 'Sinal Irregular');
+      const stCls = status === 'OK' ? 'badge-ok' : (status === 'FORA_VALPARAISO' ? 'badge-erro' : 'badge-erro');
       if ($('statusGpsBadge')) { $('statusGpsBadge').textContent = stLabel; $('statusGpsBadge').className = 'badge ' + stCls; }
       if ($('painelResultadoGps')) {
-        $('painelResultadoGps').innerHTML = `<div><strong>Endereço:</strong> ${esc(endereco)}</div><div class="subtexto">Localização (${esc(locAtualPonto.modo)}): ${ult.lat.toFixed(6)}, ${ult.lon.toFixed(6)} (±${Math.round(ult.accuracy)}m) · <strong>${esc(resumoDist)}</strong></div>`;
+        $('painelResultadoGps').innerHTML = `<div><strong>Endereço:</strong> ${esc(endereco)}</div><div class="subtexto">Perímetro: <strong>${dentroValparaiso ? 'Dentro de Valparaíso de Goiás' : 'FORA de Valparaíso de Goiás'}</strong> · ${esc(resumoDist)} (±${Math.round(ult.accuracy)}m)</div>`;
+      }
+      const boxFora = $('boxJustificativaForaValparaiso');
+      if (boxFora) {
+        if (!dentroValparaiso) {
+          boxFora.classList.remove('oculto');
+          if ($('lblLocalForaValp')) $('lblLocalForaValp').innerHTML = `Localização detectada fora de Valparaíso de Goiás: <strong>${esc(geoObj.regiaoResumo || endereco)}</strong>. Informe o motivo abaixo — será encaminhado automaticamente ao Comando.`;
+        } else {
+          boxFora.classList.add('oculto');
+        }
       }
       return locAtualPonto;
     })();
@@ -1080,6 +1307,21 @@
       err.classList.remove('oculto'); return;
     }
 
+    let justificativaForaValp = null;
+    if (locAtualPonto.dentroValparaiso === false) {
+      const catFora = ($('selMotivoForaValp')?.value || '').trim();
+      const detFora = ($('inpDetalheForaValp')?.value || '').trim();
+      if (!catFora || detFora.length < 5) {
+        btnConf.disabled = false; btnConf.textContent = 'Confirmar e Emitir Comprovante de Ponto';
+        err.textContent = 'Você está FORA da região de Valparaíso de Goiás. Selecione o motivo e explique o porquê para encaminhamento ao Comando.';
+        err.classList.remove('oculto');
+        $('boxJustificativaForaValparaiso')?.classList.remove('oculto');
+        $('selMotivoForaValp')?.focus();
+        return;
+      }
+      justificativaForaValp = { categoria: catFora, detalhe: detFora, regiao: locAtualPonto.regiaoResumo || locAtualPonto.endereco };
+    }
+
     btnConf.textContent = 'Gravando e autenticando ponto...';
     const ag = guardaSelecionadoPonto;
     const agoraIso = new Date().toISOString();
@@ -1087,7 +1329,7 @@
     const dataLocal = `${dt.getFullYear()}-${p2(dt.getMonth()+1)}-${p2(dt.getDate())}`;
     const horaLocal = `${p2(dt.getHours())}:${p2(dt.getMinutes())}:${p2(dt.getSeconds())}`;
     const tipo = $('selPontoTipo').value;
-    const hashAnterior = ESTADO.pontos[0]?.hashIntegridade || 'GENESIS_GCM_V9';
+    const hashAnterior = ESTADO.pontos[0]?.hashIntegridade || 'GENESIS_GCM_V10';
     const randHex = window.EscalaCloud.sha256Hex(agoraIso + ag.matricula + Math.random()).slice(0, 6).toUpperCase();
     const protocolo = `PT-${dataLocal.replace(/-/g,'')}-${ag.matricula}-${randHex}`;
 
@@ -1108,6 +1350,8 @@
       tipo, posto: $('inpPontoPosto').value.trim() || 'Base GCM', obs: $('inpPontoObs').value.trim(),
       timestampIso: agoraIso, dataLocal, horaLocal,
       foto: fotoCapturadaDataUrl, localizacao: locAtualPonto,
+      foraValparaiso: locAtualPonto.dentroValparaiso === false,
+      justificativaForaValp,
       conferenciaVisual,
       hashAnterior, hashIntegridade: ''
     };
@@ -1132,6 +1376,9 @@
     $('imgPreviewFoto').classList.add('oculto'); $('placeholderCamera').classList.remove('oculto');
     $('statusFoto').textContent = 'Pendente'; $('statusFoto').className = 'badge badge-neutro'; $('btnRefazerFoto').disabled = true;
     $('inpPontoObs').value = '';
+    if ($('selMotivoForaValp')) $('selMotivoForaValp').value = '';
+    if ($('inpDetalheForaValp')) $('inpDetalheForaValp').value = '';
+    $('boxJustificativaForaValparaiso')?.classList.add('oculto');
 
     selecionarGuardaParaPonto(ag);
     atualizarAlertaBotaoPonto();
@@ -1186,7 +1433,7 @@
   function abrirDetalhePonto(id) {
     const pt = (ESTADO.pontos||[]).find(x => x.id === id); if (!pt) return;
     const loc = pt.localizacao || {};
-    const stTxt = loc.status === 'OK' ? 'Local Regular' : (loc.status === 'FORA_BASE' ? 'Fora da Base' : 'Sinal Irregular');
+    const stTxt = loc.status === 'OK' ? 'Dentro de Valparaíso-GO' : (loc.status === 'FORA_VALPARAISO' ? 'FORA de Valparaíso-GO' : (loc.status === 'FORA_BASE' ? 'Fora da Base' : 'Sinal Irregular'));
     abrirModal(
       `Registro — Nº ${pt.agenteMatricula} ${pt.agenteNome}`,
       `<div style="text-align:center;"><img src="${pt.foto}" style="max-width:100%;max-height:220px;border-radius:6px;border:1px solid var(--border);"></div>
@@ -1196,6 +1443,7 @@
          <div><strong>Equipe / Posto:</strong> ${esc(pt.equipe)} · ${esc(pt.posto)}</div>
          <div><strong>Endereço:</strong> ${esc(loc.endereco || '—')} (${esc(loc.resumoDist || '')})</div>
          <div><strong>Verificação:</strong> ${esc(stTxt)}</div>
+         ${pt.justificativaForaValp ? `<div class="alerta-inline erro mt-4"><strong>Motivo (Fora de Valparaíso → Comando):</strong> ${esc(pt.justificativaForaValp.categoria)} — ${esc(pt.justificativaForaValp.detalhe)}</div>` : ''}
          ${pt.obs ? `<div><strong>Obs.:</strong> ${esc(pt.obs)}</div>` : ''}
          <div><strong>Hash SHA-256:</strong><div class="hash-mono mt-4">${esc(pt.hashIntegridade)}</div></div>
        </div>`,
@@ -1217,7 +1465,7 @@
     $('tbodyPontos').innerHTML = lista.map(p => {
       const st = p.localizacao?.status || 'OK';
       const cls = st === 'OK' ? 'badge-ok' : (st === 'FORA_BASE' ? 'badge-pendente' : 'badge-erro');
-      const txt = st === 'OK' ? 'Regular' : (st === 'FORA_BASE' ? 'Fora da Base' : 'Irregular');
+      const txt = st === 'OK' ? 'Valparaíso OK' : (st === 'FORA_VALPARAISO' ? 'Fora Valparaíso' : (st === 'FORA_BASE' ? 'Fora da Base' : 'Irregular'));
       return `
         <tr>
           <td><img src="${p.foto}" class="foto-thumb" data-ver-ponto="${esc(p.id)}"></td>
@@ -2196,6 +2444,12 @@
       </table>
 
       ${permsPeriodo.length ? `<h2>3. PERMUTAS HOMOLOGADAS NO PERÍODO</h2><table><thead><tr><th style="width:14%;">Data</th><th style="width:26%;">Tipo</th><th style="width:30%;">Solicitante (Saiu)</th><th style="width:30%;">Substituto (Assumiu)</th></tr></thead><tbody>${rowsPerms}</tbody></table>` : ''}
+      ${(() => {
+        const foraValpPts = (ESTADO.pontos || []).filter(p => (p.foraValparaiso || p.localizacao?.status === 'FORA_VALPARAISO') && p.dataLocal >= ini && p.dataLocal <= fim);
+        if (!foraValpPts.length) return '';
+        const rowsFv = foraValpPts.map(p => `<tr><td style="width:14%;"><strong>${formatarDataBR(p.dataLocal)}</strong><br>${esc(p.horaLocal)}</td><td style="width:22%;"><strong>Nº ${esc(p.agenteMatricula)} ${esc(p.agenteNome)}</strong><br><small>${esc(TIPO_PONTO_LABEL[p.tipo]||p.tipo)}</small></td><td style="width:28%;">${esc(p.localizacao?.endereco || '—')}</td><td style="width:36%;"><strong>${esc(p.justificativaForaValp?.categoria || 'Não informado')}</strong><br>${esc(p.justificativaForaValp?.detalhe || p.obs || '—')}</td></tr>`).join('');
+        return `<h2>4. REGISTROS DE PONTO FORA DE VALPARAÍSO DE GOIÁS (JUSTIFICATIVAS AO COMANDO)</h2><table><thead><tr><th style="width:14%;">Data / Hora</th><th style="width:22%;">Guarda / Batida</th><th style="width:28%;">Localidade Detectada</th><th style="width:36%;">Motivo Informado ao Comando</th></tr></thead><tbody>${rowsFv}</tbody></table>`;
+      })()}
       ${blocoAnexos}
     `;
 
@@ -2227,7 +2481,7 @@
       const cur = lerCartaoDoEditor(), proxNum = cur.pontosBase.length + 1;
       cur.pontosBase.push({ hora: '00:00 - 00:00', local: `PB ${proxNum} — Ponto marcado no mapa`, atividade: 'Descreva passo a passo o que a guarnição deve executar neste ponto...', lat, lon });
       renderLinhasPb(cur.pontosBase);
-      modoMarcarPbMapa = false; $('avisoCliqueMapa').classList.add('oculto'); $('btnModoMarcarPb').textContent = '+ Marcar PB clicando no Mapa';
+      modoMarcarPbMapa = false; $('avisoCliqueMapa').classList.add('oculto'); $('btnModoMarcarPb').textContent = '+ Marcar Ponto Base (PB) no Mapa';
       atualizarDesenhoMapaSetor(); toast(`PB ${proxNum} marcado (${lat}, ${lon}).`);
     });
   }
@@ -2814,7 +3068,7 @@
       box.innerHTML = '<div class="selo-card"><div><span class="badge badge-ok">CADEIA LIMPA</span></div><div>Nenhuma batida de ponto registrada ainda.</div></div>';
       return;
     }
-    let prev = 'GENESIS_GCM_V9';
+    let prev = 'GENESIS_GCM_V10';
     const violacoes = [];
     pts.forEach((pt, idx) => {
       const esperado = calcularHashPonto(pt, prev);
@@ -3216,6 +3470,261 @@
   // =========================================================================
   // NAVEGACAO E INICIALIZACAO
   // =========================================================================
+
+  // =========================================================================
+  // 8B. AUDITORIA OPERACIONAL DE 30 DIAS (EXCLUSIVO ADMINISTRADOR)
+  // =========================================================================
+  function gerarDadosAuditoria30() {
+    const fim = $('inpAud30Fim')?.value || hojeISO();
+    const ini = $('inpAud30Ini')?.value || somarDiasISO(fim, -29);
+    const tolMin = Math.max(0, Number($('inpAud30Tol')?.value ?? 15));
+
+    let totalEscalados = 0, totalFaltas = 0, totalAtrasos = 0, totalAtestados = 0, totalErrosBatida = 0;
+    const ocorrenciasFA = [];
+    const errosPorAgente = {};
+    const addErroAg = (agId, msg) => { errosPorAgente[agId] = errosPorAgente[agId] || []; errosPorAgente[agId].push(msg); totalErrosBatida++; };
+
+    // 1. Varre todos os dias do periodo (max 62 dias para performance)
+    const qtdDias = Math.min(62, Math.max(1, diffDiasISO(fim, ini) + 1));
+    const hoje = hojeISO();
+    for (let i = 0; i < qtdDias; i++) {
+      const d = somarDiasISO(ini, i);
+      if (d > hoje) break;
+      const { escalados } = obterEscaladosDaData(d);
+      totalEscalados += escalados.length;
+      escalados.forEach(item => {
+        const ag = item.agente;
+        const r = resumirDiaAgente(d, ag.id, item.permutaSaida);
+        if (r.status === 'FALTOU') {
+          totalFaltas++;
+          ocorrenciasFA.push({
+            data: d, ag, tipo: 'FALTA', badge: 'badge-erro',
+            detalhe: r.just?.obs || r.afast?.obs || 'Escalado sem registro de ponto nem justificativa'
+          });
+        } else if (r.afast && r.afast.tipo !== 'FALTA') {
+          if (r.afast.dataInicio === d) {
+            totalAtestados++;
+            ocorrenciasFA.push({
+              data: d, ag, tipo: TIPO_AFASTAMENTO_LABEL[r.afast.tipo] || r.afast.tipo, badge: 'badge-warn',
+              detalhe: `${r.afast.dias} dia(s) fora (${formatarDataBR(r.afast.dataInicio)} a ${formatarDataBR(r.afast.dataFim)} · Ret. ${formatarDataBR(r.afast.dataRetorno)})${r.afast.anexo ? ' · Com anexo' : ' · Sem anexo'}`
+            });
+          }
+        }
+        // Checa atraso na Entrada (previsto 08:00 no ADM, 07:00 na 24x72)
+        if (r.ent) {
+          const [hh, mm] = r.ent.horaLocal.split(':').map(Number);
+          const minReal = hh * 60 + mm;
+          const minPrev = ag.equipe === 'ADM' ? (8 * 60) : (7 * 60);
+          const atraso = minReal - minPrev;
+          if (atraso > tolMin && atraso < 360) {
+            totalAtrasos++;
+            ocorrenciasFA.push({
+              data: d, ag, tipo: 'ATRASO', badge: 'badge-pendente',
+              detalhe: `Previsto ${ag.equipe === 'ADM' ? '08:00' : '07:00'} · Bateu às ${r.ent.horaLocal.slice(0,5)} (+${atraso} min de atraso)`
+            });
+          }
+        }
+        // Checa erro / esquecimento de batida em dias ja encerrados (d < hoje)
+        if (d < hoje) {
+          const rProx = resumirDiaAgente(somarDiasISO(d, 1), ag.id, null);
+          const temSaida = !!(r.sai || (ag.equipe !== 'ADM' && rProx.sai));
+          if (r.ent && !temSaida) {
+            addErroAg(ag.id, `${formatarDataBR(d)}: bateu Entrada (${r.ent.horaLocal.slice(0,5)}) e esqueceu de bater Saída`);
+          } else if (!r.ent && r.sai && ag.equipe === 'ADM') {
+            addErroAg(ag.id, `${formatarDataBR(d)}: bateu Saída (${r.sai.horaLocal.slice(0,5)}) sem Entrada registrada`);
+          }
+        }
+      });
+    }
+
+    // 2. Analisa Banco de Horas (+ horas e - horas: Acordo/Gestao vs Erro/Esquecimento)
+    const ativos = ESTADO.efetivo.filter(a => a.situacao === 'ATIVO');
+    const analiseBanco = [];
+    let somaSaldoPosMin = 0, somaSaldoNegMin = 0;
+
+    ativos.forEach(ag => {
+      const movs = (ESTADO.bancoHorasMovs || []).filter(m => m.agenteId === ag.id && m.data >= ini && m.data <= fim);
+      let credAcordoMin = 0, credPontoAutoMin = 0, debMin = 0;
+      movs.forEach(m => {
+        if (m.computadoMin >= 0) {
+          if (m.tipo === 'PONTO_AUTO') credPontoAutoMin += m.computadoMin;
+          else credAcordoMin += m.computadoMin;
+        } else {
+          debMin += Math.abs(m.computadoMin);
+        }
+      });
+      const saldoMin = (credAcordoMin + credPontoAutoMin) - debMin;
+      if (saldoMin > 0) somaSaldoPosMin += saldoMin;
+      if (saldoMin < 0) somaSaldoNegMin += Math.abs(saldoMin);
+
+      const errs = errosPorAgente[ag.id] || [];
+      if (movs.length || errs.length) {
+        let diag = 'Regular', diagCls = 'badge-ok';
+        if (errs.length && (credPontoAutoMin > 0 || saldoMin !== 0)) {
+          diag = 'VERIFICAR: Possível distorção por esquecimento de batida';
+          diagCls = 'badge-erro';
+        } else if (errs.length) {
+          diag = 'ERRO DE BATIDA: Esqueceu Saída/Entrada (regularizar)';
+          diagCls = 'badge-pendente';
+        } else if (saldoMin > 24 * 60) {
+          diag = 'ACORDO / EXTRAS ELEVADO (>24h — programar folga compensatória)';
+          diagCls = 'badge-warn';
+        } else if (saldoMin < 0) {
+          diag = 'SALDO NEGATIVO (débito/atraso a compensar)';
+          diagCls = 'badge-erro';
+        } else if (credAcordoMin > 0) {
+          diag = 'COERENTE: Acúmulo por Acordo / Autorização da Gestão';
+          diagCls = 'badge-ok';
+        }
+        analiseBanco.push({ ag, credAcordoMin: credAcordoMin + credPontoAutoMin, debMin, saldoMin, errs, diag, diagCls });
+      }
+    });
+
+    // 3. Pontos batidos fora de Valparaiso de Goias no periodo
+    const foraValp = (ESTADO.pontos || [])
+      .filter(p => (p.foraValparaiso || p.localizacao?.status === 'FORA_VALPARAISO') && p.dataLocal >= ini && p.dataLocal <= fim);
+
+    // 4. Sugestoes automaticas para o Administrador / Comando
+    const sugestoes = [];
+    if (totalErrosBatida > 0) {
+      sugestoes.push({ cls: 'alerta', texto: `Esquecimentos de Batida (${totalErrosBatida} caso(s)): guardas registraram Entrada e esqueceram a Saída (ou vice-versa). Recomenda-se orientar a tropa e regularizar os registros antes de fechar o Banco de Horas.` });
+    }
+    if (totalFaltas > 0) {
+      sugestoes.push({ cls: 'alerta', texto: `Faltas sem Justificativa (${totalFaltas} ocorrência(s)): confira com os chefes de equipe se houve atestado não entregue ou se deve constar no Relatório Oficial para o Comando.` });
+    }
+    if (totalAtrasos > 0) {
+      sugestoes.push({ cls: 'atencao', texto: `Atrasos acima de ${tolMin} min (${totalAtrasos} registro(s)): avalie os casos recorrentes e se há necessidade de ajuste de escala ou orientação.` });
+    }
+    if (foraValp.length > 0) {
+      sugestoes.push({ cls: 'atencao', texto: `Pontos Fora de Valparaíso de Goiás (${foraValp.length} registro(s)): revise os motivos informados abaixo e encaminhe ao Comando no PDF oficial.` });
+    }
+    const altosBh = analiseBanco.filter(x => x.saldoMin > 24 * 60);
+    if (altosBh.length > 0) {
+      sugestoes.push({ cls: 'atencao', texto: `Banco de Horas elevado (${altosBh.length} guarda(s) com mais de 24h acumuladas): planeje folgas compensatórias para equilibrar o efetivo.` });
+    }
+    if (!sugestoes.length) {
+      sugestoes.push({ cls: 'ok', texto: 'Nenhuma irregularidade crítica encontrada neste período. A base de dados da Folha de Ponto, Escala e Banco de Horas está consistente.' });
+    }
+
+    return {
+      ini, fim, tolMin, totalEscalados, totalFaltas, totalAtrasos, totalAtestados, totalErrosBatida,
+      somaSaldoPosMin, somaSaldoNegMin, analiseBanco, ocorrenciasFA, foraValp, sugestoes
+    };
+  }
+
+  function renderAuditoria30() {
+    if (!isAdmin()) return;
+    if ($('inpAud30Fim') && !$('inpAud30Fim').value) $('inpAud30Fim').value = hojeISO();
+    if ($('inpAud30Ini') && !$('inpAud30Ini').value) $('inpAud30Ini').value = somarDiasISO($('inpAud30Fim').value, -29);
+
+    const aud = gerarDadosAuditoria30();
+    const ult = ESTADO.config?.ultimaAuditoria30Iso || '';
+    const diasProx = ult ? Math.max(0, 30 - diffDiasISO(hojeISO(), ult)) : 0;
+
+    $('badgeStatusCicloAud30').textContent = diasProx === 0 ? 'Auditoria Pronta p/ Conclusão' : `Próximo ciclo em ${diasProx} dia(s)`;
+
+    $('kpisAuditoria30').innerHTML = `
+      <div class="faixa-kpi"><strong>${aud.totalEscalados}</strong><span>Escalados</span></div>
+      <div class="faixa-kpi kpi-falta"><strong>${aud.totalFaltas}</strong><span>Faltas</span></div>
+      <div class="faixa-kpi kpi-pend"><strong>${aud.totalAtrasos}</strong><span>Atrasos</span></div>
+      <div class="faixa-kpi kpi-falta"><strong>${aud.totalErrosBatida}</strong><span>Erros Batida</span></div>
+      <div class="faixa-kpi kpi-pend"><strong>${aud.foraValp.length}</strong><span>Fora Valp.</span></div>
+      <div class="faixa-kpi kpi-ok"><strong>${formatarMinutosHM(aud.somaSaldoPosMin, true)}</strong><span>Banco (+)</span></div>
+    `;
+
+    $('listaSugestoesAud30').innerHTML = aud.sugestoes.map(s => `<div class="sugestao-aud-item ${s.cls}">${esc(s.texto)}</div>`).join('');
+
+    $('badgeQtdAudBh').textContent = `${aud.analiseBanco.length} guarda(s)`;
+    $('tbodyAud30Banco').innerHTML = aud.analiseBanco.map(x => `
+      <tr>
+        <td><strong>Nº ${esc(x.ag.matricula)} — ${esc(x.ag.nome)}</strong></td>
+        <td><span class="insig eq-${esc(x.ag.equipe)}">${esc(x.ag.equipe)}</span></td>
+        <td class="saldo-pos">${formatarMinutosHM(x.credAcordoMin, true)}</td>
+        <td class="saldo-neg">${x.debMin ? '-' + formatarMinutosHM(x.debMin, false) : '00h00'}</td>
+        <td class="${x.saldoMin >= 0 ? 'saldo-pos' : 'saldo-neg'}">${formatarMinutosHM(x.saldoMin, true)}</td>
+        <td>${x.errs.length ? x.errs.map(e => `<div style="font-size:11.5px;color:var(--danger);">• ${esc(e)}</div>`).join('') : '<span class="subtexto">Nenhum erro</span>'}</td>
+        <td><span class="badge ${x.diagCls}">${esc(x.diag)}</span></td>
+      </tr>
+    `).join('') || '<tr><td colspan="7" class="subtexto" style="text-align:center;padding:14px;">Nenhum movimento de Banco de Horas ou erro de batida neste período.</td></tr>';
+
+    $('badgeQtdAudOcorr').textContent = `${aud.ocorrenciasFA.length} registro(s)`;
+    $('tbodyAud30FaltasAtrasos').innerHTML = aud.ocorrenciasFA.map(o => `
+      <tr>
+        <td><strong>${formatarDataBR(o.data)}</strong></td>
+        <td><strong>Nº ${esc(o.ag.matricula)} — ${esc(o.ag.nome)}</strong></td>
+        <td><span class="insig eq-${esc(o.ag.equipe)}">${esc(o.ag.equipe)}</span></td>
+        <td><span class="badge ${o.badge}">${esc(o.tipo)}</span></td>
+        <td>${esc(o.detalhe)}</td>
+      </tr>
+    `).join('') || '<tr><td colspan="5" class="subtexto" style="text-align:center;padding:14px;">Nenhuma falta, atraso ou afastamento no período.</td></tr>';
+
+    $('badgeQtdAudFora').textContent = `${aud.foraValp.length} registro(s)`;
+    $('tbodyAud30ForaValp').innerHTML = aud.foraValp.map(p => `
+      <tr>
+        <td><strong>${formatarDataBR(p.dataLocal)}</strong><div class="subtexto">${esc(p.horaLocal)} · ${esc(TIPO_PONTO_LABEL[p.tipo]||p.tipo)}</div></td>
+        <td><strong>Nº ${esc(p.agenteMatricula)} — ${esc(p.agenteNome)}</strong></td>
+        <td>${esc(p.localizacao?.endereco || '—')}</td>
+        <td><strong>${esc(p.justificativaForaValp?.categoria || 'Não especificado')}</strong><div class="subtexto">${esc(p.justificativaForaValp?.detalhe || p.obs || '—')}</div></td>
+      </tr>
+    `).join('') || '<tr><td colspan="4" class="subtexto" style="text-align:center;padding:14px;">Nenhum ponto registrado fora de Valparaíso de Goiás neste período.</td></tr>';
+
+    const hist = ESTADO.auditorias30Dias || [];
+    $('badgeQtdAudHist').textContent = `${hist.length} arquivada(s)`;
+    $('tbodyAud30Historico').innerHTML = hist.map(h => `
+      <tr>
+        <td><strong>${formatarDataHoraBR(h.concluidaEm)}</strong></td>
+        <td>${formatarDataBR(h.ini)} a ${formatarDataBR(h.fim)}</td>
+        <td>${esc(h.responsavel)}</td>
+        <td>Faltas: ${h.faltas} · Atrasos: ${h.atrasos} · Erros: ${h.erros} · Fora Valp.: ${h.foraValp}</td>
+        <td>${esc(h.parecer || 'Aprovada sem ressalvas')}</td>
+      </tr>
+    `).join('') || '<tr><td colspan="5" class="subtexto" style="text-align:center;padding:14px;">Nenhuma auditoria de 30 dias arquivada ainda.</td></tr>';
+  }
+
+  function gerarPdfAuditoria30() {
+    if (!isAdmin()) return toast('Exclusivo Administrador.');
+    const aud = gerarDadosAuditoria30();
+    const rowsBh = aud.analiseBanco.map(x => `<tr><td style="width:22%;"><strong>Nº ${esc(x.ag.matricula)} ${esc(x.ag.nome)}</strong></td><td style="width:9%;">${esc(x.ag.equipe)}</td><td style="width:11%;">${formatarMinutosHM(x.credAcordoMin, true)}</td><td style="width:11%;">-${formatarMinutosHM(x.debMin, false)}</td><td style="width:11%;"><strong>${formatarMinutosHM(x.saldoMin, true)}</strong></td><td style="width:18%;">${x.errs.length ? esc(x.errs.join('; ')) : 'Sem erros'}</td><td style="width:18%;"><strong>${esc(x.diag)}</strong></td></tr>`).join('') || '<tr><td colspan="7" style="text-align:center;">Sem anomalias ou lançamentos de banco de horas.</td></tr>';
+    const rowsFa = aud.ocorrenciasFA.map(o => `<tr><td style="width:12%;">${formatarDataBR(o.data)}</td><td style="width:26%;"><strong>Nº ${esc(o.ag.matricula)} ${esc(o.ag.nome)}</strong></td><td style="width:10%;">${esc(o.ag.equipe)}</td><td style="width:14%;"><strong>${esc(o.tipo)}</strong></td><td style="width:38%;">${esc(o.detalhe)}</td></tr>`).join('') || '<tr><td colspan="5" style="text-align:center;">Sem faltas, atrasos ou atestados no período.</td></tr>';
+    const rowsFv = aud.foraValp.map(p => `<tr><td style="width:15%;">${formatarDataBR(p.dataLocal)} ${esc(p.horaLocal)}</td><td style="width:23%;"><strong>Nº ${esc(p.agenteMatricula)} ${esc(p.agenteNome)}</strong></td><td style="width:28%;">${esc(p.localizacao?.endereco||'—')}</td><td style="width:34%;"><strong>${esc(p.justificativaForaValp?.categoria||'—')}</strong><br>${esc(p.justificativaForaValp?.detalhe||'—')}</td></tr>`).join('') || '<tr><td colspan="4" style="text-align:center;">Todos os registros dentro de Valparaíso de Goiás.</td></tr>';
+    const corpo = `
+      <div class="box">
+        <div><strong>PERÍODO AUDITADO:</strong> ${formatarDataBR(aud.ini)} a ${formatarDataBR(aud.fim)} · <strong>Tolerância de Atraso:</strong> ${aud.tolMin} min</div>
+        <div style="margin-top:4px;"><strong>Escalados:</strong> ${aud.totalEscalados} | <strong>Faltas:</strong> ${aud.totalFaltas} | <strong>Atrasos:</strong> ${aud.totalAtrasos} | <strong>Erros/Esquecimentos Batida:</strong> ${aud.totalErrosBatida} | <strong>Fora de Valparaíso:</strong> ${aud.foraValp.length} | <strong>Banco (+):</strong> ${formatarMinutosHM(aud.somaSaldoPosMin, true)} | <strong>Banco (-):</strong> -${formatarMinutosHM(aud.somaSaldoNegMin, false)}</div>
+      </div>
+      <h2>SUGESTÕES E DIAGNÓSTICO AUTOMÁTICO</h2>
+      <div class="box">${aud.sugestoes.map(s => `<div style="margin-bottom:3px;">• ${esc(s.texto)}</div>`).join('')}</div>
+      <h2>1. BANCO DE HORAS (+ HORAS E - HORAS: ACORDO × ERRO / ESQUECIMENTO)</h2>
+      <table><thead><tr><th style="width:22%;">Guarda</th><th style="width:9%;">Eq.</th><th style="width:11%;">Horas (+)</th><th style="width:11%;">Horas (-)</th><th style="width:11%;">Saldo</th><th style="width:18%;">Erros Batida</th><th style="width:18%;">Diagnóstico</th></tr></thead><tbody>${rowsBh}</tbody></table>
+      <h2>2. FALTAS, ATRASOS E ATESTADOS NO PERÍODO</h2>
+      <table><thead><tr><th style="width:12%;">Data</th><th style="width:26%;">Guarda</th><th style="width:10%;">Eq.</th><th style="width:14%;">Tipo</th><th style="width:38%;">Detalhe</th></tr></thead><tbody>${rowsFa}</tbody></table>
+      <h2>3. REGISTROS FORA DE VALPARAÍSO DE GOIÁS (CIÊNCIA DO COMANDO)</h2>
+      <table><thead><tr><th style="width:15%;">Data / Hora</th><th style="width:23%;">Guarda</th><th style="width:28%;">Local Detectado</th><th style="width:34%;">Motivo ao Comando</th></tr></thead><tbody>${rowsFv}</tbody></table>
+    `;
+    emitirPdfAutenticado({
+      tipoDoc: 'AUDITORIA_30_DIAS',
+      titulo: 'AUDITORIA OPERACIONAL DE 30 DIAS — GCM VALPARAÍSO DE GOIÁS',
+      subtitulo: `Período: ${formatarDataBR(aud.ini)} a ${formatarDataBR(aud.fim)} · Controle de Escala, Ponto e Banco de Horas`,
+      corpoHtml: corpo,
+      nomeArquivo: `auditoria-30-dias-gcm-${aud.fim}.pdf`,
+      paisagem: true,
+      qtdRegistros: aud.analiseBanco.length + aud.ocorrenciasFA.length + aud.foraValp.length
+    });
+  }
+
+  function exportarCsvAuditoria30() {
+    if (!isAdmin()) return toast('Exclusivo Administrador.');
+    const aud = gerarDadosAuditoria30();
+    const linhas = ['Categoria;Data;Matricula;Nome;Equipe;Detalhe;Diagnostico'];
+    aud.analiseBanco.forEach(x => linhas.push(`BANCO_HORAS;${aud.ini}_a_${aud.fim};${x.ag.matricula};"${x.ag.nome}";${x.ag.equipe};"Saldo ${formatarMinutosHM(x.saldoMin,true)} | Erros: ${x.errs.join(' / ')}";"${x.diag}"`));
+    aud.ocorrenciasFA.forEach(o => linhas.push(`${o.tipo};${o.data};${o.ag.matricula};"${o.ag.nome}";${o.ag.equipe};"${o.detalhe}";"Auditoria 30 dias"`));
+    aud.foraValp.forEach(p => linhas.push(`FORA_VALPARAISO;${p.dataLocal};${p.agenteMatricula};"${p.agenteNome}";${p.equipe};"${p.localizacao?.endereco||''}";"${(p.justificativaForaValp?.categoria||'')+' - '+(p.justificativaForaValp?.detalhe||'')}"`));
+    const blob = new Blob(['\uFEFF' + linhas.join('\n')], { type: 'text/csv;charset=utf-8;' });
+    const u = URL.createObjectURL(blob), a = document.createElement('a');
+    a.href = u; a.download = `base-auditoria-30d-gcm-${aud.fim}.csv`; a.click(); URL.revokeObjectURL(u);
+    toast('Base CSV da Auditoria 30 dias exportada!');
+  }
+
   function ativarSubtab(idSecao, idSub) {
     const sec = $(idSecao); if (!sec) return;
     sec.querySelectorAll('.subtab').forEach(x => x.classList.toggle('ativo', x.getAttribute('data-sub') === idSub));
@@ -3224,11 +3733,12 @@
 
   function abrirAba(idSecao) {
     // Trava rigida de acesso (RBAC): nao-Admin nunca abre secSistema; Agente nunca abre secEfetivo
-    if (idSecao === 'secSistema' && !isAdmin()) { toast('Acesso restrito exclusivamente ao Administrador.'); return; }
+    if ((idSecao === 'secSistema' || idSecao === 'secAuditoria30') && !isAdmin()) { toast('Acesso restrito exclusivamente ao Administrador.'); return; }
     if (idSecao === 'secEfetivo' && !podeEditarEscala()) { toast('Acesso restrito à Gestão de Escalas.'); return; }
 
     document.querySelectorAll('.secao-aba').forEach(s => s.classList.toggle('ativa', s.id === idSecao));
     document.querySelectorAll('.side-btn').forEach(b => b.classList.toggle('ativo', b.getAttribute('data-aba') === idSecao));
+    document.querySelectorAll('[data-mob-aba]').forEach(b => b.classList.toggle('ativo', b.getAttribute('data-mob-aba') === idSecao));
     if (idSecao !== 'secEquipeDetalhe') document.querySelectorAll('.insig-btn').forEach(b => b.classList.remove('ativa'));
     if ($('lblTituloPaginaAtual')) $('lblTituloPaginaAtual').textContent = TITULOS_ABAS[idSecao] || 'GCM Valparaíso';
     fecharSidebarMobile();
@@ -3244,6 +3754,7 @@
     if (idSecao === 'secEquipeDetalhe') renderTelaEquipeDetalhe();
     if (idSecao === 'secAutenticacao') renderTelaAutenticacao();
     if (idSecao === 'secEfetivo') renderEfetivo();
+    if (idSecao === 'secAuditoria30') renderAuditoria30();
     if (idSecao === 'secSistema') { renderContas(); renderConfigBase(); }
   }
 
@@ -3252,7 +3763,7 @@
     renderCalendario24(); renderPermutas(); renderAfastamentos(); renderQuadroPessoas(); renderMontagemEquipe(); renderSetoresResponsaveis();
     renderAdmE12x36(); renderResponsaveis(); popularSelectsCartao(); carregarEditorCartao();
     renderBancoHoras(); renderListaEventos(); renderTelaEquipeDetalhe(); renderTelaAutenticacao();
-    renderEfetivo(); renderContas(); renderConfigBase(); aplicarPermissoesVisuais();
+    renderEfetivo(); renderAuditoria30(); renderContas(); renderConfigBase(); aplicarPermissoesVisuais();
   }
 
   function iniciarAppLogado(sessao) {
@@ -3288,6 +3799,44 @@
     $('btnFecharSidebar').addEventListener('click', fecharSidebarMobile);
     $('sidebarBackdrop').addEventListener('click', fecharSidebarMobile);
     $('btnAlterarMeuCodigoTopo').addEventListener('click', abrirModalAlterarMeuCodigo);
+
+    // Barra Inferior Mobile (estilo CCO Viaturas)
+    document.querySelectorAll('[data-mob-aba]').forEach(b => b.addEventListener('click', () => abrirAba(b.getAttribute('data-mob-aba'))));
+    const btnMobMenu = $('btnMobAbrirMenu');
+    if (btnMobMenu) btnMobMenu.addEventListener('click', alternarSidebar);
+
+    // Auditoria 30 Dias (Exclusivo Admin)
+    $('btnRodarAuditoria30').addEventListener('click', renderAuditoria30);
+    $('btnPdfAuditoria30').addEventListener('click', gerarPdfAuditoria30);
+    $('btnExportarCsvAud30').addEventListener('click', exportarCsvAuditoria30);
+    $('btnConcluirCicloAud30').addEventListener('click', () => {
+      if (!isAdmin()) return toast('Exclusivo Administrador.');
+      const aud = gerarDadosAuditoria30();
+      abrirModal('Concluir e Arquivar Auditoria de 30 Dias',
+        `<div class="subtexto">Período: <strong>${formatarDataBR(aud.ini)} a ${formatarDataBR(aud.fim)}</strong> · Faltas: ${aud.totalFaltas} · Atrasos: ${aud.totalAtrasos} · Erros de Batida: ${aud.totalErrosBatida} · Fora de Valparaíso: ${aud.foraValp.length}</div>
+         <div class="campo mt-8"><label for="mAud30Parecer">Parecer do Administrador (Opcional)</label><textarea id="mAud30Parecer" rows="3" placeholder="Ex.: Revisado e regularizado com os chefes de equipe..."></textarea></div>`,
+        [
+          { texto: 'Cancelar', classe: 'btn-sec', onClick: fecharModal },
+          { texto: 'Arquivar e Iniciar Novo Ciclo (30 dias)', classe: 'btn-primario', onClick: async () => {
+            ESTADO.auditorias30Dias = ESTADO.auditorias30Dias || [];
+            ESTADO.auditorias30Dias.unshift({
+              id: 'aud30_' + Date.now().toString(36),
+              concluidaEm: new Date().toISOString(),
+              ini: aud.ini, fim: aud.fim,
+              responsavel: SESSAO?.nome || 'Administrador',
+              faltas: aud.totalFaltas, atrasos: aud.totalAtrasos, erros: aud.totalErrosBatida, foraValp: aud.foraValp.length,
+              parecer: $('mAud30Parecer').value.trim()
+            });
+            ESTADO.config.ultimaAuditoria30Iso = hojeISO();
+            await salvarTudo();
+            fecharModal();
+            renderAuditoria30();
+            renderBannerAuditoria30Admin();
+            toast('Auditoria arquivada! Próximo aviso automático daqui a 30 dias.');
+          }}
+        ]
+      );
+    });
 
     $('btnTopoRegistrarPonto').addEventListener('click', () => { abrirAba('secPonto'); ativarSubtab('secPonto', 'subPtRegistrar'); $('inpIdentificaGuarda').focus(); });
 
@@ -3461,7 +4010,7 @@
       if (!podeEditarEscala()) return toast('Sem permissão.');
       modoMarcarPbMapa = !modoMarcarPbMapa;
       $('avisoCliqueMapa').classList.toggle('oculto', !modoMarcarPbMapa);
-      $('btnModoMarcarPb').textContent = modoMarcarPbMapa ? 'Cancelar Marcação' : '+ Marcar PB clicando no Mapa';
+      $('btnModoMarcarPb').textContent = modoMarcarPbMapa ? 'Cancelar Marcação' : '+ Marcar Ponto Base (PB) no Mapa';
     });
     $('btnAddLinhaPb').addEventListener('click', () => { if (!podeEditarEscala()) return; const a = lerCartaoDoEditor().pontosBase; a.push({ hora:'', local:'', atividade:'', lat:null, lon:null }); renderLinhasPb(a); });
     $('btnPuxarGuarnicaoEscala').addEventListener('click', () => { const m = (ESTADO.equipesMontagem[$('selCartaoEquipe').value]||{})[$('selCartaoPosto').value]||{}, p = ESTADO.postos.find(x => x.id === $('selCartaoPosto').value); $('inpCpG01').value = nomeAgentePorId(m.g01)||''; $('inpCpG02').value = nomeAgentePorId(m.g02)||''; $('inpCpG03').value = nomeAgentePorId(m.g03)||''; if (p) $('inpCpRespSetor').value = p.responsavel||''; toast('Sincronizado.'); });
@@ -3567,7 +4116,7 @@
     $('btnAlterarMinhaSenha').addEventListener('click', abrirModalAlterarMeuCodigo);
     $('btnExportarBackup').addEventListener('click', async () => {
       if (!isAdmin()) return toast('Exclusivo Administrador.');
-      const pac = { sistema:'GCM_VALP_ESCALA_V9', exportadoEm:new Date().toISOString(), estado:ESTADO, usuarios:window.EscalaCloud.lerUsuariosLocal() };
+      const pac = { sistema:'GCM_VALP_ESCALA_V10', exportadoEm:new Date().toISOString(), estado:ESTADO, usuarios:window.EscalaCloud.lerUsuariosLocal() };
       if (window.escalaAPI?.exportarBackup) { const r = await window.escalaAPI.exportarBackup(pac); if (r?.ok) toast('Backup salvo em: '+r.caminho); return; }
       const b = new Blob([JSON.stringify(pac,null,2)], { type:'application/json' }), u = URL.createObjectURL(b), a = document.createElement('a'); a.href = u; a.download = `backup-gcm-escala-${hojeISO()}.json`; a.click(); URL.revokeObjectURL(u); toast('Backup baixado!');
     });
@@ -3584,13 +4133,15 @@
   }
 
   async function init() {
-    aplicarTema(localStorage.getItem('escala_gcm_tema_v9') || 'claro');
+    aplicarTema(localStorage.getItem('escala_gcm_tema_v10') || 'claro');
     if ('serviceWorker' in navigator && location.protocol.startsWith('http')) navigator.serviceWorker.register('./sw.js').catch(() => {});
     const carregado = await window.EscalaCloud.carregarEstadoLocal();
-    ESTADO = (carregado && carregado.efetivo && carregado.postos && carregado.versao >= 9) ? carregado : criarEstadoInicial();
+    ESTADO = (carregado && carregado.efetivo && carregado.postos && carregado.versao >= 10) ? carregado : criarEstadoInicial();
     if (!ESTADO.justificativas) ESTADO.justificativas = {};
     if (!ESTADO.auditoriasIdentidade) ESTADO.auditoriasIdentidade = {};
     if (!Array.isArray(ESTADO.afastamentos)) ESTADO.afastamentos = [];
+    if (!Array.isArray(ESTADO.auditorias30Dias)) ESTADO.auditorias30Dias = [];
+    if (!ESTADO.config.ultimaAuditoria30Iso) ESTADO.config.ultimaAuditoria30Iso = '';
     if (!Array.isArray(ESTADO.eventos)) ESTADO.eventos = [];
     if (!Array.isArray(ESTADO.permutas)) ESTADO.permutas = [];
     if (!Array.isArray(ESTADO.bancoHorasMovs)) ESTADO.bancoHorasMovs = [];

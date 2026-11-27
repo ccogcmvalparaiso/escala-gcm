@@ -75,7 +75,7 @@
         <img src="logo.png" alt="GCM Valparaíso" class="sidebar-logo">
         <div class="sidebar-marca">
           <strong>GCM VALPARAÍSO</strong>
-          <span>Operacional · <strong>v9.0</strong></span>
+          <span>Operacional · <strong>v10.0</strong></span>
         </div>
         <button type="button" class="btn btn-sec btn-sm btn-fechar-side" id="btnFecharSidebar">X</button>
       </div>
@@ -113,6 +113,9 @@
         <button type="button" class="side-btn so-gestao" data-aba="secEfetivo">
           <span class="side-bar"></span><span>Efetivo da Guarda (64)</span>
         </button>
+        <button type="button" class="side-btn so-admin" data-aba="secAuditoria30">
+          <span class="side-bar"></span><span>Auditoria 30 Dias (Admin)</span>
+        </button>
         <button type="button" class="side-btn so-admin" data-aba="secSistema">
           <span class="side-bar"></span><span>Contas, Base e Banco</span>
         </button>
@@ -147,13 +150,18 @@
         </div>
         <div class="topbar-dir">
           <button type="button" class="btn btn-primario btn-sm" id="btnTopoRegistrarPonto">Registrar Folha de Ponto</button>
-          <button type="button" class="btn btn-sec btn-sm" id="btnAtualizarApp" title="Limpa cache antigo e recarrega a versão mais recente">Atualizar App (v9)</button>
+          <button type="button" class="btn btn-sec btn-sm" id="btnAtualizarApp" title="Limpa cache antigo e recarrega a versão mais recente">Atualizar App (v10)</button>
           <span id="badgeSync" class="badge badge-neutro">Local</span>
           <button type="button" class="btn btn-sec btn-sm" id="btnTema">Modo Noturno</button>
         </div>
       </header>
 
       <main class="conteudo">
+        <!-- AVISO DE AUDITORIA DE 30 DIAS PRONTA (EXCLUSIVO ADMIN) -->
+        <div id="bannerAuditoria30Admin" class="banner-prioritario auditoria oculto so-admin"></div>
+
+        <!-- AVISO INTELIGENTE DE PONTO (RESPEITA 24x72 vs ADMINISTRATIVO) -->
+        <div id="bannerAvisoPontoInicial" class="banner-prioritario oculto"></div>
 
         <!-- ===================================================== -->
         <!-- 1. FOLHA DE PONTO E PLANTAO DO DIA (PRIMEIRA TELA!)   -->
@@ -213,7 +221,7 @@
                     <div id="placeholderCamera" class="camera-placeholder">Clique em "Abrir Câmera" para registrar sua foto ao vivo.</div>
                   </div>
                   <div class="acoes-linha mt-8">
-                    <button type="button" class="btn btn-sec btn-sm" id="btnAbrirCamera">Abrir Câmera</button>
+                    <button type="button" class="btn btn-acao-destaque btn-sm" id="btnAbrirCamera">Abrir Câmera ao Vivo</button>
                     <button type="button" class="btn btn-primario btn-sm" id="btnCapturarFoto" disabled>Capturar Foto</button>
                     <button type="button" class="btn btn-sec btn-sm" id="btnRefazerFoto" disabled>Refazer</button>
                   </div>
@@ -226,7 +234,26 @@
                     <span id="statusGpsBadge" class="badge badge-pendente">Capturando automaticamente...</span>
                   </div>
                   <div id="painelResultadoGps" class="gps-resultado mt-8">
-                    <span class="subtexto">A localização é capturada automaticamente pelo dispositivo ao abrir a Folha de Ponto.</span>
+                    <span class="subtexto">O GPS verifica automaticamente se o registro está na região de Valparaíso de Goiás.</span>
+                  </div>
+                  <div id="boxJustificativaForaValparaiso" class="box-fora-valp oculto mt-8">
+                    <h4>REGISTRO FORA DA REGIÃO DE VALPARAÍSO DE GOIÁS</h4>
+                    <p class="subtexto" id="lblLocalForaValp" style="color:var(--text);">Você está fora do perímetro de Valparaíso de Goiás. Informe o motivo abaixo — será encaminhado automaticamente ao Comando.</p>
+                    <div class="campo">
+                      <label for="selMotivoForaValp">Motivo do Registro Fora de Valparaíso (Obrigatório)</label>
+                      <select id="selMotivoForaValp">
+                        <option value="">Selecione o motivo...</option>
+                        <option value="Apoio em ocorrência externa / Delegacia / IML">Apoio em ocorrência externa / Delegacia / IML</option>
+                        <option value="Manutenção ou abastecimento de viatura">Manutenção ou abastecimento de viatura</option>
+                        <option value="Curso, instrução ou missão externa autorizada">Curso, instrução ou missão externa autorizada</option>
+                        <option value="Serviço administrativo / Reunião em outro órgão">Serviço administrativo / Reunião em outro órgão</option>
+                        <option value="Outro motivo (especificar abaixo)">Outro motivo (especificar abaixo)</option>
+                      </select>
+                    </div>
+                    <div class="campo">
+                      <label for="inpDetalheForaValp">Explique detalhadamente o motivo para o Comando (Obrigatório)</label>
+                      <textarea id="inpDetalheForaValp" rows="2" placeholder="Ex.: Em deslocamento na 1ª DP / IML de Luziânia apresentando ocorrência..."></textarea>
+                    </div>
                   </div>
                 </div>
 
@@ -320,7 +347,7 @@
                   <select id="fltPontoStatus">
                     <option value="">Todos</option>
                     <option value="OK">Local Regular</option>
-                    <option value="FORA_BASE">Fora da Base</option>
+                    <option value="FORA_VALPARAISO">Fora de Valparaíso</option><option value="FORA_BASE">Fora da Base</option>
                     <option value="IRREGULAR">Sinal Irregular</option>
                   </select>
                 </div>
@@ -571,7 +598,7 @@
                     <option value="CHARLIE">Equipe CHARLIE</option><option value="DELTA">Equipe DELTA</option>
                   </select>
                 </div>
-                <div class="campo campo-btn"><button type="button" class="btn btn-sec" id="btnAdicionarPosto">+ Novo Setor / VTR</button></div>
+                <div class="campo campo-btn"><button type="button" class="btn btn-acao-destaque" id="btnAdicionarPosto">+ Novo Setor / Viatura</button></div>
                 <div class="campo campo-btn"><button type="button" class="btn btn-sec" id="btnAutoDistribuirEquipe">Auto-Preencher Equipe</button></div>
                 <div class="campo campo-btn"><button type="button" class="btn btn-primario" id="btnSalvarMontagemEquipe">Salvar Composição</button></div>
               </div>
@@ -589,7 +616,7 @@
                   <p class="subtexto">Configure o responsável, bairros e faixa de identificação de cada setor (vinculado ao Mapa e ao Cartão Programa).</p>
                 </div>
                 <div class="acoes-linha">
-                  <button type="button" class="btn btn-sec" id="btnAddSetorDireto">+ Novo Setor</button>
+                  <button type="button" class="btn btn-acao-destaque" id="btnAddSetorDireto">+ Novo Setor / Viatura</button>
                   <button type="button" class="btn btn-primario" id="btnSalvarSetoresResp">Salvar Setores</button>
                 </div>
               </div>
@@ -730,7 +757,7 @@
                   <div id="phScanAf" class="subtexto" style="text-align:center;padding:12px;">Use a câmera para digitalizar o papel do atestado ou anexe uma foto/PDF do aparelho.</div>
                 </div>
                 <div class="acoes-linha mt-8">
-                  <button type="button" class="btn btn-sec btn-sm" id="btnAbrirCamScanAf">Digitalizar pela Câmera</button>
+                  <button type="button" class="btn btn-acao-destaque btn-sm" id="btnAbrirCamScanAf">Digitalizar Atestado (Câmera)</button>
                   <button type="button" class="btn btn-primario btn-sm" id="btnCapturarScanAf" disabled>Capturar Documento</button>
                   <button type="button" class="btn btn-sec btn-sm" id="btnAnexarArquivoAf">Anexar Foto / PDF</button>
                   <button type="button" class="btn btn-sec btn-sm oculto" id="btnLimparScanAf">Remover</button>
@@ -823,7 +850,7 @@
               </div>
               <div class="acoes-linha">
                 <label class="check-linha"><input type="checkbox" id="chkMostrarTodosSetores"><span>Mostrar todos os setores</span></label>
-                <button type="button" class="btn btn-sec btn-sm so-gestao" id="btnModoMarcarPb">+ Marcar PB clicando no Mapa</button>
+                <button type="button" class="btn btn-acao-destaque btn-sm so-gestao" id="btnModoMarcarPb">+ Marcar Ponto Base (PB) no Mapa</button>
                 <button type="button" class="btn btn-sec btn-sm" id="btnCentralizarSetor">Centralizar Setor</button>
               </div>
             </div>
@@ -887,7 +914,7 @@
                   <h4>Roteiro Detalhado de Pontos Base — Onde Ficar e Como Executar na Prática</h4>
                   <p class="subtexto">Cada PB aparece numerado no mapa acima e no croqui do PDF sem cortes.</p>
                 </div>
-                <button type="button" class="btn btn-sec btn-sm so-gestao" id="btnAddLinhaPb">+ Adicionar PB Manual</button>
+                <button type="button" class="btn btn-acao-destaque btn-sm so-gestao" id="btnAddLinhaPb">+ Adicionar Ponto Base (PB)</button>
               </div>
               <div class="tabela-wrap mt-8">
                 <table class="tabela">
@@ -1082,7 +1109,7 @@
                   <div class="campo"><label for="inpEvMissao">Missão</label><input type="text" id="inpEvMissao"></div>
                 </div>
                 <div class="regra-box mt-12" id="boxDicaFolgaEvento"></div>
-                <div class="card-cab mt-16"><h4>Viaturas Extras</h4><button type="button" class="btn btn-sec btn-sm so-gestao" id="btnAddVtrEvento">+ Viatura Extra</button></div>
+                <div class="card-cab mt-16"><h4>Viaturas Extras</h4><button type="button" class="btn btn-acao-destaque btn-sm so-gestao" id="btnAddVtrEvento">+ Adicionar Viatura Extra</button></div>
                 <div id="gridViaturasEvento" class="lista-editavel mt-12"></div>
                 <div class="campo mt-12"><label for="inpEvObs">Observações</label><textarea id="inpEvObs" rows="2"></textarea></div>
                 <div class="mt-16 so-gestao"><button type="button" class="btn btn-primario" id="btnSalvarEvento">Salvar Evento</button></div>
@@ -1268,6 +1295,134 @@
           </div>
         </section>
 
+
+        <!-- ===================================================== -->
+        <!-- 8B. AUDITORIA PERIODICA DE 30 DIAS (EXCLUSIVO ADMIN)  -->
+        <!-- ===================================================== -->
+        <section id="secAuditoria30" class="secao-aba">
+          <div class="cab-secao">
+            <div>
+              <h2>Auditoria Operacional de 30 Dias (Exclusivo Administrador)</h2>
+              <p class="subtexto">Diagnóstico automático completo dos últimos 30 dias: faltas, atrasos, pontos fora de Valparaíso, causas do Banco de Horas (acordo vs erro de batida) e sugestões.</p>
+            </div>
+            <div class="acoes-linha">
+              <button type="button" class="btn btn-acao-destaque" id="btnExportarCsvAud30">Exportar Base (CSV)</button>
+              <button type="button" class="btn btn-sec" id="btnConcluirCicloAud30">Concluir e Arquivar Auditoria (Novo Ciclo 30d)</button>
+              <button type="button" class="btn btn-primario" id="btnPdfAuditoria30">Baixar PDF Autenticado da Auditoria</button>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="filtros-linha">
+              <div class="campo">
+                <label for="inpAud30Ini">Data Inicial</label>
+                <input type="date" id="inpAud30Ini">
+              </div>
+              <div class="campo">
+                <label for="inpAud30Fim">Data Final</label>
+                <input type="date" id="inpAud30Fim">
+              </div>
+              <div class="campo">
+                <label for="inpAud30Tol">Tolerância de Atraso (min)</label>
+                <input type="number" id="inpAud30Tol" min="0" max="60" value="15">
+              </div>
+              <div class="campo campo-btn">
+                <button type="button" class="btn btn-primario" id="btnRodarAuditoria30">Atualizar Diagnóstico</button>
+              </div>
+            </div>
+
+            <div class="faixa-kpis mt-16" id="kpisAuditoria30"></div>
+          </div>
+
+          <div class="card mt-16">
+            <div class="card-cab">
+              <h3>Sugestões e Alertas Automáticos da Auditoria</h3>
+              <span id="badgeStatusCicloAud30" class="badge badge-invertido">—</span>
+            </div>
+            <div id="listaSugestoesAud30" class="lista-compacta mt-12"></div>
+          </div>
+
+          <div class="card mt-16">
+            <div class="card-cab">
+              <h3>1. Auditoria de Banco de Horas (+ Horas e - Horas: Acordo × Erro / Esquecimento)</h3>
+              <span id="badgeQtdAudBh" class="badge badge-neutro">0</span>
+            </div>
+            <p class="subtexto mt-4">Separa horas acumuladas por <strong>Acordo / Gestão</strong> (extras, eventos, prorrogações) de possíveis <strong>Erros / Esquecimentos de Batida</strong> (esqueceu saída, saída sem entrada ou turno aberto).</p>
+            <div class="tabela-wrap mt-12">
+              <table class="tabela">
+                <thead>
+                  <tr>
+                    <th>Nº / Guarda</th>
+                    <th>Equipe</th>
+                    <th>Horas + (Acordo)</th>
+                    <th>Horas - (Débitos/Folgas)</th>
+                    <th>Saldo Atual</th>
+                    <th>Erros / Esquecimentos Detectados</th>
+                    <th>Diagnóstico</th>
+                  </tr>
+                </thead>
+                <tbody id="tbodyAud30Banco"></tbody>
+              </table>
+            </div>
+          </div>
+
+          <div class="card mt-16">
+            <div class="card-cab">
+              <h3>2. Faltas, Atrasos e Atestados / Afastamentos no Período</h3>
+              <span id="badgeQtdAudOcorr" class="badge badge-neutro">0</span>
+            </div>
+            <div class="tabela-wrap mt-12">
+              <table class="tabela">
+                <thead>
+                  <tr>
+                    <th>Data</th>
+                    <th>Nº / Guarda</th>
+                    <th>Equipe</th>
+                    <th>Ocorrência</th>
+                    <th>Detalhe (Previsto × Real / Dias Fora)</th>
+                  </tr>
+                </thead>
+                <tbody id="tbodyAud30FaltasAtrasos"></tbody>
+              </table>
+            </div>
+          </div>
+
+          <div class="card mt-16">
+            <div class="card-cab">
+              <h3>3. Pontos Batidos Fora da Região de Valparaíso de Goiás (Motivos para o Comando)</h3>
+              <span id="badgeQtdAudFora" class="badge badge-neutro">0</span>
+            </div>
+            <div class="tabela-wrap mt-12">
+              <table class="tabela">
+                <thead>
+                  <tr>
+                    <th>Data / Hora</th>
+                    <th>Nº / Guarda</th>
+                    <th>Local Detectado</th>
+                    <th>Motivo Informado ao Comando</th>
+                  </tr>
+                </thead>
+                <tbody id="tbodyAud30ForaValp"></tbody>
+              </table>
+            </div>
+          </div>
+
+          <div class="card mt-16">
+            <div class="card-cab">
+              <h3>Histórico de Auditorias de 30 Dias Arquivadas</h3>
+              <span id="badgeQtdAudHist" class="badge badge-neutro">0</span>
+            </div>
+            <div class="tabela-wrap mt-12">
+              <table class="tabela">
+                <thead>
+                  <tr><th>Data Conclusão</th><th>Período Auditado</th><th>Responsável</th><th>Resumo</th><th>Parecer</th></tr>
+                </thead>
+                <tbody id="tbodyAud30Historico"></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
         <!-- ===================================================== -->
         <!-- 9. CONTAS, BASE E BANCO (EXCLUSIVO ADMINISTRADOR!)    -->
         <!-- ===================================================== -->
@@ -1345,6 +1500,24 @@
 
       </main>
     </div>
+    <!-- BARRA DE NAVEGACAO INFERIOR MOBILE (ESTILO CCO VIATURAS) -->
+    <nav id="mobileBottomNav" class="mobile-bottom-nav" aria-label="Navegação rápida celular">
+      <button type="button" class="mob-nav-btn ativo" data-mob-aba="secPonto">
+        <span class="mob-nav-ico">PONTO</span><span>Hoje</span>
+      </button>
+      <button type="button" class="mob-nav-btn" data-mob-aba="secMinhaFolha">
+        <span class="mob-nav-ico">PDF</span><span>Minha Folha</span>
+      </button>
+      <button type="button" class="mob-nav-btn" data-mob-aba="secEscalas">
+        <span class="mob-nav-ico">24x72</span><span>Escala</span>
+      </button>
+      <button type="button" class="mob-nav-btn" data-mob-aba="secCartao">
+        <span class="mob-nav-ico">MAPA</span><span>Cartão</span>
+      </button>
+      <button type="button" class="mob-nav-btn" id="btnMobAbrirMenu">
+        <span class="mob-nav-ico">&#9776;</span><span>Menu</span>
+      </button>
+    </nav>
   </div>
 
   <!-- MODAL -->
