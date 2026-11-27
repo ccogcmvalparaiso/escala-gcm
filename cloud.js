@@ -1,12 +1,12 @@
 (function () {
   'use strict';
 
-  const COLECAO_BASE = 'escala_gcm_valparaiso_v3';
-  const COLECAO_PONTOS = 'escala_gcm_pontos_v3';
-  const CHAVE_LOCAL_DADOS = 'escala_gcm_valp_dados_v3';
-  const CHAVE_LOCAL_USERS = 'escala_gcm_valp_users_v3';
-  const CHAVE_LOCAL_SESSAO = 'escala_gcm_valp_sessao_v3';
-  const CHAVE_LOCAL_FB = 'escala_gcm_valp_firebase_cfg_v3';
+  const COLECAO_BASE = 'escala_gcm_valparaiso_v4';
+  const COLECAO_PONTOS = 'escala_gcm_pontos_v4';
+  const CHAVE_LOCAL_DADOS = 'escala_gcm_valp_dados_v4';
+  const CHAVE_LOCAL_USERS = 'escala_gcm_valp_users_v4';
+  const CHAVE_LOCAL_SESSAO = 'escala_gcm_valp_sessao_v4';
+  const CHAVE_LOCAL_FB = 'escala_gcm_valp_firebase_cfg_v4';
 
   let fbApp = null, db = null, unsubNuvem = null;
 
@@ -49,7 +49,7 @@
     }
     return H.map(v => v.toString(16).padStart(8, '0')).join('');
   }
-  function hashSenha(login, senha) { return sha256Hex('GCM_VALP_V3::' + normalizarLogin(login) + '::' + String(senha)); }
+  function hashSenha(login, senha) { return sha256Hex('GCM_VALP_V4::' + normalizarLogin(login) + '::' + String(senha)); }
 
   function lerConfigFirebase() { try { const r = localStorage.getItem(CHAVE_LOCAL_FB); return r ? JSON.parse(r) : null; } catch (e) { return null; } }
   function desconectarFirebase() {
@@ -76,7 +76,7 @@
     if (db) return true;
     try {
       if (typeof firebase !== 'undefined' && firebase.initializeApp) {
-        const nm = 'escala_gcm_v3_' + cfg.projectId;
+        const nm = 'escala_gcm_v4_' + cfg.projectId;
         fbApp = firebase.apps.find(a => a.name === nm) || firebase.initializeApp(cfg, nm);
         db = fbApp.firestore();
         return true;
@@ -88,12 +88,11 @@
     desconectarFirebase();
     if (!inicializarFirebase(cfg) || !db) return { ok: false, erro: 'Configuração inválida ou sem internet.' };
     try {
-      await db.collection(COLECAO_BASE).doc('ping').set({ v: 3, em: new Date().toISOString() });
+      await db.collection(COLECAO_BASE).doc('ping').set({ v: 4, em: new Date().toISOString() });
       return { ok: true, projectId: cfg.projectId };
     } catch (e) { return { ok: false, erro: String(e && e.message ? e.message : e) }; }
   }
 
-  // Salva ponto individualmente em documento proprio (evita estourar limite de 1MB com fotos)
   async function enviarPontoIndividualNuvem(ponto) {
     if (!inicializarFirebase() || !db || !ponto || !ponto.id) return { ok: false };
     try {
@@ -109,7 +108,6 @@
       const semPontos = Object.assign({}, estado, { pontos: [], atualizadoEm: new Date().toISOString() });
       await db.collection(COLECAO_BASE).doc('estado_principal').set({ json: JSON.stringify(semPontos), atualizadoEm: new Date().toISOString() });
       await db.collection(COLECAO_BASE).doc('usuarios_sistema').set({ json: JSON.stringify(lerUsuariosLocal()), atualizadoEm: new Date().toISOString() });
-      // Envia pontos mais recentes como documentos individuais
       const pontos = Array.isArray(estado.pontos) ? estado.pontos.slice(0, 30) : [];
       for (const pt of pontos) { await enviarPontoIndividualNuvem(pt); }
       return { ok: true };
@@ -127,7 +125,7 @@
       }
       if (!snap.exists || !snap.data()?.json) return { ok: false, motivo: 'vazio' };
       const dados = JSON.parse(snap.data().json);
-      const snapPts = await db.collection(COLECAO_PONTOS).orderBy('criadoEm', 'desc').limit(150).get().catch(() => null);
+      const snapPts = await db.collection(COLECAO_PONTOS).orderBy('criadoEm', 'desc').limit(180).get().catch(() => null);
       if (snapPts) {
         const pts = [];
         snapPts.forEach(d => { try { if (d.data()?.json) pts.push(JSON.parse(d.data().json)); } catch (_) {} });
@@ -149,8 +147,9 @@
     } catch (e) {}
   }
 
+  // Admin inicial com codigo de 4 digitos: 0153
   function criarAdminPadrao() {
-    return { login: 'admin', nome: 'Administrador GCM', matricula: 'ADM-001', perfil: 'ADMIN', mestre: true, aprovado: true, senhaHash: hashSenha('admin', 'gcm153'), criadoEm: new Date().toISOString() };
+    return { login: 'admin', nome: 'Administrador GCM', matricula: '00', perfil: 'ADMIN', mestre: true, aprovado: true, senhaHash: hashSenha('admin', '0153'), criadoEm: new Date().toISOString() };
   }
   function lerUsuariosLocal() {
     try {
@@ -175,20 +174,21 @@
 
   async function tentarLogin(id, senha) {
     const n = normalizarLogin(id);
-    if (!n || !senha) return { ok: false, erro: 'Informe usuário/matrícula e senha.' };
+    if (!n || !senha) return { ok: false, erro: 'Informe usuário/nº e código de acesso.' };
+    if (String(senha).length < 4) return { ok: false, erro: 'O código de acesso deve ter no mínimo 4 dígitos.' };
     let users = lerUsuariosLocal();
-    let u = users.find(x => normalizarLogin(x.login) === n || normalizarLogin(x.matricula) === n);
+    let u = users.find(x => normalizarLogin(x.login) === n || normalizarLogin(x.matricula) === n || normalizarLogin(x.matricula).replace(/^0+/, '') === n.replace(/^0+/, ''));
     if (!u && lerConfigFirebase()) { await sincronizarBaixarNuvem(); users = lerUsuariosLocal(); u = users.find(x => normalizarLogin(x.login) === n || normalizarLogin(x.matricula) === n); }
-    if (!u) return { ok: false, erro: 'Usuário ou matrícula não encontrados.' };
+    if (!u) return { ok: false, erro: 'Usuário ou nº não encontrados.' };
     if (!u.aprovado) return { ok: false, erro: 'Conta aguardando aprovação do Administrador.' };
-    if (hashSenha(u.login, senha) !== u.senhaHash) return { ok: false, erro: 'Senha incorreta.' };
+    if (hashSenha(u.login, senha) !== u.senhaHash) return { ok: false, erro: 'Código de acesso incorreto.' };
     const sessao = { login: u.login, nome: u.nome, matricula: u.matricula || '', perfil: u.perfil || 'AGENTE', mestre: !!u.mestre };
     salvarSessao(sessao);
     return { ok: true, sessao };
   }
   function cadastrarUsuario({ nome, login, matricula, senha, perfil, aprovado }) {
     const l = normalizarLogin(login);
-    if (!nome || !l || !senha || senha.length < 6) return { ok: false, erro: 'Preencha todos os campos (senha mín. 6).' };
+    if (!nome || !l || !senha || String(senha).length < 4) return { ok: false, erro: 'Preencha todos os campos (código mínimo de 4 dígitos).' };
     const users = lerUsuariosLocal();
     if (users.some(x => normalizarLogin(x.login) === l)) return { ok: false, erro: 'Login já cadastrado.' };
     const novo = { login: l, nome: String(nome).trim(), matricula: String(matricula || '').trim().toUpperCase(), perfil: perfil || 'AGENTE', mestre: false, aprovado: !!aprovado, senhaHash: hashSenha(l, senha), criadoEm: new Date().toISOString() };
@@ -203,7 +203,7 @@
     if (alt.matricula !== undefined) u.matricula = String(alt.matricula).trim().toUpperCase();
     if (alt.perfil !== undefined && !u.mestre) u.perfil = alt.perfil;
     if (alt.aprovado !== undefined && !u.mestre) u.aprovado = !!alt.aprovado;
-    if (alt.novaSenha && alt.novaSenha.length >= 6) u.senhaHash = hashSenha(u.login, alt.novaSenha);
+    if (alt.novaSenha && String(alt.novaSenha).length >= 4) u.senhaHash = hashSenha(u.login, alt.novaSenha);
     salvarUsuariosLocal(users);
     return { ok: true, usuario: u };
   }

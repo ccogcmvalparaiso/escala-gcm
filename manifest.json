@@ -1,8 +1,8 @@
 {
-  "id": "/?source=pwa-escala-gcm-v3",
-  "name": "Escala 24x72, Código Q, Cartão Programa e Ponto — GCM Valparaíso",
-  "short_name": "Escala GCM",
-  "description": "Sistema de Escala 24x72 por Cores, Código Q, Eventos, Cartão Programa e Folha de Ponto Antifraude.",
+  "id": "/?source=pwa-escala-gcm-v4",
+  "name": "GCM Valparaíso — Folha de Ponto, Escala 24x72 e Cartão Programa",
+  "short_name": "GCM Ponto/Escala",
+  "description": "Sistema Operacional de Folha de Ponto vinculada à Escala Contínua 24x72 e Cartão Programa com Mapa dos Setores.",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",

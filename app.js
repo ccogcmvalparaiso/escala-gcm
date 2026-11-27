@@ -3,16 +3,16 @@
 
   const EQUIPES = ['ALFA', 'BRAVO', 'CHARLIE', 'DELTA'];
   const EQUIPE_CORES = {
-    ALFA:    { nome: 'Verde',    cor: '#15803D', bg: '#DCFCE7' },
-    BRAVO:   { nome: 'Laranja',  cor: '#D97706', bg: '#FEF3C7' },
-    CHARLIE: { nome: 'Roxo',     cor: '#7C3AED', bg: '#F3E8FF' },
-    DELTA:   { nome: 'Vermelho', cor: '#DC2626', bg: '#FEE2E2' },
-    ADM:     { nome: 'Grafite',  cor: '#27272A', bg: '#E4E4E7' },
-    '12X36': { nome: 'Chumbo',   cor: '#3F3F46', bg: '#E4E4E7' }
+    ALFA:    { rotulo: 'Grafite', cor: '#18181B' },
+    BRAVO:   { rotulo: 'Oliva',   cor: '#365314' },
+    CHARLIE: { rotulo: 'Caqui',   cor: '#854D0E' },
+    DELTA:   { rotulo: 'Bordô',   cor: '#7F1D1D' },
+    ADM:     { rotulo: 'Chumbo',  cor: '#3F3F46' },
+    '12X36': { rotulo: 'Cinza',   cor: '#52525B' }
   };
   const AREAS_LABEL = {
     PATRULHAMENTO: 'Patrulhamento',
-    MARIA_DA_PENHA: 'Patrulha Maria da Penha',
+    MARIA_DA_PENHA: 'Maria da Penha',
     ESCOLAR: 'Patrulha Escolar',
     TRANSITO: 'Trânsito',
     CCO: 'Operador CCO',
@@ -25,46 +25,72 @@
     OPERADOR_CCO: 'Operador CCO',
     ADMINISTRATIVO: 'Administrativo'
   };
-  const CAT_Q_LABEL = {
-    COMUNICACAO: 'Comunicação & Escuta',
-    LOCALIZACAO: 'Localização & Deslocamento',
-    OCORRENCIA: 'Ocorrência & Apoio',
-    ROTINA: 'Rotina Operacional'
+  const TIPO_PONTO_LABEL = {
+    ENTRADA: 'Entrada',
+    SAIDA_ALMOCO: 'Saída Almoço',
+    RETORNO_ALMOCO: 'Retorno Almoço',
+    SAIDA: 'Saída Final'
   };
+  const JUSTIFICATIVAS_OPCOES = [
+    'Atestado Médico',
+    'Férias',
+    'Licença',
+    'Permuta de Serviço',
+    'Dispensa / Folga Autorizada',
+    'Curso / Instrução',
+    'Falta Injustificada'
+  ];
   const MODALIDADE_EVENTO = {
-    HORA_EXTRA: 'Hora Extra / Gratificação',
-    BANCO_HORAS: 'Banco de Horas / Folga',
+    HORA_EXTRA: 'Hora Extra',
+    BANCO_HORAS: 'Banco de Horas',
     REMANEJAMENTO: 'Remanejamento'
   };
   const TITULOS_ABAS = {
-    secPainel: 'Início / Painel do Dia',
-    secEscalas: 'Escala 24x72 & Quadro por Cores',
-    secCartao: 'Cartão Programa (PDF)',
+    secPonto: 'Folha de Ponto (Hoje)',
+    secEscalas: 'Escala Contínua 24x72',
+    secCartao: 'Cartão Programa & Mapa dos Setores',
     secEventos: 'Eventos & Operações Extras',
-    secPonto: 'Folha de Ponto (Foto + GPS)',
-    secCodigoQ: 'Relação de Código Q & QRA',
     secEfetivo: 'Efetivo da Guarda (64)',
     secSistema: 'Contas, Base & Banco de Dados'
   };
   const DIAS_SEMANA = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
   const MESES_EXT = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
-  const ROL_EFETIVO_64 = [["GCM-001", "Vinicios Mateus Pires da Silva", "M"], ["GCM-002", "Yago Rocha da Silva Dias", "M"], ["GCM-003", "Anderson Pereira Costa", "M"], ["GCM-004", "Gabrielle da Cruz Nunes", "F"], ["GCM-005", "Tiago Ferreira Lopes", "M"], ["GCM-006", "Luthero Pinheiro Martins Filho", "M"], ["GCM-007", "Tiago Batista Ferreira", "M"], ["GCM-008", "Luís Otávio de Andrade Torres", "M"], ["GCM-009", "Michael Larangeira Linhares", "M"], ["GCM-010", "Valterson da Silva Junior", "M"], ["GCM-011", "Vinicius Lemes Lopes", "M"], ["GCM-012", "Cleber Brilhante de Albuquerque Neto", "M"], ["GCM-013", "Anderson Lucas Brito Gomes", "M"], ["GCM-014", "Alex Sandro Souza Gomes", "M"], ["GCM-015", "Michele Bezerra de Araujo Aniceto", "F"], ["GCM-016", "Mayara Valeria Damasceno Pastana", "F"], ["GCM-017", "Amanda Rodrigues Cavalcante", "F"], ["GCM-018", "Jemima Costa de Jesus", "F"], ["GCM-019", "Geyssom Chaves Duarte Mazinho", "M"], ["GCM-020", "Diego Stanley Cantallops Santos", "M"], ["GCM-021", "Rafael Miranda Dias", "M"], ["GCM-022", "Daniel Kimberley de Oliveira Franco", "M"], ["GCM-023", "Renan Rodrigues de Aquino", "M"], ["GCM-024", "Gilmar Figueiredo dos Santos", "M"], ["GCM-025", "Juliana Iza de Oliveira Nunes", "F"], ["GCM-026", "Douglas Araujo dos Santos", "M"], ["GCM-027", "Victor dos Santos Nunes", "M"], ["GCM-028", "Bruno Guerreiro Galdino", "M"], ["GCM-029", "Glauber Terena Guerra da Silva", "M"], ["GCM-030", "Gean Martins Godinho da Silva", "M"], ["GCM-031", "Davy Guedes de Oliveira", "M"], ["GCM-032", "Rayan Thalles Bonfim da Silva", "M"], ["GCM-033", "Joao Pedro Martins Pinheiro", "M"], ["GCM-034", "Gustavo Amorim Lima", "M"], ["GCM-035", "Laryssa Santos Souza", "F"], ["GCM-036", "Regivânia Rodrigues de Macedo", "F"], ["GCM-037", "Bruna Albéfaro Pereira", "F"], ["GCM-038", "Vanessa Vasconcelos Sampaio", "F"], ["GCM-039", "Victor Lauriano de Paula Souza", "M"], ["GCM-040", "Valeria Januario Monteiro", "F"], ["GCM-041", "Lucas Lacerda de Melo", "M"], ["GCM-042", "Mayara Albuquerque Oliveira", "F"], ["GCM-043", "Alexandre Monteiro Januario", "M"], ["GCM-044", "Maísa Vitória Barbosa Vieira", "F"], ["GCM-045", "Hugo Sales Targino", "M"], ["GCM-046", "Davi Jonas Santos Duarte", "M"], ["GCM-047", "Julia Silveira Carvalho Ferreira", "F"], ["GCM-048", "Isabella Alves de Carvalho Basto", "F"], ["GCM-049", "Alessandro de Souza Silva", "M"], ["GCM-050", "Graziele Medeiros de Lima", "F"], ["GCM-051", "Luiz Felipe Oliveira Barros Dias", "M"], ["GCM-052", "Aline Rayane Vieira Maia", "F"], ["GCM-053", "Camila dos Santos Alves", "F"], ["GCM-054", "Carolina dos Santos Pereira", "F"], ["GCM-055", "Lucas Nunes da Silva", "M"], ["GCM-056", "Hugo Wildson de Lucena", "M"], ["GCM-057", "Vitor de Farias Lemes", "M"], ["GCM-058", "Esdras Roberto da Silva Braga", "M"], ["GCM-059", "Samuel Alessandro da Silva", "M"], ["GCM-060", "Valdir Borges da Silva Filho", "M"], ["GCM-061", "Felipe Augusto Ribeiro", "M"], ["GCM-062", "Allan Carvalho Gonçalves", "M"], ["GCM-063", "Arthur dos Reis Siqueira Bastos", "M"], ["GCM-064", "Rodrigo de Oliveira Correa", "M"]];
-  const CODIGO_Q_INICIAL = [["QAP", "COMUNICACAO", "Na escuta / Pronto para receber transmissão no rádio."], ["QAR", "COMUNICACAO", "Autorização para abandonar a escuta / desligar rádio."], ["QRA", "COMUNICACAO", "Nome de guerra / identificação do operador ou guarda no rádio."], ["QRM", "COMUNICACAO", "Interferência humana ou de outra estação na frequência."], ["QRN", "COMUNICACAO", "Interferência atmosférica ou estática no sinal."], ["QRQ", "COMUNICACAO", "Transmita mais depressa."], ["QRS", "COMUNICACAO", "Transmita mais devagar."], ["QRT", "COMUNICACAO", "Parar de transmitir / encerrar serviço ou desligar equipamento."], ["QRU", "OCORRENCIA", "Ocorrência / novidade / tem algo para mim?"], ["QRV", "COMUNICACAO", "À disposição / pronto para cumprir missão."], ["QRX", "COMUNICACAO", "Aguarde um momento na escuta."], ["QSA", "COMUNICACAO", "Qualidade / intensidade do sinal de rádio (1 a 5)."], ["QSJ", "ROTINA", "Dinheiro / valor / taxa."], ["QSL", "COMUNICACAO", "Entendido / confirmado / copiado positivo."], ["QSM", "COMUNICACAO", "Repita a última mensagem."], ["QSO", "COMUNICACAO", "Contato / comunicação entre estações ou guarnições."], ["QSP", "COMUNICACAO", "Fazer ponte / retransmitir mensagem para outra viatura."], ["QTA", "OCORRENCIA", "Cancelar a última mensagem / abortar deslocamento ou ocorrência."], ["QTC", "COMUNICACAO", "Mensagem / comunicado / informe para transmitir."], ["QTH", "LOCALIZACAO", "Endereço / localização exata da viatura ou ocorrência."], ["QTI", "LOCALIZACAO", "A caminho / em deslocamento para o local."], ["QTO", "ROTINA", "Banheiro / necessidade fisiológica rápida."], ["QTR", "ROTINA", "Horário exato."], ["QTU", "ROTINA", "Horário de funcionamento da estação / serviço."], ["QUD", "OCORRENCIA", "Sinal de urgência / prioridade máxima / pedido de apoio imediato."], ["QSO-ZERO", "OCORRENCIA", "Sem novidades / patrulhamento normal."], ["TKS", "COMUNICACAO", "Obrigado / agradecido pela informação."]];
+  const ROL_EFETIVO_64 = [["01", "Vinicios Mateus Pires da Silva", "M"], ["02", "Yago Rocha da Silva Dias", "M"], ["03", "Anderson Pereira Costa", "M"], ["04", "Gabrielle da Cruz Nunes", "F"], ["05", "Tiago Ferreira Lopes", "M"], ["06", "Luthero Pinheiro Martins Filho", "M"], ["07", "Tiago Batista Ferreira", "M"], ["08", "Luís Otávio de Andrade Torres", "M"], ["09", "Michael Larangeira Linhares", "M"], ["10", "Valterson da Silva Junior", "M"], ["11", "Vinicius Lemes Lopes", "M"], ["12", "Cleber Brilhante de Albuquerque Neto", "M"], ["13", "Anderson Lucas Brito Gomes", "M"], ["14", "Alex Sandro Souza Gomes", "M"], ["15", "Michele Bezerra de Araujo Aniceto", "F"], ["16", "Mayara Valeria Damasceno Pastana", "F"], ["17", "Amanda Rodrigues Cavalcante", "F"], ["18", "Jemima Costa de Jesus", "F"], ["19", "Geyssom Chaves Duarte Mazinho", "M"], ["20", "Diego Stanley Cantallops Santos", "M"], ["21", "Rafael Miranda Dias", "M"], ["22", "Daniel Kimberley de Oliveira Franco", "M"], ["23", "Renan Rodrigues de Aquino", "M"], ["24", "Gilmar Figueiredo dos Santos", "M"], ["25", "Juliana Iza de Oliveira Nunes", "F"], ["26", "Douglas Araujo dos Santos", "M"], ["27", "Victor dos Santos Nunes", "M"], ["28", "Bruno Guerreiro Galdino", "M"], ["29", "Glauber Terena Guerra da Silva", "M"], ["30", "Gean Martins Godinho da Silva", "M"], ["31", "Davy Guedes de Oliveira", "M"], ["32", "Rayan Thalles Bonfim da Silva", "M"], ["33", "Joao Pedro Martins Pinheiro", "M"], ["34", "Gustavo Amorim Lima", "M"], ["35", "Laryssa Santos Souza", "F"], ["36", "Regivânia Rodrigues de Macedo", "F"], ["37", "Bruna Albéfaro Pereira", "F"], ["38", "Vanessa Vasconcelos Sampaio", "F"], ["39", "Victor Lauriano de Paula Souza", "M"], ["40", "Valeria Januario Monteiro", "F"], ["41", "Lucas Lacerda de Melo", "M"], ["42", "Mayara Albuquerque Oliveira", "F"], ["43", "Alexandre Monteiro Januario", "M"], ["44", "Maísa Vitória Barbosa Vieira", "F"], ["45", "Hugo Sales Targino", "M"], ["46", "Davi Jonas Santos Duarte", "M"], ["47", "Julia Silveira Carvalho Ferreira", "F"], ["48", "Isabella Alves de Carvalho Basto", "F"], ["49", "Alessandro de Souza Silva", "M"], ["50", "Graziele Medeiros de Lima", "F"], ["51", "Luiz Felipe Oliveira Barros Dias", "M"], ["52", "Aline Rayane Vieira Maia", "F"], ["53", "Camila dos Santos Alves", "F"], ["54", "Carolina dos Santos Pereira", "F"], ["55", "Lucas Nunes da Silva", "M"], ["56", "Hugo Wildson de Lucena", "M"], ["57", "Vitor de Farias Lemes", "M"], ["58", "Esdras Roberto da Silva Braga", "M"], ["59", "Samuel Alessandro da Silva", "M"], ["60", "Valdir Borges da Silva Filho", "M"], ["61", "Felipe Augusto Ribeiro", "M"], ["62", "Allan Carvalho Gonçalves", "M"], ["63", "Arthur dos Reis Siqueira Bastos", "M"], ["64", "Rodrigo de Oliveira Correa", "M"]];
+  const POLIGONOS_PADRAO = {"VTR-01": [[-16.0688, -47.9892], [-16.0672, -47.981], [-16.0718, -47.9752], [-16.0805, -47.9746], [-16.0852, -47.9825], [-16.0824, -47.9912], [-16.0745, -47.9935]], "VTR-02": [[-16.0548, -47.9922], [-16.0532, -47.9825], [-16.0578, -47.9748], [-16.0672, -47.9758], [-16.0688, -47.9892], [-16.0635, -47.9952]], "VTR-03": [[-16.0485, -48.0055], [-16.051, -47.9942], [-16.0635, -47.9952], [-16.0692, -48.0015], [-16.0645, -48.0115], [-16.0555, -48.0128]], "VTR-04": [[-16.0492, -47.9788], [-16.048, -47.9655], [-16.0568, -47.9592], [-16.0682, -47.9612], [-16.0708, -47.9748], [-16.0578, -47.9748]], "MUNICIPIO": [[-16.048, -48.0128], [-16.048, -47.9585], [-16.0998, -47.9585], [-16.0998, -48.0128]]};
 
   const $ = (id) => document.getElementById(id);
   const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
 
   let ESTADO = null;
   let SESSAO = null;
+  let guardaSelecionadoPonto = null;
   let eventoSelecionadoId = null;
   let streamCamera = null;
   let fotoCapturadaDataUrl = null;
-  let auditoriaGpsAtual = null;
+  let locAtualPonto = null;
   let timerRelogio = null;
 
-  // ---------- DATAS E CICLO 24x72 ----------
+  // Mapa Leaflet do Cartao Programa
+  let mapaSetor = null;
+  let camadaPoligonos = null;
+  let camadaPbs = null;
+  let modoMarcarPbMapa = false;
+
+  // =========================================================================
+  // DATAS E CICLO CONTINUO 24x72 (AUTOALIMENTADO TODO DIA)
+  // =========================================================================
   function hojeISO() { const d = new Date(), p = n => String(n).padStart(2,'0'); return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}`; }
   function mesAtualISO() { return hojeISO().slice(0, 7); }
+  function somarDiasISO(iso, delta) {
+    const [y,m,d] = iso.split('-').map(Number);
+    const dt = new Date(Date.UTC(y, m - 1, d + delta));
+    const p = n => String(n).padStart(2,'0');
+    return `${dt.getUTCFullYear()}-${p(dt.getUTCMonth()+1)}-${p(dt.getUTCDate())}`;
+  }
+  function diaSemanaISO(iso) {
+    const [y,m,d] = iso.split('-').map(Number);
+    return new Date(y, m - 1, d).getDay(); // 0=Dom .. 6=Sab
+  }
   function formatarDataBR(iso) { if (!iso || iso.length < 10) return '—'; const [y,m,d] = iso.slice(0,10).split('-'); return `${d}/${m}/${y}`; }
   function formatarDataHoraBR(iso) {
     if (!iso) return '—'; const d = new Date(iso); if (isNaN(d.getTime())) return iso;
@@ -89,131 +115,174 @@
     });
     return { dataISO, equipeServico, mapa };
   }
-  function diasServicoNoMes(equipe, mesISO) {
-    if (equipe === 'ADM') return 'Segunda a Sexta (Horário Comercial)';
-    if (equipe === '12X36') return 'Escala 12x36 (Dias Alternados)';
+  function proximosDiasServico(equipe, qtdDias) {
+    if (equipe === 'ADM') return 'Segunda a Sexta (08h às 17h)';
+    if (equipe === '12X36') return 'Escala 12x36 (Alternado)';
     if (!EQUIPES.includes(equipe)) return '—';
-    const [ano, mes] = (mesISO || mesAtualISO()).split('-').map(Number);
-    const ult = new Date(ano, mes, 0).getDate();
-    const dias = [];
-    for (let d = 1; d <= ult; d++) {
-      const iso = `${ano}-${String(mes).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
-      if (calcularCiclo24x72(iso).equipeServico === equipe) dias.push(String(d).padStart(2,'0'));
+    const hoje = hojeISO(), arr = [];
+    for (let i = 0; i < (qtdDias || 30); i++) {
+      const iso = somarDiasISO(hoje, i);
+      if (calcularCiclo24x72(iso).equipeServico === equipe) arr.push(iso.slice(8,10) + '/' + iso.slice(5,7));
     }
-    return dias.join(', ');
+    return arr.join(', ');
   }
-  function statusAgenteNaData(ag, dataISO) {
-    if (!ag) return '';
-    if (ag.equipe === 'ADM') return 'ADM (Seg–Sex)';
-    if (ag.equipe === '12X36') return '12x36';
-    const st = calcularCiclo24x72(dataISO).mapa[ag.equipe];
-    if (!st) return ag.equipe;
-    if (st.codigo === 'SERVICO') return 'EM SERVIÇO 24h';
-    if (st.codigo === 'FOLGA_1') return '1ª Folga 24h — Evitar';
-    if (st.codigo === 'FOLGA_2') return '2ª Folga 48h — IDEAL';
-    return '3ª Folga 72h — Entra amanhã';
+  function gerarListaDatasEscala() {
+    const modo = $('selModoEscala')?.value || 'CONTINUO_30';
+    const hoje = hojeISO();
+    if (modo.startsWith('CONTINUO_')) {
+      const n = Number(modo.split('_')[1]) || 30;
+      const arr = [];
+      for (let i = 0; i < n; i++) arr.push(somarDiasISO(hoje, i));
+      return { titulo: `Próximos ${n} dias corridos (${formatarDataBR(arr[0])} a ${formatarDataBR(arr[arr.length-1])})`, datas: arr };
+    }
+    const mesVal = $('selMesEscala')?.value || mesAtualISO();
+    const [ano, mes] = mesVal.split('-').map(Number);
+    const ult = new Date(ano, mes, 0).getDate();
+    const arr = [];
+    for (let d = 1; d <= ult; d++) arr.push(`${ano}-${String(mes).padStart(2,'0')}-${String(d).padStart(2,'0')}`);
+    return { titulo: `${MESES_EXT[mes-1]} / ${ano}`, datas: arr };
   }
 
-  // ---------- ESTADO INICIAL LIMPO (64 ATIVOS, CORES POR SETOR, FULANO/SICRANO NO ADM) ----------
+  // =========================================================================
+  // ESTADO INICIAL: SETORES COM POLIGONOS REAIS + PONTOS IDEAIS DIDATICOS
+  // =========================================================================
   function criarPostosPadrao() {
     return [
-      { id: 'VTR-01', nome: 'VTR-01 — Setor 01 (Patrulhamento)', area: 'PATRULHAMENTO', setor: 'Setor 01', bairros: 'Valparaíso I (Etapas A a E), Jardim Anhanguera', prefixo: 'VTR-01', cor: '#166534', responsavel: 'A definir (Chefe Setor 01)' },
-      { id: 'VTR-02', nome: 'VTR-02 — Setor 02 (Patrulhamento)', area: 'PATRULHAMENTO', setor: 'Setor 02', bairros: 'Parque Esplanada I a V, Cruzeiro do Sul, Valparaízo II', prefixo: 'VTR-02', cor: '#B45309', responsavel: 'A definir (Chefe Setor 02)' },
-      { id: 'VTR-03', nome: 'VTR-03 — Setor 03 (Patrulhamento)', area: 'PATRULHAMENTO', setor: 'Setor 03', bairros: 'Jardim Céu Azul, Jardim Oriente, Ipanema', prefixo: 'VTR-03', cor: '#6D28D9', responsavel: 'A definir (Chefe Setor 03)' },
-      { id: 'VTR-04', nome: 'VTR-04 — Setor 04 (Patrulhamento)', area: 'PATRULHAMENTO', setor: 'Setor 04', bairros: 'Cidade Jardins, Parque Rio Branco, Marajó, Santa Rita', prefixo: 'VTR-04', cor: '#9F1239', responsavel: 'A definir (Chefe Setor 04)' },
-      { id: 'PMP-01', nome: 'Patrulha Maria da Penha', area: 'MARIA_DA_PENHA', setor: 'Maria da Penha', bairros: 'Todo o Município de Valparaíso de Goiás', prefixo: 'VTR-PMP', cor: '#BE185D', responsavel: 'A definir (Resp. Maria da Penha)' },
-      { id: 'ESC-01', nome: 'Patrulha Escolar', area: 'ESCOLAR', setor: 'Patrulha Escolar', bairros: 'Escolas Municipais, CMEIs e Corredores Escolares', prefixo: 'VTR-ESC', cor: '#9A3412', responsavel: 'A definir (Resp. Escolar)' },
-      { id: 'TRN-01', nome: 'Trânsito / Mobilidade', area: 'TRANSITO', setor: 'Trânsito', bairros: 'Marginais BR-040, Av. Central e Rotatórias', prefixo: 'VTR-TRN', cor: '#4D7C0F', responsavel: 'A definir (Resp. Trânsito)' },
-      { id: 'CCO-01', nome: 'Operador CCO / Rádio 153', area: 'CCO', setor: 'Base CCO', bairros: 'Central de Controle Operacional — Valparaíso-GO', prefixo: 'BASE-CCO', cor: '#27272A', responsavel: 'A definir (Coord. CCO)' }
+      { id: 'VTR-01', nome: 'VTR-01 — Setor 01 (Patrulhamento)', area: 'PATRULHAMENTO', setor: 'Setor 01', bairros: 'Valparaíso I (Etapas A a E), Jardim Anhanguera', prefixo: 'VTR-01', cor: '#18181B', responsavel: 'A definir (Resp. Setor 01)', poligono: POLIGONOS_PADRAO['VTR-01'] },
+      { id: 'VTR-02', nome: 'VTR-02 — Setor 02 (Patrulhamento)', area: 'PATRULHAMENTO', setor: 'Setor 02', bairros: 'Parque Esplanada I a V, Cruzeiro do Sul, Valparaízo II', prefixo: 'VTR-02', cor: '#365314', responsavel: 'A definir (Resp. Setor 02)', poligono: POLIGONOS_PADRAO['VTR-02'] },
+      { id: 'VTR-03', nome: 'VTR-03 — Setor 03 (Patrulhamento)', area: 'PATRULHAMENTO', setor: 'Setor 03', bairros: 'Jardim Céu Azul, Jardim Oriente, Ipanema', prefixo: 'VTR-03', cor: '#854D0E', responsavel: 'A definir (Resp. Setor 03)', poligono: POLIGONOS_PADRAO['VTR-03'] },
+      { id: 'VTR-04', nome: 'VTR-04 — Setor 04 (Patrulhamento)', area: 'PATRULHAMENTO', setor: 'Setor 04', bairros: 'Cidade Jardins, Parque Rio Branco, Marajó, Santa Rita', prefixo: 'VTR-04', cor: '#7F1D1D', responsavel: 'A definir (Resp. Setor 04)', poligono: POLIGONOS_PADRAO['VTR-04'] },
+      { id: 'PMP-01', nome: 'Patrulha Maria da Penha', area: 'MARIA_DA_PENHA', setor: 'Maria da Penha', bairros: 'Todo o Município de Valparaíso de Goiás', prefixo: 'VTR-PMP', cor: '#3F3F46', responsavel: 'A definir (Resp. Maria da Penha)', poligono: POLIGONOS_PADRAO['MUNICIPIO'] },
+      { id: 'ESC-01', nome: 'Patrulha Escolar', area: 'ESCOLAR', setor: 'Patrulha Escolar', bairros: 'Escolas Municipais e CMEIs de Valparaíso', prefixo: 'VTR-ESC', cor: '#52525B', responsavel: 'A definir (Resp. Escolar)', poligono: POLIGONOS_PADRAO['MUNICIPIO'] },
+      { id: 'TRN-01', nome: 'Apoio de Trânsito', area: 'TRANSITO', setor: 'Trânsito', bairros: 'Marginais BR-040, Av. Central e Rotatórias', prefixo: 'VTR-TRN', cor: '#44403C', responsavel: 'A definir (Resp. Trânsito)', poligono: POLIGONOS_PADRAO['MUNICIPIO'] },
+      { id: 'CCO-01', nome: 'Operador CCO / Rádio 153', area: 'CCO', setor: 'Base CCO', bairros: 'Central de Controle Operacional — Valparaíso-GO', prefixo: 'BASE-CCO', cor: '#18181B', responsavel: 'A definir (Coord. CCO)', poligono: POLIGONOS_PADRAO['VTR-01'] }
     ];
   }
 
   function criarModeloCartaoPadrao(posto) {
+    if (posto.id === 'VTR-01') {
+      return {
+        setor: posto.setor, bairros: posto.bairros, prefixo: posto.prefixo, responsavel: posto.responsavel,
+        missao: 'Garantir presença visível nas Etapas A a E e Jardim Anhanguera, protegendo escolas, UBSs, praças e áreas comerciais com pronta resposta ao CCO.',
+        pontosBase: [
+          { hora: '07:00 - 07:30', local: 'Base GCM Valparaíso (Saída)', atividade: 'Conferir viatura (combustível, giroflex, rádio), registrar entrada na Folha de Ponto e alinhar demandas com o CCO.', lat: -16.0715, lon: -47.9815 },
+          { hora: '07:30 - 11:30', local: 'PB 1 — Praças e Escolas (Etapas A / B)', atividade: 'Estacionar em ponto visível com giroflex ligado na entrada escolar; depois fazer ronda lenta nas UBSs e praças.', lat: -16.0748, lon: -47.9852 },
+          { hora: '11:30 - 14:30', local: 'PB 2 — Comércio Central (Etapas C / D)', atividade: 'Presença preventiva na área comercial e bancos no horário de almoço; manter contato comunitário com lojistas.', lat: -16.0785, lon: -47.9795 },
+          { hora: '14:30 - 18:00', local: 'PB 3 — Jardim Anhanguera / Prédios Públicos', atividade: 'Vistoriar CRAS, postos de saúde e ginásios; acompanhar saída das escolas no fim da tarde.', lat: -16.0812, lon: -47.9878 },
+          { hora: '18:00 - 22:00', local: 'PB 4 — Paradas de Ônibus / Saturação Noturna', atividade: 'Ficar em ponto fixo nas paradas de maior fluxo de trabalhadores voltando para casa com iluminação de alerta ligada.', lat: -16.0725, lon: -47.9775 },
+          { hora: '22:00 - 06:30', local: 'Ronda Patrimonial Noturna — Setor 01', atividade: 'Circular em baixa velocidade verificando cadeados, portões e iluminação de escolas e prédios públicos até a passagem de turno.', lat: -16.0772, lon: -47.9835 }
+        ],
+        obs: 'Informar ao CCO início e término de cada PB. Registrar saída/retorno de almoço e saída final na Folha de Ponto.'
+      };
+    }
+    if (posto.id === 'VTR-02') {
+      return {
+        setor: posto.setor, bairros: posto.bairros, prefixo: posto.prefixo, responsavel: posto.responsavel,
+        missao: 'Patrulhamento ostensivo no Parque Esplanada I a V, Cruzeiro do Sul e Valparaízo II, com foco em corredores comerciais e próprios municipais.',
+        pontosBase: [
+          { hora: '07:00 - 07:30', local: 'Base GCM Valparaíso (Saída)', atividade: 'Vistoria da viatura, registro de entrada no ponto e deslocamento imediato ao Setor 02.', lat: -16.0655, lon: -47.9805 },
+          { hora: '07:30 - 11:30', local: 'PB 1 — Parque Esplanada I / II (Escolas e UBS)', atividade: 'Acompanhar entrada escolar e patrulhar entorno das unidades de saúde.', lat: -16.0595, lon: -47.9845 },
+          { hora: '11:30 - 15:00', local: 'PB 2 — Eixo Comercial Esplanada III / Valparaízo II', atividade: 'Estacionamento tático em via de grande circulação e rondas curtas em comércios e praças.', lat: -16.0562, lon: -47.9788 },
+          { hora: '15:00 - 19:00', local: 'PB 3 — Cruzeiro do Sul / Esplanada IV e V', atividade: 'Acompanhar saída escolar e realizar saturação preventiva nos acessos dos bairros.', lat: -16.0638, lon: -47.9912 },
+          { hora: '19:00 - 06:30', local: 'PB 4 — Paradas de Ônibus e Ronda Noturna', atividade: 'Ponto base até 22h nas paradas principais; após 22h, ronda patrimonial nos prédios públicos do setor.', lat: -16.0615, lon: -47.9810 }
+        ],
+        obs: 'Manter rádio ligado na frequência operacional e reportar ocorrências imediatamente ao CCO.'
+      };
+    }
+    if (posto.id === 'VTR-03') {
+      return {
+        setor: posto.setor, bairros: posto.bairros, prefixo: posto.prefixo, responsavel: posto.responsavel,
+        missao: 'Cobertura preventiva no Jardim Céu Azul, Jardim Oriente e Ipanema, garantindo segurança em escolas, unidades de saúde e acessos.',
+        pontosBase: [
+          { hora: '07:00 - 07:30', local: 'Base GCM / Deslocamento Setor 03', atividade: 'Checklist da viatura, ponto de entrada e saída para a região do Céu Azul.', lat: -16.0612, lon: -47.9965 },
+          { hora: '07:30 - 12:00', local: 'PB 1 — Avenida Principal do Jardim Céu Azul', atividade: 'Presença visível em escolas, comércio e paradas de ônibus no horário matutino.', lat: -16.0568, lon: -48.0038 },
+          { hora: '12:00 - 16:00', local: 'PB 2 — Jardim Oriente (UBS e Praças)', atividade: 'Ronda em unidades de saúde, CRAS e praças comunitárias do bairro.', lat: -16.0525, lon: -47.9992 },
+          { hora: '16:00 - 21:00', local: 'PB 3 — Ipanema e Acessos Céu Azul', atividade: 'Acompanhar saída escolar e ponto base com giroflex no retorno dos trabalhadores.', lat: -16.0632, lon: -48.0072 },
+          { hora: '21:00 - 06:30', local: 'PB 4 — Ronda Patrimonial Noturna — Setor 03', atividade: 'Verificação perimetral de escolas, creches e próprios municipais até 06:30.', lat: -16.0590, lon: -48.0015 }
+        ],
+        obs: 'Atenção redobrada nas divisas do município; informar ao CCO se precisar apoiar setor vizinho.'
+      };
+    }
+    if (posto.id === 'VTR-04') {
+      return {
+        setor: posto.setor, bairros: posto.bairros, prefixo: posto.prefixo, responsavel: posto.responsavel,
+        missao: 'Patrulhamento ostensivo no Cidade Jardins, Parque Rio Branco, Marajó e Santa Rita com foco em prevenção e ronda patrimonial.',
+        pontosBase: [
+          { hora: '07:00 - 07:30', local: 'Base GCM / Deslocamento Setor 04', atividade: 'Vistoria, registro de entrada no ponto e deslocamento para a região leste.', lat: -16.0642, lon: -47.9725 },
+          { hora: '07:30 - 12:00', local: 'PB 1 — Parque Rio Branco (Escolas e UBS)', atividade: 'Ponto base na entrada escolar e patrulhamento preventivo nas ruas comerciais.', lat: -16.0535, lon: -47.9688 },
+          { hora: '12:00 - 16:00', local: 'PB 2 — Cidade Jardins / Comércio Local', atividade: 'Presença ostensiva no eixo comercial e visita preventiva a prédios públicos.', lat: -16.0585, lon: -47.9642 },
+          { hora: '16:00 - 21:00', local: 'PB 3 — Marajó e Santa Rita (Saída Escolar / Fluxo)', atividade: 'Acompanhar saída das escolas e fazer ponto base visível nos principais acessos.', lat: -16.0648, lon: -47.9655 },
+          { hora: '21:00 - 06:30', local: 'PB 4 — Ronda Patrimonial Noturna — Setor 04', atividade: 'Vistoria contínua em escolas, creches e praças até a passagem de turno.', lat: -16.0598, lon: -47.9702 }
+        ],
+        obs: 'Reportar ao CCO qualquer ocorrência ou necessidade de reforço viário na BR-040.'
+      };
+    }
     if (posto.area === 'MARIA_DA_PENHA') {
       return {
-        setor: posto.setor, bairros: posto.bairros, prefixo: posto.prefixo, responsavel: posto.responsavel || '',
-        missao: 'Fiscalização de medidas protetivas, visitas tranquilizadoras e apoio integrado à rede de proteção à mulher.',
+        setor: posto.setor, bairros: posto.bairros, prefixo: posto.prefixo, responsavel: posto.responsavel,
+        missao: 'Visitas tranquilizadoras a mulheres sob medida protetiva, acolhimento e pronta resposta em ocorrências de violência doméstica.',
         pontosBase: [
-          { hora: '07:00 - 07:30', local: 'Base GCM Valparaíso', atividade: 'Assunção de serviço, conferência de pastas de medidas protetivas e vistoria da VTR.' },
-          { hora: '08:00 - 12:00', local: 'Roteiro de Visitas Preventivas', atividade: 'Visitas agendadas e acompanhamento de assistidas.' },
-          { hora: '14:00 - 18:00', local: 'CRAM / Rede de Proteção', atividade: 'Integração com a rede e visitas do período vespertino.' },
-          { hora: '18:00 - 07:00', local: 'Prontidão / Apoio CCO', atividade: 'Atendimento prioritário a chamados 153 de violência doméstica.' }
+          { hora: '07:00 - 08:00', local: 'Base GCM — Organização de Roteiro Sigiloso', atividade: 'Conferir lista de medidas protetivas do dia e vistoriar a viatura.', lat: -16.0658, lon: -47.9756 },
+          { hora: '08:00 - 12:00', local: 'PB 1 — Visitas Preventivas (Região Central / Etapas)', atividade: 'Realizar visitas programadas, preencher ficha de acompanhamento e orientar assistidas.', lat: -16.0740, lon: -47.9830 },
+          { hora: '14:00 - 18:00', local: 'PB 2 — CRAM / Visitas (Céu Azul / Esplanada)', atividade: 'Alinhar casos urgentes com a rede de proteção e cumprir visitas da tarde.', lat: -16.0585, lon: -47.9920 },
+          { hora: '18:00 - 07:00', local: 'Prontidão Operacional / Apoio CCO 153', atividade: 'Prioridade absoluta em chamados de violência doméstica e patrulhamento preventivo.', lat: -16.0658, lon: -47.9756 }
         ],
-        obs: 'Sigilo absoluto dos endereços de assistidas. Reportar deslocamentos ao CCO.'
+        obs: 'Sigilo absoluto sobre endereços e nomes de assistidas.'
       };
     }
     if (posto.area === 'ESCOLAR') {
       return {
-        setor: posto.setor, bairros: posto.bairros, prefixo: posto.prefixo, responsavel: posto.responsavel || '',
-        missao: 'Proteção no entorno das unidades escolares nos horários de entrada e saída e ronda patrimonial.',
+        setor: posto.setor, bairros: posto.bairros, prefixo: posto.prefixo, responsavel: posto.responsavel,
+        missao: 'Garantir segurança nos horários de entrada e saída das escolas municipais e vistoria patrimonial noturna.',
         pontosBase: [
-          { hora: '07:00 - 08:15', local: 'Escolas Municipais — Matutino', atividade: 'PB na entrada dos alunos e travessia segura.' },
-          { hora: '11:15 - 12:45', local: 'Corredores Escolares — Troca', atividade: 'Saída matutina e entrada vespertina.' },
-          { hora: '16:45 - 18:15', local: 'Escolas Municipais — Saída', atividade: 'Dispersão segura dos estudantes.' },
-          { hora: '19:00 - 07:00', local: 'Ronda Patrimonial Escolar', atividade: 'Vistoria perimetral de escolas e CMEIs.' }
+          { hora: '07:00 - 08:15', local: 'PB 1 — Escolas Municipais (Entrada Matutina)', atividade: 'Posicionar viatura na frente da escola, auxiliar travessia e conversar com a direção.', lat: -16.0735, lon: -47.9840 },
+          { hora: '11:15 - 13:15', local: 'PB 2 — Troca de Turno Escolar', atividade: 'Acompanhar saída da manhã e entrada da tarde nos corredores escolares.', lat: -16.0595, lon: -47.9835 },
+          { hora: '16:45 - 18:15', local: 'PB 3 — Saída Vespertina', atividade: 'Garantir dispersão segura dos alunos e prevenir aglomerações no entorno.', lat: -16.0570, lon: -48.0010 },
+          { hora: '19:00 - 07:00', local: 'PB 4 — Ronda Patrimonial Escolar Noturna', atividade: 'Conferir portões, iluminação e perímetro das escolas e CMEIs.', lat: -16.0650, lon: -47.9740 }
         ],
-        obs: 'Manter contato preventivo com direções escolares.'
+        obs: 'Registrar no relatório qualquer escola com iluminação quebrada ou vulnerabilidade no muro.'
       };
     }
     if (posto.area === 'TRANSITO') {
       return {
-        setor: posto.setor, bairros: posto.bairros, prefixo: posto.prefixo, responsavel: posto.responsavel || '',
-        missao: 'Ordenamento viário, fluidez nos horários de pico e apoio em sinistros.',
+        setor: posto.setor, bairros: posto.bairros, prefixo: posto.prefixo, responsavel: posto.responsavel,
+        missao: 'Dar fluidez nos horários de pico na BR-040 e avenidas centrais, sinalizar sinistros e orientar condutores.',
         pontosBase: [
-          { hora: '07:00 - 09:00', local: 'Acessos BR-040 / Av. Central', atividade: 'Operação fluidez no pico matutino.' },
-          { hora: '11:30 - 13:30', local: 'Áreas Comerciais e Escolares', atividade: 'Fiscalização preventiva e segurança viária.' },
-          { hora: '17:00 - 19:30', local: 'Rotatórias e Retornos BR-040', atividade: 'Operação fluidez no retorno do trabalho.' },
-          { hora: '20:00 - 07:00', local: 'Apoio Operacional / Corredores', atividade: 'Sinalização de ocorrências viárias e patrulhamento.' }
+          { hora: '07:00 - 09:00', local: 'PB 1 — Acessos Marginais BR-040 (Pico Manhã)', atividade: 'Operação fluidez com sinalização visível e apoio à travessia de pedestres.', lat: -16.0665, lon: -47.9775 },
+          { hora: '11:30 - 13:30', local: 'PB 2 — Corredor Comercial Central', atividade: 'Orientação sobre fila dupla, vagas preferenciais e estacionamento irregular.', lat: -16.0745, lon: -47.9810 },
+          { hora: '17:00 - 19:30', local: 'PB 3 — Rotatórias e Retornos (Pico Tarde)', atividade: 'Apoio viário no retorno do trabalho e prevenção de engarrafamentos.', lat: -16.0575, lon: -47.9765 },
+          { hora: '20:00 - 07:00', local: 'PB 4 — Prontidão Viária / Apoio CCO', atividade: 'Sinalização de acidentes e patrulhamento nas avenidas principais.', lat: -16.0658, lon: -47.9756 }
         ],
-        obs: 'Uso obrigatório de colete refletivo, cones e giroflex nas intervenções.'
-      };
-    }
-    if (posto.area === 'CCO') {
-      return {
-        setor: posto.setor, bairros: posto.bairros, prefixo: posto.prefixo, responsavel: posto.responsavel || '',
-        missao: 'Recepção de chamados 153, despacho de viaturas, controle de posicionamento e livro de plantão.',
-        pontosBase: [
-          { hora: '07:00 - 07:30', local: 'Sala CCO', atividade: 'Recebimento do plantão, teste de rádios e conferência de guarnições.' },
-          { hora: '07:30 - 19:00', local: 'Sala CCO — Diurno', atividade: 'Despacho de ocorrências e monitoramento de perímetro.' },
-          { hora: '19:00 - 07:00', local: 'Sala CCO — Noturno', atividade: 'Monitoramento contínuo e fechamento do relatório de turno.' }
-        ],
-        obs: 'Fechar relatório do plantão às 06:45 e repassar pendências à equipe entrante.'
+        obs: 'Uso obrigatório de colete refletivo, cones e giroflex em qualquer intervenção na via.'
       };
     }
     return {
-      setor: posto.setor, bairros: posto.bairros, prefixo: posto.prefixo, responsavel: posto.responsavel || '',
-      missao: 'Patrulhamento ostensivo preventivo, proteção de bens e instalações municipais e pronta resposta ao CCO.',
+      setor: posto.setor, bairros: posto.bairros, prefixo: posto.prefixo, responsavel: posto.responsavel,
+      missao: 'Atender chamados 153, despachar viaturas, acompanhar a posição das equipes e fechar o relatório do plantão.',
       pontosBase: [
-        { hora: '07:00 - 07:30', local: 'Base GCM Valparaíso', atividade: 'Assunção de serviço, vistoria de viatura e alinhamento CCO.' },
-        { hora: '07:30 - 11:30', local: `PB 1 — ${posto.bairros.split(',')[0]}`, atividade: 'Patrulhamento em praças, UBSs, escolas e comércios.' },
-        { hora: '11:30 - 14:00', local: `PB 2 — Corredores do ${posto.setor}`, atividade: 'Presença ostensiva em pontos de grande circulação.' },
-        { hora: '14:00 - 18:00', local: `PB 3 — Prédios Públicos (${posto.setor})`, atividade: 'Ronda em postos de saúde, CRAS e ginásios.' },
-        { hora: '18:00 - 22:00', local: `PB 4 — Saturação (${posto.setor})`, atividade: 'Ponto base com giroflex em paradas de ônibus e comércio noturno.' },
-        { hora: '22:00 - 06:30', local: `Ronda Patrimonial Noturna`, atividade: 'Vistoria periódica em próprios municipais e prontidão.' },
-        { hora: '06:30 - 07:00', local: 'Base GCM Valparaíso', atividade: 'Abastecimento, relatório de turno e passagem de serviço.' }
+        { hora: '07:00 - 07:30', local: 'PB 1 — Sala CCO (Passagem de Plantão)', atividade: 'Receber ocorrências pendentes, testar rádios e conferir a Folha de Ponto das guarnições.', lat: -16.0658, lon: -47.9756 },
+        { hora: '07:30 - 19:00', local: 'PB 2 — Operação CCO Diurna', atividade: 'Despachar ocorrências, acompanhar PBs das viaturas e registrar no livro de turno.', lat: -16.0658, lon: -47.9756 },
+        { hora: '19:00 - 07:00', local: 'PB 3 — Operação CCO Noturna e Fechamento', atividade: 'Monitoramento contínuo e fechamento do relatório de turno às 06:45.', lat: -16.0658, lon: -47.9756 }
       ],
-      obs: 'Manter rádio em QAP total, informar início/fim de PB ao CCO e registrar ponto na entrada e saída.'
+      obs: 'Manter registro exato de horários de despacho e encerramento de todas as ocorrências.'
     };
   }
 
-  function gerarQra(nome) {
+  function gerarNomeGuerra(nome) {
     const p = String(nome || '').trim().split(/\s+/);
     return p.length <= 1 ? nome : `${p[0]} ${p[p.length - 1]}`;
   }
 
   function criarEstadoInicial() {
     const postos = criarPostosPadrao();
-    // Cargos de Autoridade/Administrativo com nomes FICTICIOS (Fulano, Sicrano, Beltrano, Terciano...) — NINGUEM dos 64 aqui!
     const administrativo = [
-      { id: 'adm_1', cargo: 'Comandante da GCM', titular: 'Fulano de Tal (Provisório — Editar)', horario: 'Seg–Sex · 08h às 17h', obs: 'Autoridade de Comando' },
-      { id: 'adm_2', cargo: 'Subcomandante da GCM', titular: 'Sicrano de Tal (Provisório — Editar)', horario: 'Seg–Sex · 08h às 17h', obs: 'Subcomando Operacional' },
+      { id: 'adm_1', cargo: 'Comandante da GCM', titular: 'Fulano de Tal (Provisório — Editar)', horario: 'Seg–Sex · 08h às 17h', obs: 'Comando' },
+      { id: 'adm_2', cargo: 'Subcomandante da GCM', titular: 'Sicrano de Tal (Provisório — Editar)', horario: 'Seg–Sex · 08h às 17h', obs: 'Subcomando' },
       { id: 'adm_3', cargo: 'Corregedor(a) da GCM', titular: 'Beltrano de Tal (Provisório — Editar)', horario: 'Seg–Sex · 08h às 17h', obs: 'Corregedoria' },
       { id: 'adm_4', cargo: 'Ouvidor(a) da GCM', titular: 'Terciano de Tal (Provisório — Editar)', horario: 'Seg–Sex · 08h às 17h', obs: 'Ouvidoria' },
-      { id: 'adm_5', cargo: 'Chefia de Operações e Escalas', titular: 'A definir (Editar)', horario: 'Seg–Sex · 08h às 17h', obs: 'Gestão de Escalas e Cartão Programa' },
-      { id: 'adm_6', cargo: 'Logística, Frota e Armamento', titular: 'A definir (Editar)', horario: 'Seg–Sex · 08h às 17h', obs: 'Apoio Administrativo' }
+      { id: 'adm_5', cargo: 'Chefia de Operações / Escalas', titular: 'A definir (Editar)', horario: 'Seg–Sex · 08h às 17h', obs: 'Escalas' }
     ];
 
-    // TODOS os 64 guardas entram diretamente como EFETIVO ATIVO da GCM (equilibrando mulheres nas 4 equipes)
     const mulheres = ROL_EFETIVO_64.filter(x => x[2] === 'F');
     const homens = ROL_EFETIVO_64.filter(x => x[2] !== 'F');
     const intercalado = [];
@@ -229,7 +298,7 @@
     const contEq = { ALFA: 0, BRAVO: 0, CHARLIE: 0, DELTA: 0 };
 
     intercalado.forEach((item, idx) => {
-      const [mat, nome, sexo] = item;
+      const [num, nome, sexo] = item;
       const eq = EQUIPES[idx % 4];
       const pos = contEq[eq]++;
       let area = 'PATRULHAMENTO';
@@ -240,10 +309,10 @@
       else if (pos === 15) { area = 'CCO'; funcao = 'OPERADOR_CCO'; }
 
       const reg = {
-        id: 'ag_' + mat.replace(/\D/g, ''),
-        matricula: mat,
+        id: 'ag_' + num,
+        matricula: num, // Numero provisorio simples: 01, 02, 03... (editavel depois para matricula oficial)
         nome,
-        qra: gerarQra(nome),
+        nomeGuerra: gerarNomeGuerra(nome),
         sexo,
         telefone: '',
         equipe: eq,
@@ -255,9 +324,8 @@
       efetivo.push(reg);
       porEq[eq].push(reg);
     });
-    efetivo.sort((a, b) => a.matricula.localeCompare(b.matricula));
+    efetivo.sort((a, b) => Number(a.matricula) - Number(b.matricula));
 
-    // Monta as 4 equipes 24x72 (16 por equipe: 4 VTRs + Maria da Penha + Escolar + Transito + CCO)
     const equipesMontagem = {};
     EQUIPES.forEach((eq) => {
       const daEq = porEq[eq];
@@ -292,16 +360,14 @@
     const cartoesModelo = {};
     postos.forEach(p => { cartoesModelo[p.id] = criarModeloCartaoPadrao(p); });
 
-    const codigosQ = CODIGO_Q_INICIAL.map((c, i) => ({ id: 'q_' + i, codigo: c[0], categoria: c[1], significado: c[2] }));
-
     return {
-      versao: 3,
+      versao: 4,
       config: {
         dataBaseAlfa: hojeISO(),
         horarioTroca: '07:00 às 07:00',
         baseNome: 'Base Operacional — GCM Valparaíso de Goiás',
         baseLat: -16.0658, baseLon: -47.9756, baseRaioMetros: 500,
-        acaoSuspeita: 'ALERTAR', nuvemAtiva: false,
+        nuvemAtiva: false,
         responsaveis: {
           escalanteNome: 'Fulano de Tal (Escalante — Editar)', escalanteCargo: 'Encarregado de Escala GCM', escalanteMat: '—',
           comandoNome: 'Sicrano de Tal (Comando — Editar)', comandoCargo: 'Comandante da GCM Valparaíso', comandoMat: '—'
@@ -312,32 +378,34 @@
       equipesMontagem,
       administrativo,
       escala12x36: [
-        { id: 'e12_1', posto: 'Paço Municipal / Sede Prefeitura', turno: 'Diurno (07h às 19h)', equipeA: 'A definir (Dias Ímpares)', equipeB: 'A definir (Dias Pares)' }
+        { id: 'e12_1', posto: 'Paço Municipal / Sede Prefeitura', turno: 'Diurno (07h às 19h)', equipeA: 'A definir (Ímpar)', equipeB: 'A definir (Par)' }
       ],
       eventos: [
         {
           id: 'ev_modelo_1', nome: 'Operação Evento Municipal (Modelo)', local: 'Praça Central — Valparaíso de Goiás',
           data: hojeISO(), inicio: '16:00', fim: '23:00', regime: 'HORA_EXTRA',
-          coordenador: 'Fulano de Tal (Coordenador)', missao: 'Reforço preventivo, controle de público e fluidez viária.',
-          obs: 'Apresentação 30 min antes na Base GCM com equipamento completo.',
+          coordenador: 'Fulano de Tal', missao: 'Reforço preventivo, controle de público e fluidez viária.',
+          obs: 'Apresentação 30 min antes na Base GCM.',
           viaturas: [
             { id: 'evv_1', prefixo: 'VTR-EVENTO 01', setor: 'Palco / Acesso Principal', g01: '', g02: '', g03: '', g04: '' },
             { id: 'evv_2', prefixo: 'VTR-EVENTO 02', setor: 'Perímetro / Trânsito', g01: '', g02: '', g03: '', g04: '' }
           ]
         }
       ],
-      codigosQ,
       cartoesModelo,
       cartoesDia: {},
-      pontos: []
+      pontos: [],
+      justificativas: {} // chave: "YYYY-MM-DD|agenteId" -> { motivo, obs, por, em }
     };
   }
 
-  // ---------- AUXILIARES ----------
+  // =========================================================================
+  // AUXILIARES
+  // =========================================================================
   function toast(msg) {
     const area = $('toastArea'); if (!area) return;
     const el = document.createElement('div'); el.className = 'toast'; el.textContent = msg;
-    area.appendChild(el); setTimeout(() => el.remove(), 3500);
+    area.appendChild(el); setTimeout(() => el.remove(), 3400);
   }
   function atualizarBadgeSync(txt, cls) { const b = $('badgeSync'); if (b) { b.textContent = txt; b.className = 'badge ' + (cls || 'badge-neutro'); } }
   async function salvarTudo(silencioso) {
@@ -346,41 +414,91 @@
     if (ESTADO.config?.nuvemAtiva && window.EscalaCloud.lerConfigFirebase()) {
       atualizarBadgeSync('Sincronizando...', 'badge-warn');
       const r = await window.EscalaCloud.sincronizarEnviarNuvem(ESTADO);
-      atualizarBadgeSync(r.ok ? 'Nuvem Própria OK' : 'Local (Offline)', r.ok ? 'badge-ok' : 'badge-warn');
+      atualizarBadgeSync(r.ok ? 'Nuvem OK' : 'Local', r.ok ? 'badge-ok' : 'badge-warn');
     }
     if (!silencioso) toast('Alterações salvas.');
   }
   function isAdmin() { return SESSAO && SESSAO.perfil === 'ADMIN'; }
   function podeEditarEscala() { return SESSAO && (SESSAO.perfil === 'ADMIN' || SESSAO.perfil === 'ESCALANTE'); }
   function agentePorId(id) { return (ESTADO.efetivo || []).find(x => x.id === id); }
-  function nomeAgentePorId(id) { const a = agentePorId(id); return a ? `${a.qra || a.nome} (${a.matricula})` : ''; }
+  function nomeAgentePorId(id) { const a = agentePorId(id); return a ? `[${a.matricula}] ${a.nomeGuerra || a.nome}` : ''; }
 
   function descobrirSetorDoAgente(ag) {
-    if (!ag) return { nome: '—', cor: '#52525B', funcao: '—' };
-    if (ag.equipe === 'ADM') return { nome: 'Administrativo (Seg–Sex)', cor: '#27272A', funcao: 'Administrativo' };
+    if (!ag) return { id: '', nome: '—', funcao: '—' };
+    if (ag.equipe === 'ADM') return { id: 'ADM', nome: 'Administrativo', funcao: 'Administrativo' };
     const mont = ESTADO.equipesMontagem[ag.equipe] || {};
     for (const p of ESTADO.postos) {
       const g = mont[p.id] || {};
-      if (g.g01 === ag.id) return { nome: `${p.prefixo} — ${p.setor}`, cor: p.cor || '#27272A', funcao: '01 — Comandante' };
-      if (g.g02 === ag.id) return { nome: `${p.prefixo} — ${p.setor}`, cor: p.cor || '#27272A', funcao: '02 — Motorista' };
-      if (g.g03 === ag.id) return { nome: `${p.prefixo} — ${p.setor}`, cor: p.cor || '#27272A', funcao: '03 — Patrulheiro' };
+      if (g.g01 === ag.id) return { id: p.id, nome: `${p.prefixo} — ${p.setor}`, funcao: '01 — Comandante' };
+      if (g.g02 === ag.id) return { id: p.id, nome: `${p.prefixo} — ${p.setor}`, funcao: '02 — Motorista' };
+      if (g.g03 === ag.id) return { id: p.id, nome: `${p.prefixo} — ${p.setor}`, funcao: '03 — Patrulheiro' };
     }
-    return { nome: AREAS_LABEL[ag.area] || 'Reserva da Equipe', cor: '#52525B', funcao: FUNCOES_LABEL[ag.funcao] || 'Apoio' };
+    return { id: '', nome: AREAS_LABEL[ag.area] || 'Apoio', funcao: FUNCOES_LABEL[ag.funcao] || 'Guarda' };
+  }
+
+  // Retorna todos os guardas ESCALADOS para trabalhar numa data especifica (24x72 + ADM seg-sex + Eventos)
+  function obterEscaladosDaData(dataISO) {
+    const ciclo = calcularCiclo24x72(dataISO);
+    const dow = diaSemanaISO(dataISO);
+    const diaUtil = dow >= 1 && dow <= 5;
+    const lista = [];
+    const ids = new Set();
+
+    // 1. Equipe 24x72 do dia
+    ESTADO.efetivo.filter(a => a.situacao === 'ATIVO' && a.equipe === ciclo.equipeServico).forEach(a => {
+      ids.add(a.id);
+      const inf = descobrirSetorDoAgente(a);
+      lista.push({ agente: a, origem: `EQUIPE ${ciclo.equipeServico} (24x72)`, posto: inf.nome, funcao: inf.funcao });
+    });
+
+    // 2. Administrativo em dias uteis
+    if (diaUtil) {
+      ESTADO.efetivo.filter(a => a.situacao === 'ATIVO' && a.equipe === 'ADM' && !ids.has(a.id)).forEach(a => {
+        ids.add(a.id);
+        lista.push({ agente: a, origem: 'ADM (Seg–Sex)', posto: 'Administrativo', funcao: 'Expediente' });
+      });
+    }
+
+    // 3. Guardas escalados em Eventos extras nesta data
+    (ESTADO.eventos || []).filter(ev => ev.data === dataISO).forEach(ev => {
+      (ev.viaturas || []).forEach(v => {
+        [v.g01, v.g02, v.g03, v.g04].filter(Boolean).forEach(gid => {
+          if (ids.has(gid)) return;
+          const ag = agentePorId(gid);
+          if (ag) {
+            ids.add(ag.id);
+            lista.push({ agente: ag, origem: `EVENTO: ${ev.nome}`, posto: v.prefixo, funcao: 'Extra' });
+          }
+        });
+      });
+    });
+
+    // 4. Qualquer outro guarda que bateu ponto nesta data (ex.: permuta/extra)
+    (ESTADO.pontos || []).filter(p => p.dataLocal === dataISO).forEach(p => {
+      if (!ids.has(p.agenteId)) {
+        const ag = agentePorId(p.agenteId);
+        if (ag) {
+          ids.add(ag.id);
+          lista.push({ agente: ag, origem: 'PERMUTA / EXTRA', posto: p.posto || '—', funcao: 'Extra' });
+        }
+      }
+    });
+
+    return { ciclo, diaUtil, escalados: lista };
   }
 
   function aplicarTema(tema) {
     const t = tema === 'noturno' ? 'noturno' : 'claro';
     document.documentElement.setAttribute('data-tema', t);
-    localStorage.setItem('escala_gcm_tema_v3', t);
-    $('metaThemeColor')?.setAttribute('content', t === 'noturno' ? '#000000' : '#FFFFFF');
-    if ($('btnTema')) $('btnTema').textContent = t === 'noturno' ? 'Modo Claro (Branco)' : 'Modo Noturno (Preto)';
-    if ($('btnTemaAuth')) $('btnTemaAuth').textContent = t === 'noturno' ? 'Alternar Modo Claro (Branco)' : 'Alternar Modo Noturno (Preto)';
+    localStorage.setItem('escala_gcm_tema_v4', t);
+    $('metaThemeColor')?.setAttribute('content', t === 'noturno' ? '#080808' : '#FFFFFF');
+    if ($('btnTema')) $('btnTema').textContent = t === 'noturno' ? 'Modo Claro' : 'Modo Noturno';
+    if ($('btnTemaAuth')) $('btnTemaAuth').textContent = t === 'noturno' ? 'Modo Claro (Branco)' : 'Modo Noturno (Preto)';
   }
   function alternarTema() { aplicarTema((document.documentElement.getAttribute('data-tema') || 'claro') === 'noturno' ? 'claro' : 'noturno'); }
 
   function abrirModal(titulo, corpoHtml, botoes) {
-    $('modalTitulo').textContent = titulo;
-    $('modalCorpo').innerHTML = corpoHtml;
+    $('modalTitulo').textContent = titulo; $('modalCorpo').innerHTML = corpoHtml;
     const rod = $('modalRodape'); rod.innerHTML = '';
     (botoes || []).forEach(b => {
       const btn = document.createElement('button'); btn.type = 'button';
@@ -392,165 +510,486 @@
   }
   function fecharModal() { $('modalOverlay').classList.add('oculto'); }
 
-  // ---------- MENU LATERAL ----------
-  function fecharSidebarMobile() {
-    $('appShell').classList.remove('menu-aberto-mobile');
-    $('sidebarBackdrop').classList.add('oculto');
-  }
+  function fecharSidebarMobile() { $('appShell').classList.remove('menu-aberto-mobile'); $('sidebarBackdrop').classList.add('oculto'); }
   function alternarSidebar() {
     if (window.innerWidth <= 1024) {
       const aberto = $('appShell').classList.toggle('menu-aberto-mobile');
       $('sidebarBackdrop').classList.toggle('oculto', !aberto);
-    } else {
-      $('appShell').classList.toggle('menu-recolhido');
-    }
+    } else $('appShell').classList.toggle('menu-recolhido');
   }
 
   // =========================================================================
-  // 1. PAINEL DO DIA (LIMPO + DESTAQUE COLORIDO)
+  // 1. FOLHA DE PONTO (IDENTIFICACAO POR Nº/NOME + 4 BATIDAS + FREQUENCIA)
   // =========================================================================
-  function renderPainel() {
-    const hoje = hojeISO();
-    const d = new Date();
+  function resumirDiaAgente(dataISO, agenteId) {
+    const pts = (ESTADO.pontos || []).filter(p => p.dataLocal === dataISO && p.agenteId === agenteId).slice().reverse();
+    const pegar = (tipo) => pts.find(x => x.tipo === tipo);
+    const ent = pegar('ENTRADA'), sAlm = pegar('SAIDA_ALMOCO'), rAlm = pegar('RETORNO_ALMOCO'), sai = pegar('SAIDA');
+    const just = (ESTADO.justificativas || {})[`${dataISO}|${agenteId}`] || null;
+    let status = 'PENDENTE';
+    if (just) status = 'JUSTIFICADO';
+    else if (ent && sai) status = 'PRESENTE';
+    else if (ent || sAlm || rAlm || sai) status = 'PARCIAL';
+    return { ent, sAlm, rAlm, sai, just, status, pts };
+  }
+
+  function renderFaixaPlantaoHoje() {
+    const hoje = hojeISO(), d = new Date();
     const dataExt = `${DIAS_SEMANA[d.getDay()]}, ${d.getDate()} de ${MESES_EXT[d.getMonth()]} de ${d.getFullYear()}`;
-    $('lblSubtopo').textContent = `${dataExt} · Troca: ${ESTADO.config.horarioTroca}`;
-
-    const ciclo = calcularCiclo24x72(hoje);
-    const corHoje = EQUIPE_CORES[ciclo.equipeServico];
-    const eqAmanha = EQUIPES[(EQUIPES.indexOf(ciclo.equipeServico) + 1) % 4];
-    const corAmanha = EQUIPE_CORES[eqAmanha];
-    const totalAtivos = ESTADO.efetivo.filter(a => a.situacao === 'ATIVO').length;
-    const pontosHoje = (ESTADO.pontos || []).filter(p => (p.dataLocal || '').startsWith(hoje));
-
-    $('heroEquipeHoje').style.borderLeftColor = corHoje.cor;
-    $('heroEquipeHoje').innerHTML = `
+    $('lblSubtopo').textContent = `${dataExt} · Turno ${ESTADO.config.horarioTroca}`;
+    const info = obterEscaladosDaData(hoje);
+    let presentes = 0, parciais = 0, pendentes = 0, justif = 0;
+    info.escalados.forEach(item => {
+      const r = resumirDiaAgente(hoje, item.agente.id);
+      if (r.status === 'PRESENTE') presentes++;
+      else if (r.status === 'PARCIAL') parciais++;
+      else if (r.status === 'JUSTIFICADO') justif++;
+      else pendentes++;
+    });
+    const corEq = EQUIPE_CORES[info.ciclo.equipeServico]?.cor || '#18181B';
+    $('faixaPlantaoHoje').style.borderLeftColor = corEq;
+    $('faixaPlantaoHoje').innerHTML = `
       <div>
-        <div class="subtexto">${esc(dataExt)} · Turno ${esc(ESTADO.config.horarioTroca)}</div>
-        <div class="hero-titulo">EM SERVIÇO HOJE: <span class="pill-eq eq-${ciclo.equipeServico}" style="font-size:15px;padding:4px 12px;">EQUIPE ${ciclo.equipeServico} (${corHoje.nome})</span></div>
-        <div class="subtexto mt-4">Amanhã entra a <strong style="color:${corAmanha.cor};">EQUIPE ${eqAmanha} (${corAmanha.nome})</strong> · Efetivo ativo total: <strong>${totalAtivos} guardas</strong> · Pontos hoje: <strong>${pontosHoje.length}</strong></div>
+        <div class="subtexto">PLANTÃO EM ANDAMENTO · ${esc(dataExt)}</div>
+        <div style="font-size:18px;font-weight:800;margin-top:3px;">
+          Serviço 24x72: <span class="insig eq-${info.ciclo.equipeServico}" style="font-size:13px;">EQUIPE ${info.ciclo.equipeServico}</span>
+        </div>
+        <div class="subtexto mt-4">Amanhã entra: <strong>EQUIPE ${EQUIPES[(EQUIPES.indexOf(info.ciclo.equipeServico)+1)%4]}</strong> · Turno ${esc(ESTADO.config.horarioTroca)}</div>
       </div>
-      <div class="acoes-linha">
-        <button type="button" class="btn btn-primario" id="btnHeroPdf">Baixar PDF Escala 24x72</button>
+      <div class="faixa-kpis">
+        <div class="faixa-kpi"><strong>${info.escalados.length}</strong><span>Escalados</span></div>
+        <div class="faixa-kpi"><strong>${presentes + parciais}</strong><span>Em Ponto</span></div>
+        <div class="faixa-kpi"><strong>${pendentes}</strong><span>Pendentes</span></div>
+        <div class="faixa-kpi"><strong>${justif}</strong><span>Justificados</span></div>
       </div>
     `;
-    $('btnHeroPdf').addEventListener('click', () => gerarPdfEscalaMensal(false));
+  }
 
-    $('cardsStatusEquipes').innerHTML = EQUIPES.map((eq) => {
-      const st = ciclo.mapa[eq], c = EQUIPE_CORES[eq];
-      const emServ = st.codigo === 'SERVICO';
-      const qtd = ESTADO.efetivo.filter(a => a.equipe === eq && a.situacao === 'ATIVO').length;
-      return `
-        <div class="status-equipe-card ${emServ ? 'em-servico' : ''}" style="border-top-color:${c.cor};${emServ ? 'border-color:' + c.cor + ';' : ''}">
-          <div class="card-cab">
-            <strong style="color:${c.cor};">EQUIPE ${eq}</strong>
-            <span class="pill-eq eq-${eq}">${st.rotulo}</span>
-          </div>
-          <div class="subtexto">${emServ ? 'Em patrulhamento 24h hoje' : (st.codigo === 'FOLGA_2' ? '48h descanso · Ideal p/ eventos' : (st.codigo === 'FOLGA_3' ? '72h descanso · Entra amanhã' : 'Saiu de 24h · Descanso'))}</div>
-          <div style="font-size:12px;font-weight:700;">${qtd} guardas nesta equipe</div>
-        </div>
-      `;
-    }).join('');
+  function selecionarGuardaParaPonto(ag) {
+    guardaSelecionadoPonto = ag;
+    $('listaSugestoesGuarda').classList.add('oculto');
+    if (!ag) {
+      $('cardGuardaIdentificado').classList.add('oculto');
+      return;
+    }
+    $('inpIdentificaGuarda').value = `${ag.matricula} — ${ag.nome}`;
+    const hoje = hojeISO();
+    const { escalados } = obterEscaladosDaData(hoje);
+    const escHoje = escalados.find(x => x.agente.id === ag.id);
+    const resumo = resumirDiaAgente(hoje, ag.id);
 
-    $('badgeEquipeHoje').textContent = `EQUIPE ${ciclo.equipeServico} (${corHoje.nome})`;
-    $('badgeEquipeHoje').style.background = corHoje.cor;
-    $('badgeEquipeHoje').style.color = '#FFFFFF';
-    $('badgeEquipeHoje').style.borderColor = corHoje.cor;
+    // Sugere automaticamente a proxima batida logica
+    if (!resumo.ent) $('selPontoTipo').value = 'ENTRADA';
+    else if (!resumo.sAlm) $('selPontoTipo').value = 'SAIDA_ALMOCO';
+    else if (!resumo.rAlm) $('selPontoTipo').value = 'RETORNO_ALMOCO';
+    else $('selPontoTipo').value = 'SAIDA';
 
-    const mont = ESTADO.equipesMontagem[ciclo.equipeServico] || {};
-    $('gridGuarnicoesHoje').innerHTML = ESTADO.postos.map(p => {
-      const g = mont[p.id] || {};
-      const nomes = [
-        g.g01 ? `<div><strong>01:</strong> ${esc(nomeAgentePorId(g.g01))}</div>` : '',
-        g.g02 ? `<div><strong>02:</strong> ${esc(nomeAgentePorId(g.g02))}</div>` : '',
-        g.g03 ? `<div><strong>03:</strong> ${esc(nomeAgentePorId(g.g03))}</div>` : ''
-      ].filter(Boolean).join('') || '<div class="subtexto">Guarnição não definida</div>';
-      return `
-        <div class="posto-card" style="border-left-color:${esc(p.cor || '#27272A')};">
-          <div class="card-cab">
-            <strong>${esc(p.nome)}</strong>
-            <span class="pill-setor" style="background:${esc(p.cor || '#27272A')};">${esc(p.setor)}</span>
-          </div>
-          <div class="subtexto">Resp.: ${esc(p.responsavel || 'A definir')} · ${esc(p.bairros)}</div>
-          <div style="font-size:12px;">${nomes}</div>
-        </div>
-      `;
-    }).join('');
+    const infSetor = descobrirSetorDoAgente(ag);
+    $('inpPontoPosto').value = escHoje ? escHoje.posto : infSetor.nome;
 
-    const evs = (ESTADO.eventos || []).slice().sort((a,b) => (a.data||'').localeCompare(b.data||''));
-    $('listaEventosPainel').innerHTML = evs.length ? evs.slice(0, 4).map(ev => `
-      <div class="item-compacto clicavel" data-ir-ev="${esc(ev.id)}">
-        <div><strong>${esc(ev.nome)}</strong><div class="subtexto">${formatarDataBR(ev.data)} · ${esc(ev.inicio)}–${esc(ev.fim)} · ${esc(ev.local)}</div></div>
-        <span class="badge badge-invertido">${(ev.viaturas||[]).length} VTR(s)</span>
+    const card = $('cardGuardaIdentificado');
+    card.classList.remove('oculto');
+    card.innerHTML = `
+      <div class="card-cab">
+        <strong>Nº ${esc(ag.matricula)} — ${esc(ag.nome)}</strong>
+        <span class="insig eq-${esc(ag.equipe)}">${esc(ag.equipe)}</span>
       </div>
-    `).join('') : '<div class="item-compacto"><span class="subtexto">Nenhum evento programado.</span></div>';
-    $('listaEventosPainel').querySelectorAll('[data-ir-ev]').forEach(el => el.addEventListener('click', () => { eventoSelecionadoId = el.getAttribute('data-ir-ev'); abrirAba('secEventos'); }));
+      <div>${escHoje ? `<span class="badge badge-ok">ESCALADO HOJE</span> · ${esc(escHoje.posto)} (${esc(escHoje.funcao)})` : `<span class="badge badge-warn">FORA DA ESCALA DE HOJE</span> · Registro de permuta/extra`}</div>
+      <div class="subtexto">Batidas hoje: Ent. <strong>${resumo.ent ? resumo.ent.horaLocal.slice(0,5) : '—'}</strong> · Almoço <strong>${resumo.sAlm ? resumo.sAlm.horaLocal.slice(0,5) : '—'}/${resumo.rAlm ? resumo.rAlm.horaLocal.slice(0,5) : '—'}</strong> · Saída <strong>${resumo.sai ? resumo.sai.horaLocal.slice(0,5) : '—'}</strong></div>
+    `;
+  }
 
-    $('badgePontosHoje').textContent = `${pontosHoje.length} ponto(s)`;
-    $('listaPontosHoje').innerHTML = pontosHoje.length ? pontosHoje.slice(0, 5).map(pt => {
-      const cls = pt.auditoria?.status === 'VERIFICADO' ? 'badge-ok' : (pt.auditoria?.status === 'ATENCAO' ? 'badge-warn' : 'badge-erro');
-      return `<div class="item-compacto"><div><strong>${esc(pt.agenteNome)}</strong> <span class="badge badge-neutro">${esc(pt.tipo)}</span><div class="subtexto">${esc(pt.horaLocal)} · ${esc(pt.posto)}</div></div><span class="badge ${cls}">${esc(pt.auditoria?.status||'—')} (${pt.auditoria?.score??0}%)</span></div>`;
-    }).join('') : '<div class="item-compacto"><span class="subtexto">Nenhum ponto registrado hoje.</span></div>';
+  function buscarGuardaDigitado() {
+    const raw = ($('inpIdentificaGuarda').value || '').trim();
+    const box = $('listaSugestoesGuarda');
+    if (!raw) {
+      guardaSelecionadoPonto = null;
+      $('cardGuardaIdentificado').classList.add('oculto');
+      box.classList.add('oculto');
+      return;
+    }
+    const q = raw.toLowerCase();
+    const numLimpo = raw.replace(/\D/g, '').replace(/^0+/, '');
+    const ativos = ESTADO.efetivo.filter(a => a.situacao === 'ATIVO');
+
+    // Match exato por numero (ex: "03" ou "3")
+    const exatoNum = numLimpo ? ativos.find(a => a.matricula.replace(/\D/g,'').replace(/^0+/, '') === numLimpo && /^\d+$/.test(raw.replace(/^gcm-?/i, ''))) : null;
+    if (exatoNum) {
+      selecionarGuardaParaPonto(exatoNum);
+      return;
+    }
+
+    const matches = ativos.filter(a =>
+      a.nome.toLowerCase().includes(q) ||
+      (a.nomeGuerra || '').toLowerCase().includes(q) ||
+      a.matricula.toLowerCase().includes(q) ||
+      (numLimpo && a.matricula.replace(/\D/g,'').replace(/^0+/, '') === numLimpo)
+    ).slice(0, 6);
+
+    if (!matches.length) {
+      guardaSelecionadoPonto = null;
+      $('cardGuardaIdentificado').classList.add('oculto');
+      box.innerHTML = '<div class="sug-item"><span class="subtexto">Nenhum guarda encontrado com este nº ou nome.</span></div>';
+      box.classList.remove('oculto');
+      return;
+    }
+    if (matches.length === 1 && matches[0].nome.toLowerCase() === q) {
+      selecionarGuardaParaPonto(matches[0]);
+      return;
+    }
+    box.innerHTML = matches.map(a => `
+      <div class="sug-item" data-pick-ag="${esc(a.id)}">
+        <span><strong>Nº ${esc(a.matricula)}</strong> — ${esc(a.nome)}</span>
+        <span class="insig eq-${esc(a.equipe)}">${esc(a.equipe)}</span>
+      </div>
+    `).join('');
+    box.classList.remove('oculto');
+    box.querySelectorAll('[data-pick-ag]').forEach(el => el.addEventListener('click', () => {
+      selecionarGuardaParaPonto(agentePorId(el.getAttribute('data-pick-ag')));
+    }));
+  }
+
+  function renderResumoEscaladosHoje() {
+    const hoje = hojeISO();
+    const { ciclo, escalados } = obterEscaladosDaData(hoje);
+    $('lblResumoEscaladosHoje').textContent = `${formatarDataBR(hoje)} · Equipe ${ciclo.equipeServico} (${escalados.length} escalados)`;
+    $('tbodyResumoHoje').innerHTML = escalados.map(item => {
+      const a = item.agente, r = resumirDiaAgente(hoje, a.id);
+      const stCls = r.status === 'PRESENTE' ? 'badge-ok' : (r.status === 'PARCIAL' ? 'badge-invertido' : (r.status === 'JUSTIFICADO' ? 'badge-warn' : 'badge-neutro'));
+      const stTxt = r.status === 'JUSTIFICADO' ? r.just.motivo : (r.status === 'PRESENTE' ? 'Completo' : (r.status === 'PARCIAL' ? 'Em Serviço' : 'Pendente'));
+      return `
+        <tr>
+          <td><strong>${esc(a.matricula)}</strong></td>
+          <td><strong>${esc(a.nomeGuerra || a.nome)}</strong></td>
+          <td>${esc(item.posto)}</td>
+          <td>${r.ent ? r.ent.horaLocal.slice(0,5) : '—'}</td>
+          <td>${r.sAlm ? r.sAlm.horaLocal.slice(0,5) : '—'}${r.rAlm ? '–' + r.rAlm.horaLocal.slice(0,5) : ''}</td>
+          <td>${r.sai ? r.sai.horaLocal.slice(0,5) : '—'}</td>
+          <td><span class="badge ${stCls}">${esc(stTxt)}</span></td>
+        </tr>
+      `;
+    }).join('') || '<tr><td colspan="7" class="subtexto" style="text-align:center;">Nenhum escalado hoje.</td></tr>';
+  }
+
+  function renderFrequenciaDia() {
+    const data = $('inpFreqData').value || hojeISO();
+    $('inpFreqData').value = data;
+    const busca = ($('fltFreqBusca').value || '').trim().toLowerCase();
+    const fltSit = $('fltFreqSituacao').value || '';
+    const { ciclo, diaUtil, escalados } = obterEscaladosDaData(data);
+
+    $('boxInfoEscalaDiaFreq').innerHTML = `<strong>${formatarDataBR(data)} (${DIAS_SEMANA[diaSemanaISO(data)]}):</strong> Escala 24x72: <span class="insig eq-${ciclo.equipeServico}">EQUIPE ${ciclo.equipeServico}</span> · ${diaUtil ? 'Expediente Administrativo ativo' : 'Fim de semana (sem Adm)'} · Total de escalados: <strong>${escalados.length}</strong>`;
+
+    const filtrados = escalados.filter(item => {
+      const a = item.agente, r = resumirDiaAgente(data, a.id);
+      if (fltSit && r.status !== fltSit) return false;
+      if (busca && !(a.nome.toLowerCase().includes(busca) || a.matricula.toLowerCase().includes(busca))) return false;
+      return true;
+    });
+
+    $('tbodyFrequenciaDia').innerHTML = filtrados.map(item => {
+      const a = item.agente, r = resumirDiaAgente(data, a.id);
+      const celHora = (pt) => pt ? `<strong>${pt.horaLocal.slice(0,5)}</strong>${pt.foto ? ` <img src="${pt.foto}" class="foto-thumb" style="width:26px;height:26px;vertical-align:middle;" data-ver-ponto="${esc(pt.id)}">` : ''}` : '<span class="subtexto">—</span>';
+      const stCls = r.status === 'PRESENTE' ? 'badge-ok' : (r.status === 'PARCIAL' ? 'badge-invertido' : (r.status === 'JUSTIFICADO' ? 'badge-warn' : 'badge-erro'));
+      const stLabel = r.status === 'JUSTIFICADO' ? `${r.just.motivo}${r.just.obs ? ' · ' + r.just.obs : ''}` : (r.status === 'PRESENTE' ? 'Presente (Completo)' : (r.status === 'PARCIAL' ? 'Em Serviço (Parcial)' : 'Sem Batida / Pendente'));
+      return `
+        <tr>
+          <td><strong>${esc(a.matricula)}</strong></td>
+          <td><strong>${esc(a.nome)}</strong></td>
+          <td><span class="insig eq-${esc(a.equipe)}">${esc(a.equipe)}</span> <span class="subtexto">${esc(item.posto)}</span></td>
+          <td>${celHora(r.ent)}</td>
+          <td>${celHora(r.sAlm)}</td>
+          <td>${celHora(r.rAlm)}</td>
+          <td>${celHora(r.sai)}</td>
+          <td><span class="badge ${stCls}">${esc(stLabel)}</span></td>
+          <td>${podeEditarEscala() ? `<button type="button" class="btn btn-sec btn-sm" data-just-ag="${esc(a.id)}">${r.just ? 'Editar Just.' : 'Justificar'}</button>` : '—'}</td>
+        </tr>
+      `;
+    }).join('') || '<tr><td colspan="9" class="subtexto" style="text-align:center;padding:16px;">Nenhum registro para este filtro.</td></tr>';
+
+    $('tbodyFrequenciaDia').querySelectorAll('[data-ver-ponto]').forEach(img => img.addEventListener('click', () => abrirDetalhePonto(img.getAttribute('data-ver-ponto'))));
+    $('tbodyFrequenciaDia').querySelectorAll('[data-just-ag]').forEach(btn => btn.addEventListener('click', () => abrirModalJustificativa(data, btn.getAttribute('data-just-ag'))));
+  }
+
+  function abrirModalJustificativa(dataISO, agenteId) {
+    const ag = agentePorId(agenteId); if (!ag) return;
+    const chave = `${dataISO}|${agenteId}`;
+    const atual = (ESTADO.justificativas || {})[chave] || { motivo: 'Atestado Médico', obs: '' };
+    abrirModal(
+      `Justificativa / Ocorrência — Nº ${ag.matricula} ${ag.nome}`,
+      `
+        <div class="subtexto">Data da Escala: <strong>${formatarDataBR(dataISO)}</strong></div>
+        <div class="campo"><label>Motivo</label>
+          <select id="mJustMotivo">${JUSTIFICATIVAS_OPCOES.map(m => `<option value="${esc(m)}" ${atual.motivo === m ? 'selected' : ''}>${esc(m)}</option>`).join('')}</select>
+        </div>
+        <div class="campo"><label>Observação / Detalhes (ex.: nº dias atestado, permutou com qual guarda)</label>
+          <textarea id="mJustObs" rows="3" placeholder="Detalhes da justificativa...">${esc(atual.obs || '')}</textarea>
+        </div>
+      `,
+      [
+        ...(ESTADO.justificativas?.[chave] ? [{ texto: 'Remover Justificativa', classe: 'btn-perigo', onClick: async () => {
+          delete ESTADO.justificativas[chave]; await salvarTudo(); fecharModal(); renderFrequenciaDia(); renderResumoEscaladosHoje(); renderFaixaPlantaoHoje();
+        }}] : []),
+        { texto: 'Cancelar', classe: 'btn-sec', onClick: fecharModal },
+        { texto: 'Salvar Justificativa', classe: 'btn-primario', onClick: async () => {
+          ESTADO.justificativas = ESTADO.justificativas || {};
+          ESTADO.justificativas[chave] = { motivo: $('mJustMotivo').value, obs: $('mJustObs').value.trim(), por: SESSAO?.nome || 'Admin', em: new Date().toISOString() };
+          await salvarTudo(); fecharModal(); renderFrequenciaDia(); renderResumoEscaladosHoje(); renderFaixaPlantaoHoje();
+        }}
+      ]
+    );
+  }
+
+  // Camera + Localizacao discreta (validacao interna silenciosa)
+  async function abrirCameraAoVivo() {
+    pararCamera();
+    try {
+      streamCamera = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } }, audio: false });
+      const v = $('videoCamera'); v.srcObject = streamCamera; v.classList.remove('oculto');
+      $('placeholderCamera').classList.add('oculto'); $('imgPreviewFoto').classList.add('oculto');
+      $('btnCapturarFoto').disabled = false; $('btnRefazerFoto').disabled = true;
+      $('statusFoto').textContent = 'Câmera ativa'; $('statusFoto').className = 'badge badge-warn';
+    } catch (e) { toast('Permita acesso à câmera (HTTPS obrigatório no celular).'); }
+  }
+  function pararCamera() { if (streamCamera) { streamCamera.getTracks().forEach(t => t.stop()); streamCamera = null; } }
+
+  function capturarFotoComCarimbo() {
+    const v = $('videoCamera'), c = $('canvasFoto'); if (!v || !v.videoWidth) return toast('Aguarde a câmera.');
+    const w = 440, h = Math.round((v.videoHeight / v.videoWidth) * w) || 330;
+    c.width = w; c.height = h; const ctx = c.getContext('2d'); ctx.drawImage(v, 0, 0, w, h);
+    const ag = guardaSelecionadoPonto;
+    const tipo = TIPO_PONTO_LABEL[$('selPontoTipo').value] || $('selPontoTipo').value;
+    const agora = formatarDataHoraBR(new Date().toISOString());
+    ctx.fillStyle = 'rgba(0,0,0,0.82)'; ctx.fillRect(0, h - 50, w, 50); ctx.fillStyle = '#FFFFFF';
+    ctx.font = 'bold 11px monospace'; ctx.fillText(`GCM VALPARAÍSO-GO · ${tipo.toUpperCase()} · ${agora}`, 8, h - 32);
+    ctx.font = '10px monospace'; ctx.fillText(`Nº ${ag ? ag.matricula + ' — ' + ag.nome : 'Não identificado'}`, 8, h - 16);
+    if (locAtualPonto?.lat) ctx.fillText(`GPS: ${locAtualPonto.lat.toFixed(5)}, ${locAtualPonto.lon.toFixed(5)}`, 8, h - 4);
+    fotoCapturadaDataUrl = c.toDataURL('image/jpeg', 0.62);
+    pararCamera(); v.classList.add('oculto');
+    const img = $('imgPreviewFoto'); img.src = fotoCapturadaDataUrl; img.classList.remove('oculto');
+    $('btnCapturarFoto').disabled = true; $('btnRefazerFoto').disabled = false;
+    $('statusFoto').textContent = 'Foto OK'; $('statusFoto').className = 'badge badge-ok';
+  }
+
+  function distanciaMetros(la1, lo1, la2, lo2) {
+    const R = 6371000, rad = v => v * Math.PI / 180;
+    const a = Math.sin(rad(la2-la1)/2)**2 + Math.cos(rad(la1))*Math.cos(rad(la2))*Math.sin(rad(lo2-lo1)/2)**2;
+    return 2 * R * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  }
+  async function consultarEnderecoReal(lat, lon) {
+    const fj = async (u) => { const ctrl = new AbortController(), t = setTimeout(() => ctrl.abort(), 4500); try { const r = await fetch(u, { signal: ctrl.signal }); clearTimeout(t); return r.ok ? await r.json() : null; } catch (_) { clearTimeout(t); return null; } };
+    const nom = await fj(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lon}&accept-language=pt-BR`);
+    if (nom?.address) {
+      const a = nom.address, txt = [(a.road||a.suburb||'') + (a.house_number ? ', '+a.house_number : ''), a.suburb||a.neighbourhood||'', a.city||a.town||a.municipality||'', a.state_code||a.state||''].filter(Boolean).join(', ');
+      if (txt.trim()) return txt;
+    }
+    const ph = await fj(`https://photon.komoot.io/reverse?lat=${lat}&lon=${lon}`);
+    if (ph?.features?.[0]?.properties) {
+      const p = ph.features[0].properties, txt = [p.street||p.name, p.district||p.locality, p.city, p.state].filter(Boolean).join(', ');
+      if (txt.trim()) return txt;
+    }
+    const bdc = await fj(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lon}&localityLanguage=pt`);
+    if (bdc && (bdc.city || bdc.locality)) return [bdc.locality, bdc.city, bdc.principalSubdivision].filter(Boolean).join(', ');
+    return `Coordenadas: ${lat.toFixed(6)}, ${lon.toFixed(6)}`;
+  }
+
+  async function coletarLocalizacaoPonto() {
+    if (!navigator.geolocation) return toast('Dispositivo sem GPS.');
+    const btn = $('btnColetarGps'); btn.disabled = true; btn.textContent = 'Obtendo localização...';
+    $('statusGpsBadge').textContent = 'Localizando...'; $('statusGpsBadge').className = 'badge badge-warn';
+
+    const amostras = []; let errG = null;
+    await new Promise(resolve => {
+      let fim = false; const done = () => { if (fim) return; fim = true; try { navigator.geolocation.clearWatch(wid); } catch (_) {} resolve(); };
+      const wid = navigator.geolocation.watchPosition(pos => {
+        const c = pos.coords;
+        amostras.push({ lat: c.latitude, lon: c.longitude, accuracy: c.accuracy, altitude: c.altitude, ts: pos.timestamp || Date.now(), mocked: !!(pos.mocked || c.mocked) });
+        if (amostras.length >= 3) done();
+      }, e => { errG = e; done(); }, { enableHighAccuracy: true, maximumAge: 0, timeout: 10000 });
+      setTimeout(done, 3500);
+    });
+
+    btn.disabled = false; btn.textContent = 'Atualizar Localização';
+    if (!amostras.length) {
+      $('statusGpsBadge').textContent = 'Sem GPS'; $('statusGpsBadge').className = 'badge badge-erro';
+      $('painelResultadoGps').classList.remove('oculto');
+      $('painelResultadoGps').innerHTML = `<div class="alerta-inline erro">Não foi possível obter o GPS (${esc(errG ? errG.message : 'ative a localização')}).</div>`;
+      return;
+    }
+
+    const ult = amostras[amostras.length - 1];
+    // Validacao silenciosa interna (sem poluir tela)
+    let irregular = false;
+    if (amostras.some(a => a.mocked)) irregular = true;
+    if (amostras.length >= 2 && amostras.every(a => a.lat === amostras[0].lat && a.lon === amostras[0].lon) && [0,1,3,5,10].includes(ult.accuracy) && ult.altitude === null) irregular = true;
+    for (let i = 1; i < amostras.length; i++) {
+      const dist = distanciaMetros(amostras[i-1].lat, amostras[i-1].lon, amostras[i].lat, amostras[i].lon);
+      const dtS = Math.max(0.5, (amostras[i].ts - amostras[i-1].ts) / 1000);
+      if (dist > 120 && (dist / dtS) * 3.6 > 160) irregular = true;
+    }
+
+    const distBase = Math.round(distanciaMetros(ult.lat, ult.lon, Number(ESTADO.config.baseLat||-16.0658), Number(ESTADO.config.baseLon||-47.9756)));
+    const raio = Number(ESTADO.config.baseRaioMetros || 500);
+    const resumoDist = distBase < 1000 ? `${distBase}m da Base` : `${(distBase/1000).toFixed(2)} km da Base`;
+    const endereco = await consultarEnderecoReal(ult.lat, ult.lon);
+
+    const status = irregular ? 'IRREGULAR' : (distBase <= raio ? 'OK' : 'FORA_BASE');
+    locAtualPonto = { lat: ult.lat, lon: ult.lon, accuracy: Math.round(ult.accuracy), distBase, resumoDist, endereco, status };
+
+    const stLabel = status === 'OK' ? 'Local OK' : (status === 'FORA_BASE' ? 'Fora da Base' : 'Sinal Irregular');
+    const stCls = status === 'OK' ? 'badge-ok' : (status === 'FORA_BASE' ? 'badge-warn' : 'badge-erro');
+    $('statusGpsBadge').textContent = stLabel; $('statusGpsBadge').className = 'badge ' + stCls;
+    $('painelResultadoGps').classList.remove('oculto');
+    $('painelResultadoGps').innerHTML = `
+      <div><strong>Endereço:</strong> ${esc(endereco)}</div>
+      <div class="subtexto">GPS: ${ult.lat.toFixed(6)}, ${ult.lon.toFixed(6)} (±${Math.round(ult.accuracy)}m) · <strong>${esc(resumoDist)}</strong></div>
+    `;
+  }
+
+  async function confirmarRegistroPonto() {
+    const err = $('msgPontoErro'); err.classList.add('oculto');
+    if (!guardaSelecionadoPonto) { err.textContent = 'Digite seu nº provisório (ex.: 03) ou nome completo e selecione sua identificação.'; err.classList.remove('oculto'); return; }
+    if (!fotoCapturadaDataUrl) { err.textContent = 'Foto ao vivo pela câmera é obrigatória.'; err.classList.remove('oculto'); return; }
+    if (!locAtualPonto) { err.textContent = 'Clique em "Obter Localização Atual" antes de confirmar.'; err.classList.remove('oculto'); return; }
+
+    const ag = guardaSelecionadoPonto;
+    const agoraIso = new Date().toISOString();
+    const dt = new Date(agoraIso), p2 = n => String(n).padStart(2,'0');
+    const dataLocal = `${dt.getFullYear()}-${p2(dt.getMonth()+1)}-${p2(dt.getDate())}`;
+    const horaLocal = `${p2(dt.getHours())}:${p2(dt.getMinutes())}:${p2(dt.getSeconds())}`;
+    const tipo = $('selPontoTipo').value;
+    const prevHash = ESTADO.pontos[0]?.hashIntegridade || 'GENESIS_GCM_V4';
+    const hashIntegridade = window.EscalaCloud.sha256Hex(`${prevHash}|${ag.matricula}|${tipo}|${agoraIso}|${locAtualPonto.lat.toFixed(6)}|${locAtualPonto.lon.toFixed(6)}`);
+
+    const reg = {
+      id: 'pt_' + Date.now().toString(36),
+      agenteId: ag.id, agenteNome: ag.nome, agenteMatricula: ag.matricula, equipe: ag.equipe,
+      tipo, posto: $('inpPontoPosto').value.trim() || 'Base GCM', obs: $('inpPontoObs').value.trim(),
+      timestampIso: agoraIso, dataLocal, horaLocal,
+      foto: fotoCapturadaDataUrl, localizacao: locAtualPonto, hashIntegridade
+    };
+    ESTADO.pontos.unshift(reg);
+    await window.EscalaCloud.salvarEstadoLocal(ESTADO);
+    if (ESTADO.config?.nuvemAtiva && window.EscalaCloud.lerConfigFirebase()) await window.EscalaCloud.enviarPontoIndividualNuvem(reg);
+
+    fotoCapturadaDataUrl = null; locAtualPonto = null;
+    $('imgPreviewFoto').classList.add('oculto'); $('placeholderCamera').classList.remove('oculto');
+    $('statusFoto').textContent = 'Pendente'; $('statusFoto').className = 'badge badge-neutro'; $('btnRefazerFoto').disabled = true;
+    $('statusGpsBadge').textContent = 'Não obtida'; $('statusGpsBadge').className = 'badge badge-neutro'; $('painelResultadoGps').classList.add('oculto');
+    $('inpPontoObs').value = '';
+
+    selecionarGuardaParaPonto(ag);
+    renderFaixaPlantaoHoje(); renderResumoEscaladosHoje(); renderFrequenciaDia(); renderTabelaPontos();
+    toast(`${TIPO_PONTO_LABEL[tipo] || tipo} registrada para Nº ${ag.matricula} (${ag.nomeGuerra})!`);
+  }
+
+  function filtrarPontosHistorico() {
+    const m = $('fltPontoMes').value||'', b = ($('fltPontoBusca').value||'').trim().toLowerCase(), tp = $('fltPontoTipo').value||'', st = $('fltPontoStatus').value||'';
+    return (ESTADO.pontos||[]).filter(p =>
+      (!m || (p.dataLocal||'').startsWith(m)) &&
+      (!tp || p.tipo === tp) &&
+      (!st || (p.localizacao?.status||'') === st) &&
+      (!b || (p.agenteNome||'').toLowerCase().includes(b) || (p.agenteMatricula||'').toLowerCase().includes(b))
+    );
+  }
+
+  function abrirDetalhePonto(id) {
+    const pt = (ESTADO.pontos||[]).find(x => x.id === id); if (!pt) return;
+    const loc = pt.localizacao || {};
+    const stTxt = loc.status === 'OK' ? 'Local Regular' : (loc.status === 'FORA_BASE' ? 'Fora da Base' : 'Sinal Irregular');
+    abrirModal(
+      `Registro — Nº ${pt.agenteMatricula} ${pt.agenteNome}`,
+      `<div style="text-align:center;"><img src="${pt.foto}" style="max-width:100%;border-radius:6px;border:1px solid var(--border);"></div>
+       <div class="box-borda" style="font-size:12px;">
+         <div><strong>Batida:</strong> ${esc(TIPO_PONTO_LABEL[pt.tipo] || pt.tipo)} · ${formatarDataBR(pt.dataLocal)} às ${esc(pt.horaLocal)}</div>
+         <div><strong>Equipe / Posto:</strong> ${esc(pt.equipe)} · ${esc(pt.posto)}</div>
+         <div><strong>Endereço:</strong> ${esc(loc.endereco || '—')}</div>
+         <div><strong>Coordenadas:</strong> ${loc.lat ? loc.lat.toFixed(6) + ', ' + loc.lon.toFixed(6) : '—'} (${esc(loc.resumoDist || '')})</div>
+         <div><strong>Verificação:</strong> ${esc(stTxt)}</div>
+         ${pt.obs ? `<div><strong>Obs.:</strong> ${esc(pt.obs)}</div>` : ''}
+         <div><strong>Protocolo:</strong> <code>${esc((pt.hashIntegridade||'').slice(0,18))}</code></div>
+       </div>`,
+      [
+        ...(isAdmin() ? [{ texto: 'Excluir (Admin)', classe: 'btn-perigo', onClick: async () => {
+          if (!confirm('Excluir registro?')) return;
+          ESTADO.pontos = ESTADO.pontos.filter(x => x.id !== pt.id);
+          await salvarTudo(); fecharModal(); renderFaixaPlantaoHoje(); renderResumoEscaladosHoje(); renderFrequenciaDia(); renderTabelaPontos();
+        }}] : []),
+        { texto: 'Fechar', classe: 'btn-sec', onClick: fecharModal }
+      ]
+    );
+  }
+
+  function renderTabelaPontos() {
+    const lista = filtrarPontosHistorico();
+    if (!lista.length) { $('tbodyPontos').innerHTML = '<tr><td colspan="6" class="subtexto" style="text-align:center;padding:16px;">Nenhuma batida encontrada.</td></tr>'; return; }
+    $('tbodyPontos').innerHTML = lista.map(p => {
+      const st = p.localizacao?.status || 'OK';
+      const cls = st === 'OK' ? 'badge-ok' : (st === 'FORA_BASE' ? 'badge-warn' : 'badge-erro');
+      const txt = st === 'OK' ? 'Regular' : (st === 'FORA_BASE' ? 'Fora da Base' : 'Irregular');
+      return `
+        <tr>
+          <td><img src="${p.foto}" class="foto-thumb" data-ver-ponto="${esc(p.id)}"></td>
+          <td><strong>${formatarDataBR(p.dataLocal)}</strong><div class="subtexto">${esc(p.horaLocal)}</div></td>
+          <td><strong>Nº ${esc(p.agenteMatricula)} — ${esc(p.agenteNome)}</strong><div class="subtexto">${esc(p.equipe)} · ${esc(p.posto)}</div></td>
+          <td><span class="badge badge-neutro">${esc(TIPO_PONTO_LABEL[p.tipo] || p.tipo)}</span></td>
+          <td><div style="max-width:220px;font-size:12px;">${esc(p.localizacao?.endereco || '—')}</div><div class="subtexto">${esc(p.localizacao?.resumoDist || '')}</div></td>
+          <td><span class="badge ${cls}">${esc(txt)}</span></td>
+        </tr>
+      `;
+    }).join('');
+    $('tbodyPontos').querySelectorAll('[data-ver-ponto]').forEach(img => img.addEventListener('click', () => abrirDetalhePonto(img.getAttribute('data-ver-ponto'))));
   }
 
   // =========================================================================
-  // 2. ESCALA 24x72, QUADRO EXPLICATIVO POR PESSOA, EQUIPES, SETORES, ADM
+  // 2. ESCALA CONTINUA 24x72 (AUTOALIMENTADA TODO DIA)
   // =========================================================================
   function renderCalendario24() {
-    const mesVal = $('selMesEscala').value || mesAtualISO();
-    $('selMesEscala').value = mesVal;
+    const modo = $('selModoEscala').value || 'CONTINUO_30';
+    $('wrapMesEscala').classList.toggle('oculto', modo !== 'MES');
+    $('selMesEscala').value = $('selMesEscala').value || mesAtualISO();
     $('inpDataBaseAlfa').value = ESTADO.config.dataBaseAlfa || hojeISO();
     $('inpHorarioTroca').value = ESTADO.config.horarioTroca || '07:00 às 07:00';
-    const [ano, mes] = mesVal.split('-').map(Number);
-    const ult = new Date(ano, mes, 0).getDate();
+
+    const { titulo, datas } = gerarListaDatasEscala();
     const hoje = hojeISO();
-    const rows = [];
-    for (let d = 1; d <= ult; d++) {
-      const iso = `${ano}-${String(mes).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
-      const dt = new Date(ano, mes - 1, d);
-      const c = calcularCiclo24x72(iso);
-      const ehHoje = iso === hoje;
-      const cel = (eq) => c.mapa[eq].codigo === 'SERVICO' ? `<span class="pill-eq eq-${eq}">SERVIÇO 24h</span>` : `<span class="subtexto">${c.mapa[eq].rotulo}</span>`;
-      rows.push(`
+    $('boxResumoEscalaContinua').innerHTML = `<strong>Escala Ativa:</strong> ${esc(titulo)} · Ciclo contínuo 24h de serviço × 72h de descanso (todo dia que passa acrescenta automaticamente um novo dia na frente).`;
+
+    $('tbodyCalendario24').innerHTML = datas.map(iso => {
+      const c = calcularCiclo24x72(iso), dow = diaSemanaISO(iso), ehHoje = iso === hoje;
+      const cel = (eq) => c.mapa[eq].codigo === 'SERVICO' ? `<span class="insig eq-${eq}">SERVIÇO 24h</span>` : `<span class="subtexto">${c.mapa[eq].rotulo}</span>`;
+      return `
         <tr class="${ehHoje ? 'linha-hoje' : ''}">
-          <td><strong>${String(d).padStart(2,'0')}/${String(mes).padStart(2,'0')}</strong> ${ehHoje ? '<span class="badge badge-invertido">HOJE</span>' : ''}</td>
-          <td>${DIAS_SEMANA[dt.getDay()]}</td>
-          <td><span class="pill-eq eq-${c.equipeServico}">EQUIPE ${c.equipeServico}</span></td>
+          <td><strong>${formatarDataBR(iso)}</strong> ${ehHoje ? '<span class="badge badge-invertido">HOJE</span>' : ''}</td>
+          <td>${DIAS_SEMANA[dow]}</td>
+          <td><span class="insig eq-${c.equipeServico}">EQUIPE ${c.equipeServico}</span></td>
           <td>${cel('ALFA')}</td><td>${cel('BRAVO')}</td><td>${cel('CHARLIE')}</td><td>${cel('DELTA')}</td>
-          <td><button type="button" class="btn btn-sec btn-sm" data-abrir-cp="${iso}">Cartão</button></td>
+          <td>
+            <button type="button" class="btn btn-sec btn-sm" data-ir-freq="${iso}">Ponto</button>
+            <button type="button" class="btn btn-sec btn-sm" data-abrir-cp="${iso}">Cartão</button>
+          </td>
         </tr>
-      `);
-    }
-    $('tbodyCalendario24').innerHTML = rows.join('');
-    $('tbodyCalendario24').querySelectorAll('[data-abrir-cp]').forEach(b => b.addEventListener('click', () => {
-      abrirAba('secCartao'); $('inpCartaoData').value = b.getAttribute('data-abrir-cp'); sincronizarDataCartao();
+      `;
+    }).join('');
+
+    $('tbodyCalendario24').querySelectorAll('[data-abrir-cp]').forEach(b => b.addEventListener('click', () => { abrirAba('secCartao'); $('inpCartaoData').value = b.getAttribute('data-abrir-cp'); sincronizarDataCartao(); }));
+    $('tbodyCalendario24').querySelectorAll('[data-ir-freq]').forEach(b => b.addEventListener('click', () => {
+      const dt = b.getAttribute('data-ir-freq');
+      abrirAba('secPonto');
+      ativarSubtab('secPonto', 'subPtFrequencia');
+      $('inpFreqData').value = dt;
+      renderFrequenciaDia();
     }));
   }
 
   function renderQuadroPessoas() {
-    const mesVal = $('selMesEscala').value || mesAtualISO();
-    const fltEq = $('fltQpEquipe').value || '';
-    const busca = ($('fltQpBusca').value || '').trim().toLowerCase();
-    const ordemEq = { ALFA: 1, BRAVO: 2, CHARLIE: 3, DELTA: 4, ADM: 5, '12X36': 6 };
-
-    const lista = ESTADO.efetivo
-      .filter(a => a.situacao === 'ATIVO')
-      .filter(a => !fltEq || a.equipe === fltEq)
-      .filter(a => !busca || a.nome.toLowerCase().includes(busca) || (a.qra||'').toLowerCase().includes(busca) || a.matricula.toLowerCase().includes(busca))
-      .sort((a, b) => (ordemEq[a.equipe] || 9) - (ordemEq[b.equipe] || 9) || a.matricula.localeCompare(b.matricula));
-
+    const fltEq = $('fltQpEquipe').value || '', busca = ($('fltQpBusca').value || '').trim().toLowerCase();
+    const ordem = { ALFA: 1, BRAVO: 2, CHARLIE: 3, DELTA: 4, ADM: 5, '12X36': 6 };
+    const lista = ESTADO.efetivo.filter(a => a.situacao === 'ATIVO' && (!fltEq || a.equipe === fltEq) && (!busca || a.nome.toLowerCase().includes(busca) || a.matricula.toLowerCase().includes(busca)))
+      .sort((a,b) => (ordem[a.equipe]||9) - (ordem[b.equipe]||9) || Number(a.matricula) - Number(b.matricula));
     $('tbodyQuadroPessoas').innerHTML = lista.map(a => {
-      const infoSetor = descobrirSetorDoAgente(a);
-      const dias = diasServicoNoMes(a.equipe, mesVal);
-      return `
-        <tr>
-          <td><strong>${esc(a.matricula)}</strong></td>
-          <td><strong>${esc(a.nome)}</strong><div class="subtexto">QRA: ${esc(a.qra || '—')}</div></td>
-          <td><span class="pill-eq eq-${esc(a.equipe)}">${esc(a.equipe)}</span></td>
-          <td><span class="pill-setor" style="background:${esc(infoSetor.cor)};">${esc(infoSetor.nome)}</span></td>
-          <td>${esc(infoSetor.funcao)}</td>
-          <td><strong>${esc(dias)}</strong></td>
-        </tr>
-      `;
+      const inf = descobrirSetorDoAgente(a);
+      return `<tr><td><strong>${esc(a.matricula)}</strong></td><td><strong>${esc(a.nome)}</strong></td><td><span class="insig eq-${esc(a.equipe)}">${esc(a.equipe)}</span></td><td>${esc(inf.nome)}</td><td>${esc(inf.funcao)}</td><td><strong>${esc(proximosDiasServico(a.equipe, 30))}</strong></td></tr>`;
     }).join('');
   }
 
@@ -559,25 +998,15 @@
     const mont = ESTADO.equipesMontagem[eq] || {};
     const daEq = ESTADO.efetivo.filter(a => a.situacao === 'ATIVO' && a.equipe === eq);
     const outros = ESTADO.efetivo.filter(a => a.situacao === 'ATIVO' && a.equipe !== eq);
-    const opts = (sel) => {
-      let h = '<option value="">— Vago —</option>';
-      h += `<optgroup label="Efetivo Equipe ${eq} (${daEq.length})">`;
-      daEq.forEach(a => { h += `<option value="${esc(a.id)}" ${a.id === sel ? 'selected' : ''}>${esc(a.qra)} (${esc(a.matricula)})</option>`; });
-      h += '</optgroup><optgroup label="Outros (Permuta / Apoio)">';
-      outros.forEach(a => { h += `<option value="${esc(a.id)}" ${a.id === sel ? 'selected' : ''}>[${esc(a.equipe)}] ${esc(a.qra)} (${esc(a.matricula)})</option>`; });
-      return h + '</optgroup>';
-    };
+    const opts = (sel) => '<option value="">— Vago —</option><optgroup label="Equipe ' + eq + '">' + daEq.map(a => `<option value="${esc(a.id)}" ${a.id===sel?'selected':''}>[${esc(a.matricula)}] ${esc(a.nomeGuerra)}</option>`).join('') + '</optgroup><optgroup label="Outros">' + outros.map(a => `<option value="${esc(a.id)}" ${a.id===sel?'selected':''}>[${esc(a.equipe)} · ${esc(a.matricula)}] ${esc(a.nomeGuerra)}</option>`).join('') + '</optgroup>';
     const desab = podeEditarEscala() ? '' : 'disabled';
     $('gridPostosEquipe').innerHTML = ESTADO.postos.map(p => {
-      const g = mont[p.id] || { g01: '', g02: '', g03: '' };
+      const g = mont[p.id] || { g01:'', g02:'', g03:'' };
       return `
-        <div class="posto-card" data-posto-id="${esc(p.id)}" style="border-left-color:${esc(p.cor || '#27272A')};">
+        <div class="posto-card" data-posto-id="${esc(p.id)}" style="border-left-color:${esc(p.cor || '#18181B')};">
           <div class="card-cab">
             <div><strong>${esc(p.nome)}</strong><div class="subtexto">Resp.: ${esc(p.responsavel || 'A definir')} · ${esc(p.bairros)}</div></div>
-            <div class="acoes-linha">
-              <span class="pill-setor" style="background:${esc(p.cor || '#27272A')};">${esc(p.setor)}</span>
-              ${podeEditarEscala() ? `<button type="button" class="btn btn-sec btn-sm" data-rem-posto="${esc(p.id)}">Remover</button>` : ''}
-            </div>
+            ${podeEditarEscala() ? `<button type="button" class="btn btn-sec btn-sm" data-rem-posto="${esc(p.id)}">Remover</button>` : ''}
           </div>
           <div class="campo"><label>01 — Comandante</label><select class="sel-g01" ${desab}>${opts(g.g01)}</select></div>
           <div class="campo"><label>02 — Motorista</label><select class="sel-g02" ${desab}>${opts(g.g02)}</select></div>
@@ -586,8 +1015,7 @@
       `;
     }).join('');
     $('gridPostosEquipe').querySelectorAll('[data-rem-posto]').forEach(btn => btn.addEventListener('click', async () => {
-      const pid = btn.getAttribute('data-rem-posto');
-      if (!confirm(`Remover setor ${pid}?`)) return;
+      const pid = btn.getAttribute('data-rem-posto'); if (!confirm(`Remover setor ${pid}?`)) return;
       ESTADO.postos = ESTADO.postos.filter(x => x.id !== pid);
       EQUIPES.forEach(e => { if (ESTADO.equipesMontagem[e]) delete ESTADO.equipesMontagem[e][pid]; });
       await salvarTudo(); atualizarTodasVistas();
@@ -602,8 +1030,7 @@
       const pid = card.getAttribute('data-posto-id');
       ['.sel-g01','.sel-g02','.sel-g03'].forEach(cls => {
         const val = card.querySelector(cls)?.value; if (!val) return;
-        if (vistos.has(val)) dups.push(`${nomeAgentePorId(val)} (${vistos.get(val)} e ${pid})`);
-        else vistos.set(val, pid);
+        if (vistos.has(val)) dups.push(`${nomeAgentePorId(val)} (${vistos.get(val)} e ${pid})`); else vistos.set(val, pid);
       });
     });
     const box = $('alertaConflitoEquipe');
@@ -615,54 +1042,36 @@
   async function salvarMontagemEquipeAtual() {
     if (!podeEditarEscala()) return toast('Sem permissão.');
     if (!verificarConflitosEquipeUI() && !confirm('Há conflito na mesma equipe. Salvar mesmo assim?')) return;
-    const eq = $('selEquipeMontagem').value;
-    ESTADO.equipesMontagem[eq] = ESTADO.equipesMontagem[eq] || {};
+    const eq = $('selEquipeMontagem').value; ESTADO.equipesMontagem[eq] = ESTADO.equipesMontagem[eq] || {};
     $('gridPostosEquipe').querySelectorAll('.posto-card').forEach(card => {
-      ESTADO.equipesMontagem[eq][card.getAttribute('data-posto-id')] = {
-        g01: card.querySelector('.sel-g01').value, g02: card.querySelector('.sel-g02').value, g03: card.querySelector('.sel-g03').value
-      };
+      ESTADO.equipesMontagem[eq][card.getAttribute('data-posto-id')] = { g01: card.querySelector('.sel-g01').value, g02: card.querySelector('.sel-g02').value, g03: card.querySelector('.sel-g03').value };
     });
-    await salvarTudo(); renderPainel(); renderQuadroPessoas();
+    await salvarTudo(); renderQuadroPessoas(); renderResumoEscaladosHoje();
   }
 
   function autoDistribuirEquipeAtual() {
     if (!podeEditarEscala()) return toast('Sem permissão.');
-    const eq = $('selEquipeMontagem').value;
-    const livres = ESTADO.efetivo.filter(a => a.situacao === 'ATIVO' && a.equipe === eq);
-    const usados = new Set();
-    const pegar = (area, prefFem) => {
-      let f = prefFem ? livres.find(a => a.sexo === 'F' && !usados.has(a.id)) : null;
-      if (!f) f = livres.find(a => a.area === area && !usados.has(a.id)) || livres.find(a => !usados.has(a.id));
-      if (f) usados.add(f.id);
-      return f ? f.id : '';
-    };
+    const eq = $('selEquipeMontagem').value, livres = ESTADO.efetivo.filter(a => a.situacao === 'ATIVO' && a.equipe === eq), usados = new Set();
+    const pegar = (area, pf) => { let f = pf ? livres.find(a => a.sexo==='F' && !usados.has(a.id)) : null; if (!f) f = livres.find(a => a.area===area && !usados.has(a.id)) || livres.find(a => !usados.has(a.id)); if (f) usados.add(f.id); return f ? f.id : ''; };
     ESTADO.equipesMontagem[eq] = {};
-    [...ESTADO.postos].sort((a,b) => a.area === 'MARIA_DA_PENHA' ? -1 : 1).forEach(p => {
-      const pf = p.area === 'MARIA_DA_PENHA';
-      ESTADO.equipesMontagem[eq][p.id] = { g01: pegar(p.area, pf), g02: p.area === 'CCO' ? '' : pegar(p.area, pf), g03: '' };
-    });
-    ESTADO.postos.filter(p => p.area === 'PATRULHAMENTO').forEach(p => {
-      const s = livres.find(a => !usados.has(a.id));
-      if (s) { usados.add(s.id); ESTADO.equipesMontagem[eq][p.id].g03 = s.id; }
-    });
-    renderMontagemEquipe();
-    toast(`Equipe ${eq} preenchida! Clique em Salvar Composição.`);
+    [...ESTADO.postos].sort((a,b) => a.area==='MARIA_DA_PENHA' ? -1 : 1).forEach(p => { const pf = p.area==='MARIA_DA_PENHA'; ESTADO.equipesMontagem[eq][p.id] = { g01: pegar(p.area, pf), g02: p.area==='CCO'?'':pegar(p.area, pf), g03: '' }; });
+    ESTADO.postos.filter(p => p.area==='PATRULHAMENTO').forEach(p => { const s = livres.find(a => !usados.has(a.id)); if (s) { usados.add(s.id); ESTADO.equipesMontagem[eq][p.id].g03 = s.id; } });
+    renderMontagemEquipe(); toast(`Equipe ${eq} preenchida! Clique em Salvar Composição.`);
   }
 
   function renderSetoresResponsaveis() {
     const desab = podeEditarEscala() ? '' : 'disabled';
-    const dl = `<datalist id="dlEfetivoResp">${ESTADO.efetivo.map(a => `<option value="${esc(a.nome)} (${esc(a.matricula)})">`).join('')}</datalist>`;
+    const dl = `<datalist id="dlEfetivoResp">${ESTADO.efetivo.map(a => `<option value="[${esc(a.matricula)}] ${esc(a.nome)}">`).join('')}</datalist>`;
     $('listaSetoresResp').innerHTML = dl + ESTADO.postos.map((p, idx) => `
-      <div class="posto-card" data-setor-idx="${idx}" style="border-left-color:${esc(p.cor || '#27272A')};">
-        <div class="grid-4">
+      <div class="posto-card" data-setor-idx="${idx}" style="border-left-color:${esc(p.cor || '#18181B')};">
+        <div class="grid-3">
           <div class="campo"><label>Prefixo</label><input type="text" class="st-prefixo" value="${esc(p.prefixo || p.id)}" ${desab}></div>
-          <div class="campo"><label>Nome do Setor / Posto</label><input type="text" class="st-nome" value="${esc(p.nome)}" ${desab}></div>
+          <div class="campo"><label>Nome do Setor</label><input type="text" class="st-nome" value="${esc(p.nome)}" ${desab}></div>
           <div class="campo"><label>Responsável pelo Setor</label><input type="text" list="dlEfetivoResp" class="st-resp" value="${esc(p.responsavel || '')}" ${desab}></div>
-          <div class="campo"><label>Cor do Setor (Tela e PDF)</label><input type="color" class="st-cor" value="${esc(p.cor || '#166534')}" ${desab}></div>
         </div>
         <div class="grid-3">
           <div class="campo"><label>Rótulo Curto</label><input type="text" class="st-setor" value="${esc(p.setor || '')}" ${desab}></div>
-          <div class="campo"><label>Área</label><select class="st-area" ${desab}>${Object.entries(AREAS_LABEL).map(([k,v]) => `<option value="${k}" ${p.area === k ? 'selected' : ''}>${v}</option>`).join('')}</select></div>
+          <div class="campo"><label>Área</label><select class="st-area" ${desab}>${Object.entries(AREAS_LABEL).map(([k,v]) => `<option value="${k}" ${p.area===k?'selected':''}>${v}</option>`).join('')}</select></div>
           <div class="campo"><label>Bairros / Cobertura</label><input type="text" class="st-bairros" value="${esc(p.bairros || '')}" ${desab}></div>
         </div>
       </div>
@@ -676,7 +1085,6 @@
       p.prefixo = card.querySelector('.st-prefixo').value.trim() || p.id;
       p.nome = card.querySelector('.st-nome').value.trim() || p.nome;
       p.responsavel = card.querySelector('.st-resp').value.trim();
-      p.cor = card.querySelector('.st-cor').value || '#27272A';
       p.setor = card.querySelector('.st-setor').value.trim() || p.setor;
       p.area = card.querySelector('.st-area').value;
       p.bairros = card.querySelector('.st-bairros').value.trim();
@@ -688,22 +1096,17 @@
   function abrirModalNovoPosto() {
     if (!podeEditarEscala()) return toast('Sem permissão.');
     abrirModal('Novo Setor / Viatura',
-      `<div class="grid-3">
-         <div class="campo"><label>Prefixo</label><input type="text" id="mPosId" placeholder="VTR-05"></div>
-         <div class="campo"><label>Área</label><select id="mPosArea">${Object.entries(AREAS_LABEL).map(([k,v]) => `<option value="${k}">${v}</option>`).join('')}</select></div>
-         <div class="campo"><label>Cor do Setor</label><input type="color" id="mPosCor" value="#0F766E"></div>
-       </div>
-       <div class="campo"><label>Nome do Posto / Setor</label><input type="text" id="mPosNome" placeholder="VTR-05 — Setor 05"></div>
-       <div class="campo"><label>Responsável pelo Setor</label><input type="text" id="mPosResp" placeholder="Nome do responsável"></div>
-       <div class="campo"><label>Bairros / Cobertura</label><input type="text" id="mPosBairros" placeholder="Bairros de Valparaíso-GO"></div>`,
+      `<div class="grid-2"><div class="campo"><label>Prefixo</label><input type="text" id="mPosId" placeholder="VTR-05"></div><div class="campo"><label>Área</label><select id="mPosArea">${Object.entries(AREAS_LABEL).map(([k,v]) => `<option value="${k}">${v}</option>`).join('')}</select></div></div>
+       <div class="campo"><label>Nome do Setor</label><input type="text" id="mPosNome" placeholder="VTR-05 — Setor 05"></div>
+       <div class="campo"><label>Responsável pelo Setor</label><input type="text" id="mPosResp" placeholder="A definir"></div>
+       <div class="campo"><label>Bairros / Cobertura</label><input type="text" id="mPosBairros" placeholder="Valparaíso de Goiás"></div>`,
       [
         { texto: 'Cancelar', classe: 'btn-sec', onClick: fecharModal },
         { texto: 'Adicionar', classe: 'btn-primario', onClick: async () => {
-          const id = ($('mPosId').value || '').trim().toUpperCase().replace(/\s+/g, '-');
-          const nome = ($('mPosNome').value || '').trim();
+          const id = ($('mPosId').value||'').trim().toUpperCase().replace(/\s+/g,'-'), nome = ($('mPosNome').value||'').trim();
           if (!id || !nome) return toast('Informe prefixo e nome.');
-          if (ESTADO.postos.some(x => x.id === id)) return toast('Prefixo já existe.');
-          const novo = { id, nome, area: $('mPosArea').value, setor: nome, bairros: $('mPosBairros').value.trim() || 'Valparaíso de Goiás', prefixo: id, cor: $('mPosCor').value || '#0F766E', responsavel: $('mPosResp').value.trim() || 'A definir' };
+          if (ESTADO.postos.some(x => x.id === id)) return toast('Já existe.');
+          const novo = { id, nome, area: $('mPosArea').value, setor: nome, bairros: $('mPosBairros').value.trim() || 'Valparaíso de Goiás', prefixo: id, cor: '#3F3F46', responsavel: $('mPosResp').value.trim() || 'A definir', poligono: POLIGONOS_PADRAO['MUNICIPIO'] };
           ESTADO.postos.push(novo); ESTADO.cartoesModelo[id] = criarModeloCartaoPadrao(novo);
           await salvarTudo(); fecharModal(); atualizarTodasVistas();
         }}
@@ -715,11 +1118,11 @@
     const desab = podeEditarEscala() ? '' : 'disabled';
     $('listaCargosAdm').innerHTML = (ESTADO.administrativo || []).map((c, idx) => `
       <div class="linha-editavel" data-adm-idx="${idx}">
-        <div class="campo"><label>Cargo / Autoridade</label><input type="text" class="adm-cargo" value="${esc(c.cargo)}" ${desab}></div>
-        <div class="campo"><label>Titular (Provisório / Editar)</label><input type="text" class="adm-titular" value="${esc(c.titular)}" ${desab}></div>
+        <div class="campo"><label>Cargo</label><input type="text" class="adm-cargo" value="${esc(c.cargo)}" ${desab}></div>
+        <div class="campo"><label>Titular</label><input type="text" class="adm-titular" value="${esc(c.titular)}" ${desab}></div>
         ${podeEditarEscala() ? `<button type="button" class="btn btn-sec btn-sm" data-del-adm="${idx}">X</button>` : ''}
-        <div class="campo"><label>Horário</label><input type="text" class="adm-horario" value="${esc(c.horario || 'Seg–Sex · 08h às 17h')}" ${desab}></div>
-        <div class="campo"><label>Observação</label><input type="text" class="adm-obs" value="${esc(c.obs || '')}" ${desab}></div>
+        <div class="campo"><label>Horário</label><input type="text" class="adm-horario" value="${esc(c.horario||'Seg–Sex · 08h às 17h')}" ${desab}></div>
+        <div class="campo"><label>Obs.</label><input type="text" class="adm-obs" value="${esc(c.obs||'')}" ${desab}></div>
       </div>
     `).join('');
     $('listaCargosAdm').querySelectorAll('[data-del-adm]').forEach(b => b.addEventListener('click', () => { ESTADO.administrativo.splice(Number(b.getAttribute('data-del-adm')), 1); renderAdmE12x36(); }));
@@ -729,8 +1132,8 @@
         <div class="campo"><label>Posto 12x36</label><input type="text" class="e12-posto" value="${esc(e.posto)}" ${desab}></div>
         <div class="campo"><label>Turno</label><input type="text" class="e12-turno" value="${esc(e.turno)}" ${desab}></div>
         ${podeEditarEscala() ? `<button type="button" class="btn btn-sec btn-sm" data-del-e12="${idx}">X</button>` : ''}
-        <div class="campo"><label>Turma A</label><input type="text" class="e12-a" value="${esc(e.equipeA || '')}" ${desab}></div>
-        <div class="campo"><label>Turma B</label><input type="text" class="e12-b" value="${esc(e.equipeB || '')}" ${desab}></div>
+        <div class="campo"><label>Turma A</label><input type="text" class="e12-a" value="${esc(e.equipeA||'')}" ${desab}></div>
+        <div class="campo"><label>Turma B</label><input type="text" class="e12-b" value="${esc(e.equipeB||'')}" ${desab}></div>
       </div>
     `).join('');
     $('listaPostos12x36').querySelectorAll('[data-del-e12]').forEach(b => b.addEventListener('click', () => { ESTADO.escala12x36.splice(Number(b.getAttribute('data-del-e12')), 1); renderAdmE12x36(); }));
@@ -743,8 +1146,95 @@
   }
 
   // =========================================================================
-  // 3. CARTAO PROGRAMA
+  // 3. CARTAO PROGRAMA + MAPA INTERATIVO DOS SETORES (LEAFLET + CROQUI SVG)
   // =========================================================================
+  function iniciarMapaSetorSePreciso() {
+    if (mapaSetor || typeof L === 'undefined') return;
+    const container = $('mapaSetorCanvas');
+    if (!container) return;
+    mapaSetor = L.map(container, { zoomControl: true }).setView([-16.0650, -47.9790], 13);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19,
+      attribution: '&copy; OpenStreetMap'
+    }).addTo(mapaSetor);
+    camadaPoligonos = L.layerGroup().addTo(mapaSetor);
+    camadaPbs = L.layerGroup().addTo(mapaSetor);
+
+    mapaSetor.on('click', (e) => {
+      if (!modoMarcarPbMapa) return;
+      const lat = Number(e.latlng.lat.toFixed(5));
+      const lon = Number(e.latlng.lng.toFixed(5));
+      const cur = lerCartaoDoEditor();
+      const proxNum = cur.pontosBase.length + 1;
+      cur.pontosBase.push({
+        hora: '00:00 - 00:00',
+        local: `PB ${proxNum} — Ponto marcado no mapa`,
+        atividade: 'Descreva o que a guarnição deve fazer neste ponto...',
+        lat, lon
+      });
+      renderLinhasPb(cur.pontosBase);
+      modoMarcarPbMapa = false;
+      $('avisoCliqueMapa').classList.add('oculto');
+      $('btnModoMarcarPb').textContent = '+ Marcar PB clicando no Mapa';
+      atualizarDesenhoMapaSetor();
+      toast(`PB ${proxNum} marcado em (${lat}, ${lon}). Preencha o nome/horário e clique em Salvar.`);
+    });
+  }
+
+  function atualizarDesenhoMapaSetor() {
+    if (!mapaSetor || !camadaPoligonos || !camadaPbs) return;
+    camadaPoligonos.clearLayers();
+    camadaPbs.clearLayers();
+
+    const pid = $('selCartaoPosto').value || ESTADO.postos[0]?.id;
+    const postoAtual = ESTADO.postos.find(p => p.id === pid);
+    const mostrarTodos = $('chkMostrarTodosSetores')?.checked;
+
+    const listaDesenho = mostrarTodos ? ESTADO.postos.filter(p => p.id.startsWith('VTR-')) : (postoAtual ? [postoAtual] : []);
+    let boundsAlvo = null;
+
+    listaDesenho.forEach(p => {
+      const poly = p.poligono || POLIGONOS_PADRAO[p.id] || POLIGONOS_PADRAO['MUNICIPIO'];
+      if (!poly || !poly.length) return;
+      const ehAtual = p.id === pid;
+      const layer = L.polygon(poly, {
+        color: p.cor || '#18181B',
+        weight: ehAtual ? 3 : 1.5,
+        fillColor: p.cor || '#18181B',
+        fillOpacity: ehAtual ? 0.16 : 0.05,
+        dashArray: ehAtual ? null : '5,5'
+      }).addTo(camadaPoligonos);
+      layer.bindTooltip(`${p.prefixo} — ${p.setor} (${p.bairros})`, { sticky: true });
+      if (ehAtual) boundsAlvo = layer.getBounds();
+    });
+
+    // Desenha os PBs do cartao atual como pinos numerados (1, 2, 3...)
+    const cpAtual = lerCartaoDoEditor();
+    (cpAtual.pontosBase || []).forEach((pb, i) => {
+      if (typeof pb.lat !== 'number' || typeof pb.lon !== 'number' || isNaN(pb.lat) || isNaN(pb.lon)) return;
+      const icon = L.divIcon({ className: 'pb-pin-icon', html: String(i + 1), iconSize: [26, 26], iconAnchor: [13, 13] });
+      const mk = L.marker([pb.lat, pb.lon], { icon, draggable: podeEditarEscala() }).addTo(camadaPbs);
+      mk.bindPopup(`<strong>PB ${i + 1} (${esc(pb.hora)})</strong><br>${esc(pb.local)}<br><small>${esc(pb.atividade)}</small>`);
+      mk.on('dragend', () => {
+        const pos = mk.getLatLng();
+        const trs = $('tbodyPontosBase').querySelectorAll('tr');
+        if (trs[i]) {
+          const inpCoord = trs[i].querySelector('.pb-gps');
+          if (inpCoord) inpCoord.value = `${pos.lat.toFixed(5)}, ${pos.lng.toFixed(5)}`;
+        }
+        toast(`PB ${i + 1} movido! Clique em Salvar para gravar.`);
+      });
+    });
+
+    if (postoAtual) {
+      $('tituloMapaSetor').textContent = `Mapa do ${postoAtual.setor} (${postoAtual.prefixo}) — Valparaíso de Goiás`;
+      $('subMapaSetor').textContent = `Bairros: ${postoAtual.bairros} · Arraste os pinos numerados ou clique em "+ Marcar PB" para ajustar.`;
+    }
+    if (boundsAlvo && boundsAlvo.isValid()) {
+      mapaSetor.fitBounds(boundsAlvo, { padding: [24, 24], maxZoom: 15 });
+    }
+  }
+
   function popularSelectsCartao() {
     const sel = $('selCartaoPosto'), cur = sel.value;
     sel.innerHTML = ESTADO.postos.map(p => `<option value="${esc(p.id)}">${esc(p.nome)}</option>`).join('');
@@ -774,36 +1264,77 @@
     const pid = $('selCartaoPosto').value || ESTADO.postos[0]?.id;
     const posto = ESTADO.postos.find(p => p.id === pid); if (!posto) return;
     const cp = obterDadosCartao(d, eq, pid);
-    $('tituloEditorCartao').textContent = `Cartão Programa — ${posto.nome} (${formatarDataBR(d)} · Equipe ${eq})`;
-    $('badgeAreaCartao').textContent = posto.setor;
-    $('badgeAreaCartao').style.background = posto.cor || '#27272A';
-    $('badgeAreaCartao').style.color = '#FFFFFF';
+    $('tituloEditorCartao').textContent = `Roteiro Operacional — ${posto.prefixo} (${posto.setor})`;
+    $('badgeAreaCartao').textContent = `EQUIPE ${eq} · ${formatarDataBR(d)}`;
     $('inpCpSetor').value = cp.setor || ''; $('inpCpPrefixo').value = cp.prefixo || '';
     $('inpCpRespSetor').value = cp.responsavel || ''; $('inpCpBairros').value = cp.bairros || '';
     $('inpCpG01').value = cp.g01 || ''; $('inpCpG02').value = cp.g02 || ''; $('inpCpG03').value = cp.g03 || '';
     $('inpCpMissao').value = cp.missao || ''; $('inpCpObs').value = cp.obs || '';
     renderLinhasPb(cp.pontosBase || []);
+    setTimeout(() => { iniciarMapaSetorSePreciso(); if (mapaSetor) { mapaSetor.invalidateSize(); atualizarDesenhoMapaSetor(); } }, 80);
   }
   function renderLinhasPb(lista) {
     const desab = podeEditarEscala() ? '' : 'disabled';
-    $('tbodyPontosBase').innerHTML = (lista || []).map((it, i) => `
-      <tr>
-        <td><input type="text" class="pb-hora" value="${esc(it.hora||'')}" ${desab}></td>
-        <td><input type="text" class="pb-local" value="${esc(it.local||'')}" ${desab}></td>
-        <td><input type="text" class="pb-ativ" value="${esc(it.atividade||'')}" ${desab}></td>
-        <td>${podeEditarEscala() ? `<button type="button" class="btn btn-sec btn-sm" data-del-pb="${i}">X</button>` : ''}</td>
-      </tr>
-    `).join('');
-    $('tbodyPontosBase').querySelectorAll('[data-del-pb]').forEach(b => b.addEventListener('click', () => b.closest('tr').remove()));
+    $('tbodyPontosBase').innerHTML = (lista || []).map((it, i) => {
+      const gpsStr = (typeof it.lat === 'number' && typeof it.lon === 'number') ? `${it.lat.toFixed(5)}, ${it.lon.toFixed(5)}` : '';
+      return `
+        <tr>
+          <td><strong>PB ${i + 1}</strong></td>
+          <td><input type="text" class="pb-hora" value="${esc(it.hora||'')}" ${desab}></td>
+          <td><input type="text" class="pb-local" value="${esc(it.local||'')}" ${desab}></td>
+          <td><input type="text" class="pb-ativ" value="${esc(it.atividade||'')}" ${desab}></td>
+          <td><input type="text" class="pb-gps" value="${esc(gpsStr)}" placeholder="-16.07, -47.98" ${desab}></td>
+          <td>${podeEditarEscala() ? `<button type="button" class="btn btn-sec btn-sm" data-del-pb="${i}">X</button>` : ''}</td>
+        </tr>
+      `;
+    }).join('');
+    $('tbodyPontosBase').querySelectorAll('[data-del-pb]').forEach(b => b.addEventListener('click', () => { b.closest('tr').remove(); atualizarDesenhoMapaSetor(); }));
   }
   function lerCartaoDoEditor() {
     const pontosBase = [];
     $('tbodyPontosBase').querySelectorAll('tr').forEach(tr => {
-      const hora = tr.querySelector('.pb-hora')?.value.trim() || '', local = tr.querySelector('.pb-local')?.value.trim() || '', atividade = tr.querySelector('.pb-ativ')?.value.trim() || '';
-      if (hora || local || atividade) pontosBase.push({ hora, local, atividade });
+      const hora = tr.querySelector('.pb-hora')?.value.trim() || '';
+      const local = tr.querySelector('.pb-local')?.value.trim() || '';
+      const atividade = tr.querySelector('.pb-ativ')?.value.trim() || '';
+      const gpsRaw = (tr.querySelector('.pb-gps')?.value || '').split(',').map(x => Number(x.trim()));
+      const lat = (gpsRaw.length === 2 && !isNaN(gpsRaw[0])) ? gpsRaw[0] : null;
+      const lon = (gpsRaw.length === 2 && !isNaN(gpsRaw[1])) ? gpsRaw[1] : null;
+      if (hora || local || atividade) pontosBase.push({ hora, local, atividade, lat, lon });
     });
     return { setor: $('inpCpSetor').value.trim(), prefixo: $('inpCpPrefixo').value.trim(), responsavel: $('inpCpRespSetor').value.trim(), bairros: $('inpCpBairros').value.trim(), g01: $('inpCpG01').value.trim(), g02: $('inpCpG02').value.trim(), g03: $('inpCpG03').value.trim(), missao: $('inpCpMissao').value.trim(), pontosBase, obs: $('inpCpObs').value.trim() };
   }
+
+  // Gera croqui vetorial SVG georreferenciado do Setor + PBs numerados para embutir no PDF (funciona 100% offline)
+  function gerarCroquiSvgSetor(posto, pontosBase) {
+    const poly = posto.poligono || POLIGONOS_PADRAO[posto.id] || POLIGONOS_PADRAO['MUNICIPIO'];
+    const todosPts = [...poly];
+    (pontosBase || []).forEach(pb => { if (typeof pb.lat === 'number' && typeof pb.lon === 'number') todosPts.push([pb.lat, pb.lon]); });
+    const lats = todosPts.map(p => p[0]), lons = todosPts.map(p => p[1]);
+    const minLat = Math.min(...lats) - 0.0022, maxLat = Math.max(...lats) + 0.0022;
+    const minLon = Math.min(...lons) - 0.0025, maxLon = Math.max(...lons) + 0.0025;
+    const W = 250, H = 155, pad = 16;
+    const x = (lon) => pad + ((lon - minLon) / Math.max(0.0001, maxLon - minLon)) * (W - pad * 2);
+    const y = (lat) => pad + ((maxLat - lat) / Math.max(0.0001, maxLat - minLat)) * (H - pad * 2);
+
+    const ptsStr = poly.map(p => `${x(p[1]).toFixed(1)},${y(p[0]).toFixed(1)}`).join(' ');
+    const pinos = (pontosBase || []).map((pb, i) => {
+      if (typeof pb.lat !== 'number' || typeof pb.lon !== 'number') return '';
+      const cx = x(pb.lon).toFixed(1), cy = y(pb.lat).toFixed(1);
+      return `<circle cx="${cx}" cy="${cy}" r="8" fill="#141414" stroke="#FFFFFF" stroke-width="1.5"/><text x="${cx}" y="${(Number(cy)+3).toFixed(1)}" text-anchor="middle" fill="#FFFFFF" font-size="8.5" font-weight="bold" font-family="Arial">${i+1}</text>`;
+    }).join('');
+
+    return `
+      <svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" style="border:1px solid #333;background:#F7F7F5;display:block;">
+        <line x1="0" y1="${H/2}" x2="${W}" y2="${H/2}" stroke="#E0E0DC" stroke-dasharray="3,3"/>
+        <line x1="${W/2}" y1="0" x2="${W/2}" y2="${H}" stroke="#E0E0DC" stroke-dasharray="3,3"/>
+        <polygon points="${ptsStr}" fill="${esc(posto.cor||'#18181B')}" fill-opacity="0.14" stroke="${esc(posto.cor||'#18181B')}" stroke-width="2"/>
+        ${pinos}
+        <text x="6" y="12" font-size="8" font-weight="bold" fill="#141414" font-family="Arial">CROQUI ${esc(posto.setor.toUpperCase())} — VALPARAÍSO-GO</text>
+        <text x="${W-16}" y="14" font-size="8" font-weight="bold" fill="#333" font-family="Arial">N↑</text>
+      </svg>
+    `;
+  }
+
   function copiarResumoWhatsApp() {
     const d = $('inpCartaoData').value || hojeISO(), eq = $('selCartaoEquipe').value;
     const ls = [`*GCM VALPARAÍSO DE GOIÁS — CARTÃO PROGRAMA*`, `Data: *${formatarDataBR(d)}* | Turno: *${ESTADO.config.horarioTroca}*`, `Equipe 24x72: *EQUIPE ${eq}*`, `--------------------------------`];
@@ -813,8 +1344,8 @@
       if (cp.responsavel) ls.push(`Resp. Setor: ${cp.responsavel}`);
       ls.push(`Cobertura: ${cp.bairros}`);
       ls.push(`Guarnição: ${[cp.g01 && `01: ${cp.g01}`, cp.g02 && `02: ${cp.g02}`, cp.g03 && `03: ${cp.g03}`].filter(Boolean).join(' | ') || 'A definir'}`);
-      ls.push(`Missão: ${cp.missao}`);
-      (cp.pontosBase||[]).forEach(pb => ls.push(`  - [${pb.hora}] ${pb.local}: ${pb.atividade}`));
+      ls.push(`Objetivo: ${cp.missao}`);
+      (cp.pontosBase||[]).forEach((pb, i) => ls.push(`  PB ${i+1} [${pb.hora}] ${pb.local}: ${pb.atividade}`));
       ls.push('');
     });
     const txt = ls.join('\n');
@@ -825,358 +1356,111 @@
   // =========================================================================
   // 4. EVENTOS EXTRAORDINARIOS
   // =========================================================================
+  function statusAgenteNaData(ag, dataISO) {
+    if (!ag) return '';
+    if (ag.equipe === 'ADM') return 'ADM (Seg–Sex)';
+    if (ag.equipe === '12X36') return '12x36';
+    const st = calcularCiclo24x72(dataISO).mapa[ag.equipe];
+    if (!st) return ag.equipe;
+    if (st.codigo === 'SERVICO') return 'EM SERVIÇO 24h';
+    if (st.codigo === 'FOLGA_1') return '1ª Folga 24h — Evitar';
+    if (st.codigo === 'FOLGA_2') return '2ª Folga 48h — IDEAL';
+    return '3ª Folga 72h — Entra amanhã';
+  }
   function renderListaEventos() {
-    const lista = ESTADO.eventos || [];
-    $('badgeQtdEventos').textContent = lista.length;
+    const lista = ESTADO.eventos || []; $('badgeQtdEventos').textContent = lista.length;
     if (!lista.length) { $('listaEventosSidebar').innerHTML = '<div class="subtexto">Nenhum evento.</div>'; $('vazioEvento').classList.remove('oculto'); $('conteudoEditorEvento').classList.add('oculto'); return; }
     if (!eventoSelecionadoId || !lista.some(e => e.id === eventoSelecionadoId)) eventoSelecionadoId = lista[0].id;
-    $('listaEventosSidebar').innerHTML = lista.map(ev => `
-      <div class="item-compacto clicavel ${ev.id === eventoSelecionadoId ? 'selecionado' : ''}" data-sel-ev="${esc(ev.id)}">
-        <div><strong>${esc(ev.nome)}</strong><div class="subtexto">${formatarDataBR(ev.data)} · ${esc(ev.inicio)}–${esc(ev.fim)}</div></div>
-        <span class="badge badge-neutro">${(ev.viaturas||[]).length} VTR</span>
-      </div>
-    `).join('');
+    $('listaEventosSidebar').innerHTML = lista.map(ev => `<div class="item-compacto clicavel ${ev.id===eventoSelecionadoId?'selecionado':''}" data-sel-ev="${esc(ev.id)}"><div><strong>${esc(ev.nome)}</strong><div class="subtexto">${formatarDataBR(ev.data)} · ${esc(ev.inicio)}–${esc(ev.fim)}</div></div><span class="badge badge-neutro">${(ev.viaturas||[]).length} VTR</span></div>`).join('');
     $('listaEventosSidebar').querySelectorAll('[data-sel-ev]').forEach(el => el.addEventListener('click', () => { eventoSelecionadoId = el.getAttribute('data-sel-ev'); renderListaEventos(); }));
     carregarEditorEvento();
   }
   function atualizarDicaFolgaEvento(dataISO) {
     if (!dataISO) return;
-    const c = calcularCiclo24x72(dataISO);
-    const ideal = EQUIPES.find(eq => c.mapa[eq].codigo === 'FOLGA_2') || '—';
-    const f1 = EQUIPES.find(eq => c.mapa[eq].codigo === 'FOLGA_1') || '—';
-    const f3 = EQUIPES.find(eq => c.mapa[eq].codigo === 'FOLGA_3') || '—';
-    $('boxDicaFolgaEvento').innerHTML = `<strong>Folgas em ${formatarDataBR(dataISO)}:</strong> Serviço 24h: <span class="pill-eq eq-${c.equipeServico}">${c.equipeServico}</span> · Ideal p/ Evento (2ª Folga 48h): <span class="pill-eq eq-${ideal}">${ideal}</span> · Evitar: ${f1} e ${f3}.`;
+    const c = calcularCiclo24x72(dataISO), ideal = EQUIPES.find(eq => c.mapa[eq].codigo === 'FOLGA_2') || '—';
+    $('boxDicaFolgaEvento').innerHTML = `<strong>Folgas em ${formatarDataBR(dataISO)}:</strong> Serviço 24h: <span class="insig eq-${c.equipeServico}">${c.equipeServico}</span> · Ideal para convocação extra (2ª Folga 48h): <span class="insig eq-${ideal}">${ideal}</span>.`;
   }
   function carregarEditorEvento() {
-    const ev = (ESTADO.eventos || []).find(x => x.id === eventoSelecionadoId);
+    const ev = (ESTADO.eventos||[]).find(x => x.id === eventoSelecionadoId);
     if (!ev) { $('vazioEvento').classList.remove('oculto'); $('conteudoEditorEvento').classList.add('oculto'); return; }
     $('vazioEvento').classList.add('oculto'); $('conteudoEditorEvento').classList.remove('oculto');
     $('tituloEditorEvento').textContent = `Evento: ${ev.nome}`;
-    $('inpEvNome').value = ev.nome || ''; $('inpEvLocal').value = ev.local || ''; $('inpEvData').value = ev.data || hojeISO();
-    $('inpEvInicio').value = ev.inicio || '16:00'; $('inpEvFim').value = ev.fim || '23:00'; $('selEvRegime').value = ev.regime || 'HORA_EXTRA';
-    $('inpEvCoord').value = ev.coordenador || ''; $('inpEvMissao').value = ev.missao || ''; $('inpEvObs').value = ev.obs || '';
-    atualizarDicaFolgaEvento($('inpEvData').value);
-    renderViaturasEvento(ev.viaturas || [], $('inpEvData').value);
+    $('inpEvNome').value = ev.nome||''; $('inpEvLocal').value = ev.local||''; $('inpEvData').value = ev.data||hojeISO();
+    $('inpEvInicio').value = ev.inicio||'16:00'; $('inpEvFim').value = ev.fim||'23:00'; $('selEvRegime').value = ev.regime||'HORA_EXTRA';
+    $('inpEvCoord').value = ev.coordenador||''; $('inpEvMissao').value = ev.missao||''; $('inpEvObs').value = ev.obs||'';
+    atualizarDicaFolgaEvento($('inpEvData').value); renderViaturasEvento(ev.viaturas||[], $('inpEvData').value);
   }
   function renderViaturasEvento(viaturas, dataISO) {
-    const ativos = ESTADO.efetivo.filter(a => a.situacao === 'ATIVO');
-    const desab = podeEditarEscala() ? '' : 'disabled';
-    const peso = (a) => {
-      if (a.equipe === 'ADM') return 2;
-      const st = calcularCiclo24x72(dataISO).mapa[a.equipe];
-      if (!st) return 3;
-      return st.codigo === 'FOLGA_2' ? 1 : (st.codigo === 'FOLGA_3' ? 4 : (st.codigo === 'FOLGA_1' ? 5 : 6));
-    };
-    const ord = [...ativos].sort((a,b) => peso(a) - peso(b) || a.nome.localeCompare(b.nome));
-    const opts = (sel) => '<option value="">— Vago —</option>' + ord.map(a => `<option value="${esc(a.id)}" ${a.id === sel ? 'selected' : ''}>${esc(a.qra)} (${esc(a.matricula)}) · [${esc(a.equipe)} — ${esc(statusAgenteNaData(a, dataISO))}]</option>`).join('');
-    $('gridViaturasEvento').innerHTML = (viaturas || []).map((v, idx) => `
+    const ativos = ESTADO.efetivo.filter(a => a.situacao === 'ATIVO'), desab = podeEditarEscala() ? '' : 'disabled';
+    const peso = (a) => a.equipe==='ADM' ? 2 : ({ FOLGA_2:1, FOLGA_3:4, FOLGA_1:5, SERVICO:6 }[calcularCiclo24x72(dataISO).mapa[a.equipe]?.codigo] || 3);
+    const ord = [...ativos].sort((a,b) => peso(a) - peso(b) || Number(a.matricula) - Number(b.matricula));
+    const opts = (sel) => '<option value="">— Vago —</option>' + ord.map(a => `<option value="${esc(a.id)}" ${a.id===sel?'selected':''}>[${esc(a.matricula)}] ${esc(a.nomeGuerra)} · ${esc(a.equipe)} (${esc(statusAgenteNaData(a, dataISO))})</option>`).join('');
+    $('gridViaturasEvento').innerHTML = (viaturas||[]).map((v, idx) => `
       <div class="posto-card" data-evv-idx="${idx}">
-        <div class="card-cab"><strong>Viatura Extra #${idx + 1}</strong>${podeEditarEscala() ? `<button type="button" class="btn btn-sec btn-sm" data-del-evv="${idx}">Remover</button>` : ''}</div>
+        <div class="card-cab"><strong>Viatura Extra #${idx+1}</strong>${podeEditarEscala()?`<button type="button" class="btn btn-sec btn-sm" data-del-evv="${idx}">Remover</button>`:''}</div>
         <div class="grid-2"><div class="campo"><label>Prefixo</label><input type="text" class="evv-pref" value="${esc(v.prefixo||'')}" ${desab}></div><div class="campo"><label>Setor no Evento</label><input type="text" class="evv-setor" value="${esc(v.setor||'')}" ${desab}></div></div>
         <div class="grid-2"><div class="campo"><label>01 — Comandante</label><select class="evv-g01" ${desab}>${opts(v.g01)}</select></div><div class="campo"><label>02 — Motorista</label><select class="evv-g02" ${desab}>${opts(v.g02)}</select></div></div>
         <div class="grid-2"><div class="campo"><label>03 — Patrulheiro</label><select class="evv-g03" ${desab}>${opts(v.g03)}</select></div><div class="campo"><label>04 — Apoio</label><select class="evv-g04" ${desab}>${opts(v.g04)}</select></div></div>
       </div>
     `).join('');
-    $('gridViaturasEvento').querySelectorAll('[data-del-evv]').forEach(btn => btn.addEventListener('click', () => {
-      const cur = lerEventoDoEditor(); cur.viaturas.splice(Number(btn.getAttribute('data-del-evv')), 1); renderViaturasEvento(cur.viaturas, cur.data);
-    }));
+    $('gridViaturasEvento').querySelectorAll('[data-del-evv]').forEach(btn => btn.addEventListener('click', () => { const cur = lerEventoDoEditor(); cur.viaturas.splice(Number(btn.getAttribute('data-del-evv')), 1); renderViaturasEvento(cur.viaturas, cur.data); }));
   }
   function lerEventoDoEditor() {
     const viaturas = [];
-    $('gridViaturasEvento').querySelectorAll('.posto-card').forEach((card, i) => viaturas.push({
-      id: 'evv_' + i, prefixo: card.querySelector('.evv-pref').value.trim() || `VTR-EVENTO 0${i+1}`,
-      setor: card.querySelector('.evv-setor').value.trim(), g01: card.querySelector('.evv-g01').value,
-      g02: card.querySelector('.evv-g02').value, g03: card.querySelector('.evv-g03').value, g04: card.querySelector('.evv-g04').value
-    }));
-    return { id: eventoSelecionadoId, nome: $('inpEvNome').value.trim() || 'Evento Extra', local: $('inpEvLocal').value.trim(), data: $('inpEvData').value || hojeISO(), inicio: $('inpEvInicio').value || '16:00', fim: $('inpEvFim').value || '23:00', regime: $('selEvRegime').value, coordenador: $('inpEvCoord').value.trim(), missao: $('inpEvMissao').value.trim(), obs: $('inpEvObs').value.trim(), viaturas };
+    $('gridViaturasEvento').querySelectorAll('.posto-card').forEach((card, i) => viaturas.push({ id: 'evv_'+i, prefixo: card.querySelector('.evv-pref').value.trim()||`VTR-EVENTO 0${i+1}`, setor: card.querySelector('.evv-setor').value.trim(), g01: card.querySelector('.evv-g01').value, g02: card.querySelector('.evv-g02').value, g03: card.querySelector('.evv-g03').value, g04: card.querySelector('.evv-g04').value }));
+    return { id: eventoSelecionadoId, nome: $('inpEvNome').value.trim()||'Evento', local: $('inpEvLocal').value.trim(), data: $('inpEvData').value||hojeISO(), inicio: $('inpEvInicio').value||'16:00', fim: $('inpEvFim').value||'23:00', regime: $('selEvRegime').value, coordenador: $('inpEvCoord').value.trim(), missao: $('inpEvMissao').value.trim(), obs: $('inpEvObs').value.trim(), viaturas };
   }
   function copiarWhatsAppEvento() {
     const ev = lerEventoDoEditor();
-    const ls = [`*GCM VALPARAÍSO — ESCALA DE EVENTO*`, `Evento: *${ev.nome}*`, `Data: *${formatarDataBR(ev.data)}* (${ev.inicio} às ${ev.fim})`, `Local: ${ev.local}`, `Coordenador: ${ev.coordenador || 'A definir'}`, `--------------------------------`];
-    (ev.viaturas||[]).forEach(v => { ls.push(`*${v.prefixo}* — ${v.setor}`); ls.push([v.g01 && `01: ${nomeAgentePorId(v.g01)}`, v.g02 && `02: ${nomeAgentePorId(v.g02)}`, v.g03 && `03: ${nomeAgentePorId(v.g03)}`, v.g04 && `04: ${nomeAgentePorId(v.g04)}`].filter(Boolean).join(' | ') || 'A definir'); ls.push(''); });
+    const ls = [`*GCM VALPARAÍSO — ESCALA DE EVENTO*`, `Evento: *${ev.nome}*`, `Data: *${formatarDataBR(ev.data)}* (${ev.inicio}–${ev.fim})`, `Local: ${ev.local}`, `Coordenador: ${ev.coordenador||'A definir'}`, `--------------------------------`];
+    (ev.viaturas||[]).forEach(v => { ls.push(`*${v.prefixo}* — ${v.setor}`); ls.push([v.g01&&`01: ${nomeAgentePorId(v.g01)}`, v.g02&&`02: ${nomeAgentePorId(v.g02)}`, v.g03&&`03: ${nomeAgentePorId(v.g03)}`, v.g04&&`04: ${nomeAgentePorId(v.g04)}`].filter(Boolean).join(' | ')||'A definir'); ls.push(''); });
     const txt = ls.join('\n');
-    if (navigator.clipboard?.writeText) navigator.clipboard.writeText(txt).then(() => toast('Evento copiado para WhatsApp!'));
-    else abrirModal('WhatsApp', `<textarea rows="12" style="width:100%;font-family:monospace;">${esc(txt)}</textarea>`, [{ texto: 'Fechar', onClick: fecharModal }]);
+    if (navigator.clipboard?.writeText) navigator.clipboard.writeText(txt).then(() => toast('Evento copiado!'));
+    else abrirModal('WhatsApp', `<textarea rows="11" style="width:100%;font-family:monospace;">${esc(txt)}</textarea>`, [{ texto: 'Fechar', onClick: fecharModal }]);
   }
   function gerarPdfEvento() {
     const ev = lerEventoDoEditor();
     const rows = (ev.viaturas||[]).map(v => `<tr><td><strong>${esc(v.prefixo)}</strong><br><small>${esc(v.setor)}</small></td><td>${esc(nomeAgentePorId(v.g01)||'—')}</td><td>${esc(nomeAgentePorId(v.g02)||'—')}</td><td>${esc(nomeAgentePorId(v.g03)||'—')}</td><td>${esc(nomeAgentePorId(v.g04)||'—')}</td></tr>`).join('');
-    const corpo = `${cabecalhoPdfHtml('ORDEM DE SERVIÇO — ESCALA DE EVENTO EXTRAORDINÁRIO', `${ev.nome} · ${formatarDataBR(ev.data)} (${ev.inicio} às ${ev.fim})`)}<div class="box"><div class="grid-info"><div><strong>Evento:</strong><br>${esc(ev.nome)}</div><div><strong>Local:</strong><br>${esc(ev.local)}</div><div><strong>Modalidade:</strong><br>${esc(MODALIDADE_EVENTO[ev.regime]||ev.regime)}</div></div><div><strong>Coordenador:</strong> ${esc(ev.coordenador||'—')} · <strong>Missão:</strong> ${esc(ev.missao||'—')}</div></div><h2>VIATURAS E GUARNIÇÕES</h2><table><thead><tr><th>Viatura / Setor</th><th>01</th><th>02</th><th>03</th><th>04</th></tr></thead><tbody>${rows}</tbody></table><div class="box" style="margin-top:8px;"><strong>Observações:</strong> ${esc(ev.obs||'—')}</div>${rodapeAssinaturasPdfHtml()}`;
-    exportarHtmlParaPdf(montarDocumentoPdf(`Evento ${ev.nome}`, corpo, false), `escala-evento-${ev.data}.pdf`, false);
+    exportarHtmlParaPdf(montarDocumentoPdf(`Evento ${ev.nome}`, `${cabecalhoPdfHtml('ORDEM DE SERVIÇO — ESCALA DE EVENTO', `${ev.nome} · ${formatarDataBR(ev.data)} (${ev.inicio}–${ev.fim})`)}<div class="box"><div class="grid-info"><div><strong>Evento:</strong><br>${esc(ev.nome)}</div><div><strong>Local:</strong><br>${esc(ev.local)}</div><div><strong>Modalidade:</strong><br>${esc(MODALIDADE_EVENTO[ev.regime]||ev.regime)}</div></div><div><strong>Coordenador:</strong> ${esc(ev.coordenador||'—')} · <strong>Missão:</strong> ${esc(ev.missao||'—')}</div></div><h2>VIATURAS E GUARNIÇÕES</h2><table><thead><tr><th>Viatura / Setor</th><th>01</th><th>02</th><th>03</th><th>04</th></tr></thead><tbody>${rows}</tbody></table><div class="box" style="margin-top:8px;"><strong>Observações:</strong> ${esc(ev.obs||'—')}</div>${rodapeAssinaturasPdfHtml()}`, false), `escala-evento-${ev.data}.pdf`, false);
   }
 
   // =========================================================================
-  // 5. FOLHA DE PONTO (FOTO AO VIVO + GPS ANTIFRAUDE 7 CAMADAS)
-  // =========================================================================
-  function popularSelectsPonto() {
-    const sel = $('selPontoAgente'), flt = $('fltPontoAgente');
-    const ativos = ESTADO.efetivo.filter(a => a.situacao === 'ATIVO');
-    sel.innerHTML = ativos.map(a => `<option value="${esc(a.id)}">${esc(a.nome)} (${esc(a.matricula)}) · ${esc(a.equipe)}</option>`).join('');
-    flt.innerHTML = '<option value="">Todos os Guardas</option>' + ativos.map(a => `<option value="${esc(a.id)}">${esc(a.nome)} (${esc(a.matricula)})</option>`).join('');
-    if (!podeEditarEscala() && SESSAO?.matricula) {
-      const meu = ativos.find(a => (a.matricula||'').toUpperCase() === SESSAO.matricula.toUpperCase());
-      if (meu) { sel.value = meu.id; sel.disabled = true; } else sel.disabled = false;
-    } else sel.disabled = false;
-    $('selPontoEquipe').value = calcularCiclo24x72(hojeISO()).equipeServico;
-    if (!$('fltPontoMes').value) $('fltPontoMes').value = mesAtualISO();
-  }
-  async function abrirCameraAoVivo() {
-    pararCamera();
-    try {
-      streamCamera = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } }, audio: false });
-      const v = $('videoCamera'); v.srcObject = streamCamera; v.classList.remove('oculto');
-      $('placeholderCamera').classList.add('oculto'); $('imgPreviewFoto').classList.add('oculto');
-      $('btnCapturarFoto').disabled = false; $('btnRefazerFoto').disabled = true;
-      $('statusFoto').textContent = 'Câmera ativa'; $('statusFoto').className = 'badge badge-warn';
-    } catch (e) { toast('Permita o uso da câmera (HTTPS obrigatório no celular).'); }
-  }
-  function pararCamera() { if (streamCamera) { streamCamera.getTracks().forEach(t => t.stop()); streamCamera = null; } }
-  function capturarFotoComCarimbo() {
-    const v = $('videoCamera'), c = $('canvasFoto'); if (!v || !v.videoWidth) return toast('Aguarde a câmera.');
-    const w = 440, h = Math.round((v.videoHeight / v.videoWidth) * w) || 330;
-    c.width = w; c.height = h; const ctx = c.getContext('2d'); ctx.drawImage(v, 0, 0, w, h);
-    const ag = agentePorId($('selPontoAgente').value), tipo = $('selPontoTipo').value, agora = formatarDataHoraBR(new Date().toISOString());
-    const coord = auditoriaGpsAtual?.lat ? `GPS: ${auditoriaGpsAtual.lat.toFixed(5)}, ${auditoriaGpsAtual.lon.toFixed(5)} (±${Math.round(auditoriaGpsAtual.accuracy)}m)` : 'GPS: Validado na assinatura';
-    ctx.fillStyle = 'rgba(0,0,0,0.8)'; ctx.fillRect(0, h - 54, w, 54); ctx.fillStyle = '#FFFFFF';
-    ctx.font = 'bold 11px monospace'; ctx.fillText(`GCM VALPARAÍSO-GO · ${tipo} · ${agora}`, 8, h - 36);
-    ctx.font = '10px monospace'; ctx.fillText(`GUARDA: ${ag ? ag.nome + ' (' + ag.matricula + ')' : '—'}`, 8, h - 21);
-    ctx.fillText(coord, 8, h - 7);
-    fotoCapturadaDataUrl = c.toDataURL('image/jpeg', 0.62);
-    pararCamera(); v.classList.add('oculto');
-    const img = $('imgPreviewFoto'); img.src = fotoCapturadaDataUrl; img.classList.remove('oculto');
-    $('btnCapturarFoto').disabled = true; $('btnRefazerFoto').disabled = false;
-    $('statusFoto').textContent = 'Foto ao vivo OK'; $('statusFoto').className = 'badge badge-ok';
-  }
-  function distanciaMetros(la1, lo1, la2, lo2) {
-    const R = 6371000, rad = v => v * Math.PI / 180;
-    const a = Math.sin(rad(la2-la1)/2)**2 + Math.cos(rad(la1))*Math.cos(rad(la2))*Math.sin(rad(lo2-lo1)/2)**2;
-    return 2 * R * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  }
-  async function consultarEnderecoReal(lat, lon) {
-    const fj = async (u, ms) => { const ctrl = new AbortController(), t = setTimeout(() => ctrl.abort(), ms||4500); try { const r = await fetch(u, { signal: ctrl.signal }); clearTimeout(t); return r.ok ? await r.json() : null; } catch (_) { clearTimeout(t); return null; } };
-    const nom = await fj(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lon}&accept-language=pt-BR`);
-    if (nom?.address) {
-      const a = nom.address, txt = [(a.road||a.suburb||'') + (a.house_number ? ', '+a.house_number : ''), a.suburb||a.neighbourhood||'', a.city||a.town||a.municipality||'', a.state_code||a.state||''].filter(Boolean).join(', ') + (a.postcode ? ' — CEP ' + a.postcode : '');
-      if (txt.trim()) return { texto: txt, fonte: 'OpenStreetMap' };
-    }
-    const ph = await fj(`https://photon.komoot.io/reverse?lat=${lat}&lon=${lon}`);
-    if (ph?.features?.[0]?.properties) {
-      const p = ph.features[0].properties, txt = [p.street||p.name, p.district||p.locality, p.city, p.state].filter(Boolean).join(', ');
-      if (txt.trim()) return { texto: txt, fonte: 'Photon' };
-    }
-    const bdc = await fj(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lon}&localityLanguage=pt`);
-    if (bdc && (bdc.city || bdc.locality)) return { texto: [bdc.locality, bdc.city, bdc.principalSubdivision].filter(Boolean).join(', '), fonte: 'BigDataCloud' };
-    return { texto: `Localidade não confirmada (offline) · ${lat.toFixed(6)}, ${lon.toFixed(6)}`, fonte: 'Offline' };
-  }
-  async function consultarHoraRede() {
-    for (const u of ['https://timeapi.io/api/Time/current/zone?timeZone=America/Sao_Paulo', 'https://worldtimeapi.org/api/timezone/America/Sao_Paulo']) {
-      try { const ctrl = new AbortController(), t = setTimeout(() => ctrl.abort(), 3500); const r = await fetch(u, { signal: ctrl.signal }); clearTimeout(t); if (!r.ok) continue; const j = await r.json(); const dt = new Date(j.dateTime || j.datetime || j.utc_datetime); if (!isNaN(dt.getTime())) return { ok: true, timestampMs: dt.getTime(), iso: dt.toISOString() }; } catch (_) {}
-    }
-    return { ok: false };
-  }
-  async function consultarIpGeo() {
-    try { const ctrl = new AbortController(), t = setTimeout(() => ctrl.abort(), 3500); const r = await fetch('https://ipapi.co/json/', { signal: ctrl.signal }); clearTimeout(t); if (!r.ok) return null; const j = await r.json(); return typeof j.latitude === 'number' ? { ip: j.ip||'', cidade: j.city||'', regiao: j.region||'', lat: j.latitude, lon: j.longitude } : null; } catch (_) { return null; }
-  }
-  async function coletarGpsAntifraude() {
-    if (!navigator.geolocation) return toast('Sem geolocalização.');
-    const btn = $('btnColetarGpsAntifraude'); btn.disabled = true; btn.textContent = 'Auditando satélites reais (4s)...';
-    $('statusGpsBadge').textContent = 'Auditando...'; $('statusGpsBadge').className = 'badge badge-warn';
-    const amostras = []; let errG = null;
-    await new Promise(resolve => {
-      let fim = false; const done = () => { if (fim) return; fim = true; try { navigator.geolocation.clearWatch(wid); } catch (_) {} resolve(); };
-      const wid = navigator.geolocation.watchPosition(pos => {
-        const c = pos.coords;
-        amostras.push({ lat: c.latitude, lon: c.longitude, accuracy: c.accuracy, altitude: c.altitude, ts: pos.timestamp || Date.now(), mocked: !!(pos.mocked || c.mocked) });
-        if (amostras.length >= 4) done();
-      }, e => { errG = e; done(); }, { enableHighAccuracy: true, maximumAge: 0, timeout: 10000 });
-      setTimeout(done, 4200);
-    });
-    btn.disabled = false; btn.textContent = 'Revalidar Localização Real (Anti-Fake GPS)';
-    if (!amostras.length) {
-      $('statusGpsBadge').textContent = 'Falha GPS'; $('statusGpsBadge').className = 'badge badge-erro';
-      $('painelResultadoGps').classList.remove('oculto'); $('painelResultadoGps').innerHTML = `<div class="alerta-inline erro">Falha ao obter GPS (${esc(errG ? errG.message : 'GPS desligado')}).</div>`;
-      return;
-    }
-    const ult = amostras[amostras.length - 1]; let score = 100; const alertas = [], checksOk = [`${amostras.length} leitura(s) GPS sem cache (±${Math.round(ult.accuracy)}m)`];
-    if (amostras.some(a => a.mocked)) { score -= 80; alertas.push('CRÍTICO: Fake GPS detectado.'); }
-    if (amostras.length >= 2) {
-      if (amostras.every(a => a.lat === amostras[0].lat && a.lon === amostras[0].lon) && [0,1,3,5,10].includes(ult.accuracy) && ult.altitude === null) { score -= 40; alertas.push('SUSPEITA: Coordenada congelada + precisão artificial.'); }
-      else checksOk.push('Telemetria de satélite coerente.');
-      for (let i = 1; i < amostras.length; i++) {
-        const dist = distanciaMetros(amostras[i-1].lat, amostras[i-1].lon, amostras[i].lat, amostras[i].lon);
-        const dtS = Math.max(0.5, (amostras[i].ts - amostras[i-1].ts) / 1000);
-        if (dist > 120 && (dist / dtS) * 3.6 > 160) { score -= 55; alertas.push(`CRÍTICO: Salto impossível (${Math.round(dist)}m em ${dtS.toFixed(1)}s).`); break; }
-      }
-    }
-    const ultPt = (ESTADO.pontos || []).find(p => p.agenteId === $('selPontoAgente').value && p.auditoria?.lat);
-    if (ultPt) {
-      const dtH = Math.abs(Date.now() - new Date(ultPt.timestampIso).getTime()) / 3600000;
-      const dKm = distanciaMetros(ultPt.auditoria.lat, ultPt.auditoria.lon, ult.lat, ult.lon) / 1000;
-      if (dtH > 0.002 && dtH < 12 && (dKm / dtH) > 160 && dKm > 10) { score -= 50; alertas.push(`TELETRANSPORTE: ${dKm.toFixed(1)} km em ${(dtH*60).toFixed(0)} min.`); }
-    }
-    if (ult.accuracy > 250) { score -= 15; alertas.push(`Precisão GPS baixa (±${Math.round(ult.accuracy)}m).`); }
-
-    const [hRede, ipG, endR] = await Promise.all([consultarHoraRede(), consultarIpGeo(), consultarEnderecoReal(ult.lat, ult.lon)]);
-    let horaOficialIso = new Date().toISOString();
-    if (hRede.ok) {
-      horaOficialIso = hRede.iso;
-      const delta = Math.abs(Math.round((Date.now() - hRede.timestampMs) / 1000));
-      if (delta > 180) { score -= 35; alertas.push(`RELÓGIO ADULTERADO (${delta}s). Aplicado horário oficial.`); }
-      else checksOk.push('Relógio conferido com hora oficial.');
-    }
-    if (ipG) {
-      const dIp = distanciaMetros(ult.lat, ult.lon, ipG.lat, ipG.lon) / 1000;
-      if (dIp > 450) { score -= 25; alertas.push(`REDE/VPN DIVERGENTE: IP em ${ipG.cidade}/${ipG.regiao}.`); }
-      else checksOk.push(`Rede coerente (${ipG.cidade}/${ipG.regiao}).`);
-    }
-    const distB = Math.round(distanciaMetros(ult.lat, ult.lon, Number(ESTADO.config.baseLat||-16.0658), Number(ESTADO.config.baseLon||-47.9756)));
-    const raio = Number(ESTADO.config.baseRaioMetros || 500);
-    const resDist = distB < 1000 ? `${distB}m da Base` : `${(distB/1000).toFixed(2)} km da Base`;
-    if (distB > raio) { score -= 20; alertas.push(`FORA DA CERCA DA BASE (${resDist}, limite ${raio}m).`); }
-    else checksOk.push(`DENTRO DO PERÍMETRO DA BASE (${resDist}).`);
-
-    score = Math.max(0, Math.min(100, score));
-    const status = score >= 80 ? 'VERIFICADO' : (score >= 50 ? 'ATENCAO' : 'SUSPEITO');
-    auditoriaGpsAtual = { lat: ult.lat, lon: ult.lon, accuracy: Math.round(ult.accuracy), amostrasQtd: amostras.length, distanciaBaseM: distB, resumoDistancia: resDist, endereco: endR.texto, enderecoFonte: endR.fonte, horaOficialIso, ipInfo: ipG ? `${ipG.ip} (${ipG.cidade}/${ipG.regiao})` : 'Offline', score, status, alertas, checksOk };
-    const cls = status === 'VERIFICADO' ? 'badge-ok' : (status === 'ATENCAO' ? 'badge-warn' : 'badge-erro');
-    $('statusGpsBadge').textContent = `${status} · ${score}%`; $('statusGpsBadge').className = 'badge ' + cls;
-    $('painelResultadoGps').classList.remove('oculto');
-    $('painelResultadoGps').innerHTML = `<div><strong>Endereço (${esc(endR.fonte)}):</strong> ${esc(endR.texto)}</div><div><strong>GPS:</strong> ${ult.lat.toFixed(6)}, ${ult.lon.toFixed(6)} (±${Math.round(ult.accuracy)}m) · <strong>${esc(resDist)}</strong></div>${checksOk.map(c => `<div style="color:var(--ok);">[OK] ${esc(c)}</div>`).join('')}${alertas.map(a => `<div style="color:var(--danger);font-weight:700;">[ALERTA] ${esc(a)}</div>`).join('')}`;
-  }
-
-  async function confirmarRegistroPonto() {
-    const err = $('msgPontoErro'); err.classList.add('oculto');
-    const ag = agentePorId($('selPontoAgente').value);
-    if (!ag) { err.textContent = 'Selecione um guarda.'; err.classList.remove('oculto'); return; }
-    if (!fotoCapturadaDataUrl) { err.textContent = 'Foto ao vivo obrigatória!'; err.classList.remove('oculto'); return; }
-    if (!auditoriaGpsAtual) { err.textContent = 'Valide a localização real antes de confirmar!'; err.classList.remove('oculto'); return; }
-    if (auditoriaGpsAtual.status === 'SUSPEITO' && ESTADO.config.acaoSuspeita === 'BLOQUEAR') { err.textContent = 'BLOQUEADO por suspeita grave de Fake GPS.'; err.classList.remove('oculto'); return; }
-    const agoraIso = auditoriaGpsAtual.horaOficialIso || new Date().toISOString();
-    const dt = new Date(agoraIso), p2 = n => String(n).padStart(2,'0');
-    const dataLocal = `${dt.getFullYear()}-${p2(dt.getMonth()+1)}-${p2(dt.getDate())}`, horaLocal = `${p2(dt.getHours())}:${p2(dt.getMinutes())}:${p2(dt.getSeconds())}`;
-    const tipo = $('selPontoTipo').value;
-    const prevHash = ESTADO.pontos[0]?.hashIntegridade || 'GENESIS_GCM_V3';
-    const hashIntegridade = window.EscalaCloud.sha256Hex(`${prevHash}|${ag.matricula}|${tipo}|${agoraIso}|${auditoriaGpsAtual.lat.toFixed(6)}|${auditoriaGpsAtual.lon.toFixed(6)}|${auditoriaGpsAtual.score}`);
-    const reg = { id: 'pt_' + Date.now().toString(36), agenteId: ag.id, agenteNome: ag.nome, agenteMatricula: ag.matricula, tipo, equipe: $('selPontoEquipe').value, posto: $('inpPontoPosto').value.trim() || 'Base GCM', obs: $('inpPontoObs').value.trim(), timestampIso: agoraIso, dataLocal, horaLocal, foto: fotoCapturadaDataUrl, auditoria: auditoriaGpsAtual, hashIntegridade };
-    ESTADO.pontos.unshift(reg);
-    await window.EscalaCloud.salvarEstadoLocal(ESTADO);
-    if (ESTADO.config?.nuvemAtiva && window.EscalaCloud.lerConfigFirebase()) await window.EscalaCloud.enviarPontoIndividualNuvem(reg);
-    fotoCapturadaDataUrl = null; auditoriaGpsAtual = null;
-    $('imgPreviewFoto').classList.add('oculto'); $('placeholderCamera').classList.remove('oculto');
-    $('statusFoto').textContent = 'Pendente'; $('statusFoto').className = 'badge badge-neutro'; $('btnRefazerFoto').disabled = true;
-    $('statusGpsBadge').textContent = 'Não coletado'; $('statusGpsBadge').className = 'badge badge-neutro'; $('painelResultadoGps').classList.add('oculto');
-    $('inpPontoObs').value = '';
-    renderTabelaPontos(); renderPainel(); toast(`Ponto de ${tipo} assinado com selo SHA-256!`);
-  }
-  function filtrarPontos() {
-    const m = $('fltPontoMes').value||'', ag = $('fltPontoAgente').value||'', st = $('fltPontoStatus').value||'';
-    return (ESTADO.pontos||[]).filter(p => (!m || (p.dataLocal||'').startsWith(m)) && (!ag || p.agenteId === ag) && (!st || (p.auditoria?.status||'') === st));
-  }
-  function renderTabelaPontos() {
-    const lista = filtrarPontos(); $('badgeTotalPontosFiltrados').textContent = `${lista.length} registro(s)`;
-    if (!lista.length) { $('tbodyPontos').innerHTML = '<tr><td colspan="6" class="subtexto" style="text-align:center;padding:18px;">Nenhum registro de ponto.</td></tr>'; return; }
-    $('tbodyPontos').innerHTML = lista.map(p => {
-      const st = p.auditoria?.status || '—', cls = st === 'VERIFICADO' ? 'badge-ok' : (st === 'ATENCAO' ? 'badge-warn' : 'badge-erro');
-      return `<tr><td><img src="${p.foto}" class="foto-thumb" data-ver-ponto="${esc(p.id)}"></td><td><strong>${formatarDataBR(p.dataLocal)}</strong><div class="subtexto">${esc(p.horaLocal)}</div></td><td><strong>${esc(p.agenteNome)}</strong><div class="subtexto">${esc(p.agenteMatricula)} · ${esc(p.equipe)} · ${esc(p.posto)}</div></td><td><span class="badge ${p.tipo==='ENTRADA'?'badge-invertido':'badge-neutro'}">${esc(p.tipo)}</span></td><td><div style="max-width:210px;font-size:12px;">${esc(p.auditoria?.endereco||'—')}</div><div class="subtexto">${esc(p.auditoria?.resumoDistancia||'')}</div></td><td><span class="badge ${cls}">${esc(st)} (${p.auditoria?.score??0}%)</span></td></tr>`;
-    }).join('');
-    $('tbodyPontos').querySelectorAll('[data-ver-ponto]').forEach(img => img.addEventListener('click', () => {
-      const pt = ESTADO.pontos.find(x => x.id === img.getAttribute('data-ver-ponto')); if (!pt) return; const a = pt.auditoria || {};
-      abrirModal(`Auditoria — ${pt.agenteNome} (${pt.tipo})`, `<div style="text-align:center;"><img src="${pt.foto}" style="max-width:100%;border-radius:8px;border:1px solid var(--border);"></div><div class="box-borda" style="font-size:12px;"><div><strong>Data/Hora:</strong> ${formatarDataBR(pt.dataLocal)} ${esc(pt.horaLocal)}</div><div><strong>Endereço:</strong> ${esc(a.endereco||'—')}</div><div><strong>GPS:</strong> ${a.lat?a.lat.toFixed(6)+', '+a.lon.toFixed(6):'—'} (±${a.accuracy||0}m · ${esc(a.resumoDistancia||'')})</div><div><strong>Antifraude:</strong> ${esc(a.status||'—')} (${a.score??0}%)</div><div><strong>SHA-256:</strong> <code style="word-break:break-all;">${esc(pt.hashIntegridade)}</code></div></div>`, [
-        ...(isAdmin() ? [{ texto: 'Excluir (Admin)', classe: 'btn-perigo', onClick: async () => { if (!confirm('Excluir ponto?')) return; ESTADO.pontos = ESTADO.pontos.filter(x => x.id !== pt.id); await salvarTudo(); fecharModal(); renderTabelaPontos(); renderPainel(); }}] : []),
-        { texto: 'Fechar', classe: 'btn-sec', onClick: fecharModal }
-      ]);
-    }));
-  }
-
-  // =========================================================================
-  // 6. RELACAO DE CODIGO Q & QRA (NOVO MODULO)
-  // =========================================================================
-  function renderCodigoQ() {
-    const busca = ($('fltBuscaQ').value || '').trim().toLowerCase();
-    const cat = $('fltCatQ').value || '';
-    const lista = (ESTADO.codigosQ || []).filter(c => (!cat || c.categoria === cat) && (!busca || c.codigo.toLowerCase().includes(busca) || c.significado.toLowerCase().includes(busca)));
-    $('tbodyCodigoQ').innerHTML = lista.map(c => `
-      <tr>
-        <td><strong style="font-size:15px;">${esc(c.codigo)}</strong></td>
-        <td><span class="badge badge-neutro">${esc(CAT_Q_LABEL[c.categoria] || c.categoria)}</span></td>
-        <td>${esc(c.significado)}</td>
-        <td>${podeEditarEscala() ? `<button type="button" class="btn btn-sec btn-sm" data-del-q="${esc(c.id)}">X</button>` : '—'}</td>
-      </tr>
-    `).join('') || '<tr><td colspan="4" class="subtexto" style="text-align:center;">Nenhum código encontrado.</td></tr>';
-    $('tbodyCodigoQ').querySelectorAll('[data-del-q]').forEach(b => b.addEventListener('click', async () => {
-      ESTADO.codigosQ = ESTADO.codigosQ.filter(x => x.id !== b.getAttribute('data-del-q'));
-      await salvarTudo(); renderCodigoQ();
-    }));
-
-    const desab = podeEditarEscala() ? '' : 'disabled';
-    $('tbodyListaQra').innerHTML = ESTADO.efetivo.map(a => `
-      <tr>
-        <td><strong>${esc(a.matricula)}</strong></td>
-        <td>${esc(a.nome)}</td>
-        <td><span class="pill-eq eq-${esc(a.equipe)}">${esc(a.equipe)}</span></td>
-        <td><input type="text" class="inp-qra-lote" data-qra-id="${esc(a.id)}" value="${esc(a.qra || '')}" ${desab}></td>
-        <td>${esc(AREAS_LABEL[a.area] || a.area)}</td>
-      </tr>
-    `).join('');
-  }
-
-  function gerarPdfCodigoQ(apenasQra) {
-    if (apenasQra) {
-      const rows = ESTADO.efetivo.map(a => {
-        const c = EQUIPE_CORES[a.equipe] || { cor: '#27272A', bg: '#E4E4E7' };
-        return `<tr><td><strong>${esc(a.matricula)}</strong></td><td>${esc(a.nome)}</td><td><strong>${esc(a.qra || '—')}</strong></td><td><span class="tag" style="background:${c.bg};color:${c.cor};border-color:${c.cor};">${esc(a.equipe)}</span></td><td>${esc(AREAS_LABEL[a.area] || a.area)}</td></tr>`;
-      }).join('');
-      const corpo = `${cabecalhoPdfHtml('RELAÇÃO OFICIAL DE QRA (RÁDIO) — EFETIVO GCM', `Total: ${ESTADO.efetivo.length} guardas`)}<table><thead><tr><th>Matrícula</th><th>Nome Completo</th><th>QRA (Rádio)</th><th>Equipe</th><th>Especialidade</th></tr></thead><tbody>${rows}</tbody></table>${rodapeAssinaturasPdfHtml()}`;
-      exportarHtmlParaPdf(montarDocumentoPdf('Relação de QRA GCM', corpo, false), 'relacao-qra-gcm-valparaiso.pdf', false);
-      return;
-    }
-    const rows = (ESTADO.codigosQ || []).map(c => `<tr><td><strong style="font-size:12px;">${esc(c.codigo)}</strong></td><td>${esc(CAT_Q_LABEL[c.categoria] || c.categoria)}</td><td>${esc(c.significado)}</td></tr>`).join('');
-    const corpo = `${cabecalhoPdfHtml('RELAÇÃO OFICIAL DE CÓDIGO Q — COMUNICAÇÃO OPERACIONAL', 'Guarda Civil Municipal de Valparaíso de Goiás · Rádio / HT / CCO 153')}<table><thead><tr><th style="width:85px;">Código</th><th style="width:160px;">Categoria</th><th>Significado / Aplicação Operacional</th></tr></thead><tbody>${rows}</tbody></table>${rodapeAssinaturasPdfHtml()}`;
-    exportarHtmlParaPdf(montarDocumentoPdf('Relação de Código Q GCM', corpo, false), 'relacao-codigo-q-gcm-valparaiso.pdf', false);
-  }
-
-  // =========================================================================
-  // 7. EFETIVO DA GUARDA (64 ATIVOS — ZERO ROTULO DE CONCURSO)
+  // 5. EFETIVO & SISTEMA
   // =========================================================================
   function renderEfetivo() {
-    const busca = ($('fltEfBusca').value || '').trim().toLowerCase();
-    const eq = $('fltEfEquipe').value || '', area = $('fltEfArea').value || '';
-    const lista = ESTADO.efetivo.filter(a => (!eq || a.equipe === eq) && (!area || a.area === area) && (!busca || a.nome.toLowerCase().includes(busca) || (a.qra||'').toLowerCase().includes(busca) || a.matricula.toLowerCase().includes(busca)));
+    const busca = ($('fltEfBusca').value||'').trim().toLowerCase(), eq = $('fltEfEquipe').value||'', area = $('fltEfArea').value||'';
+    const lista = ESTADO.efetivo.filter(a => (!eq||a.equipe===eq) && (!area||a.area===area) && (!busca || a.nome.toLowerCase().includes(busca) || a.matricula.toLowerCase().includes(busca) || (a.nomeGuerra||'').toLowerCase().includes(busca)));
     $('tbodyEfetivo').innerHTML = lista.map(a => `
       <tr>
         <td><strong>${esc(a.matricula)}</strong></td>
         <td><strong>${esc(a.nome)}</strong></td>
-        <td>${esc(a.qra || '—')}</td>
-        <td><span class="pill-eq eq-${esc(a.equipe)}">${esc(a.equipe)}</span></td>
+        <td>${esc(a.nomeGuerra || '—')}</td>
+        <td><span class="insig eq-${esc(a.equipe)}">${esc(a.equipe)}</span></td>
         <td>${esc(AREAS_LABEL[a.area] || a.area)}</td>
         <td>${esc(FUNCOES_LABEL[a.funcao] || a.funcao)}</td>
-        <td><span class="badge ${a.situacao === 'ATIVO' ? 'badge-ok' : 'badge-warn'}">${esc(a.situacao)}</span></td>
-        <td>${podeEditarEscala() ? `<button type="button" class="btn btn-sec btn-sm" data-ed-ag="${esc(a.id)}">Editar</button> <button type="button" class="btn btn-sec btn-sm" data-del-ag="${esc(a.id)}">X</button>` : '—'}</td>
+        <td><span class="badge ${a.situacao==='ATIVO'?'badge-ok':'badge-warn'}">${esc(a.situacao)}</span></td>
+        <td>${podeEditarEscala()?`<button type="button" class="btn btn-sec btn-sm" data-ed-ag="${esc(a.id)}">Editar</button> <button type="button" class="btn btn-sec btn-sm" data-del-ag="${esc(a.id)}">X</button>`:'—'}</td>
       </tr>
     `).join('');
     $('tbodyEfetivo').querySelectorAll('[data-ed-ag]').forEach(b => b.addEventListener('click', () => abrirModalAgente(agentePorId(b.getAttribute('data-ed-ag')))));
-    $('tbodyEfetivo').querySelectorAll('[data-del-ag]').forEach(b => b.addEventListener('click', async () => {
-      if (!confirm('Remover guarda do efetivo?')) return;
-      ESTADO.efetivo = ESTADO.efetivo.filter(x => x.id !== b.getAttribute('data-del-ag'));
-      await salvarTudo(); atualizarTodasVistas();
-    }));
+    $('tbodyEfetivo').querySelectorAll('[data-del-ag]').forEach(b => b.addEventListener('click', async () => { if (!confirm('Remover guarda?')) return; ESTADO.efetivo = ESTADO.efetivo.filter(x => x.id !== b.getAttribute('data-del-ag')); await salvarTudo(); atualizarTodasVistas(); }));
   }
 
   function abrirModalAgente(agente) {
-    const a = agente || { id: '', matricula: '', nome: '', qra: '', sexo: 'M', telefone: '', equipe: 'ALFA', area: 'PATRULHAMENTO', funcao: 'PATRULHEIRO_03', regime: '24X72', situacao: 'ATIVO' };
-    abrirModal(agente ? 'Editar Guarda GCM' : 'Cadastrar Novo Guarda',
-      `<div class="grid-2"><div class="campo"><label>Nome Completo</label><input type="text" id="mAgNome" value="${esc(a.nome)}"></div><div class="campo"><label>QRA (Nome de Rádio)</label><input type="text" id="mAgQra" value="${esc(a.qra || '')}"></div></div>
-       <div class="grid-2"><div class="campo"><label>Matrícula</label><input type="text" id="mAgMat" value="${esc(a.matricula)}"></div><div class="campo"><label>Telefone / WhatsApp</label><input type="text" id="mAgTel" value="${esc(a.telefone || '')}"></div></div>
-       <div class="grid-2"><div class="campo"><label>Equipe</label><select id="mAgEquipe">${['ALFA','BRAVO','CHARLIE','DELTA','ADM','12X36'].map(e => `<option value="${e}" ${a.equipe === e ? 'selected' : ''}>${e}</option>`).join('')}</select></div>
-       <div class="campo"><label>Especialidade</label><select id="mAgArea">${Object.entries(AREAS_LABEL).map(([k,v]) => `<option value="${k}" ${a.area === k ? 'selected' : ''}>${v}</option>`).join('')}</select></div></div>
-       <div class="grid-2"><div class="campo"><label>Função Padrão</label><select id="mAgFuncao">${Object.entries(FUNCOES_LABEL).map(([k,v]) => `<option value="${k}" ${a.funcao === k ? 'selected' : ''}>${v}</option>`).join('')}</select></div>
-       <div class="campo"><label>Situação</label><select id="mAgSit">${['ATIVO','FERIAS','LICENCA','AFASTADO'].map(s => `<option value="${s}" ${a.situacao === s ? 'selected' : ''}>${s}</option>`).join('')}</select></div></div>`,
+    const a = agente || { id:'', matricula:'', nome:'', nomeGuerra:'', sexo:'M', telefone:'', equipe:'ALFA', area:'PATRULHAMENTO', funcao:'PATRULHEIRO_03', regime:'24X72', situacao:'ATIVO' };
+    abrirModal(agente ? 'Editar Guarda GCM' : 'Novo Guarda GCM',
+      `<div class="grid-2"><div class="campo"><label>Nome Completo</label><input type="text" id="mAgNome" value="${esc(a.nome)}"></div><div class="campo"><label>Nome de Guerra</label><input type="text" id="mAgGuerra" value="${esc(a.nomeGuerra||'')}"></div></div>
+       <div class="grid-2"><div class="campo"><label>Nº Provisório / Matrícula Oficial</label><input type="text" id="mAgMat" value="${esc(a.matricula)}" placeholder="Ex.: 03"></div><div class="campo"><label>Telefone</label><input type="text" id="mAgTel" value="${esc(a.telefone||'')}"></div></div>
+       <div class="grid-2"><div class="campo"><label>Equipe</label><select id="mAgEquipe">${['ALFA','BRAVO','CHARLIE','DELTA','ADM','12X36'].map(e => `<option value="${e}" ${a.equipe===e?'selected':''}>${e}</option>`).join('')}</select></div>
+       <div class="campo"><label>Especialidade</label><select id="mAgArea">${Object.entries(AREAS_LABEL).map(([k,v]) => `<option value="${k}" ${a.area===k?'selected':''}>${v}</option>`).join('')}</select></div></div>
+       <div class="grid-2"><div class="campo"><label>Função</label><select id="mAgFuncao">${Object.entries(FUNCOES_LABEL).map(([k,v]) => `<option value="${k}" ${a.funcao===k?'selected':''}>${v}</option>`).join('')}</select></div>
+       <div class="campo"><label>Situação</label><select id="mAgSit">${['ATIVO','FERIAS','LICENCA','AFASTADO'].map(s => `<option value="${s}" ${a.situacao===s?'selected':''}>${s}</option>`).join('')}</select></div></div>`,
       [
         { texto: 'Cancelar', classe: 'btn-sec', onClick: fecharModal },
         { texto: 'Salvar', classe: 'btn-primario', onClick: async () => {
           const nome = $('mAgNome').value.trim(); if (!nome) return toast('Informe o nome.');
           const eqSel = $('mAgEquipe').value;
-          const obj = { id: a.id || 'ag_' + Date.now().toString(36), matricula: $('mAgMat').value.trim().toUpperCase() || ('GCM-' + String(ESTADO.efetivo.length + 1).padStart(3,'0')), nome, qra: $('mAgQra').value.trim() || gerarQra(nome), sexo: a.sexo || 'M', telefone: $('mAgTel').value.trim(), equipe: eqSel, area: $('mAgArea').value, funcao: $('mAgFuncao').value, regime: eqSel === 'ADM' ? 'ADM_SEG_SEX' : (eqSel === '12X36' ? '12X36' : '24X72'), situacao: $('mAgSit').value };
+          const obj = { id: a.id || 'ag_' + Date.now().toString(36), matricula: $('mAgMat').value.trim().toUpperCase() || String(ESTADO.efetivo.length + 1).padStart(2,'0'), nome, nomeGuerra: $('mAgGuerra').value.trim() || gerarNomeGuerra(nome), sexo: a.sexo||'M', telefone: $('mAgTel').value.trim(), equipe: eqSel, area: $('mAgArea').value, funcao: $('mAgFuncao').value, regime: eqSel==='ADM'?'ADM_SEG_SEX':(eqSel==='12X36'?'12X36':'24X72'), situacao: $('mAgSit').value };
           if (agente) { const i = ESTADO.efetivo.findIndex(x => x.id === a.id); if (i >= 0) ESTADO.efetivo[i] = obj; } else ESTADO.efetivo.push(obj);
           await salvarTudo(); fecharModal(); atualizarTodasVistas();
         }}
@@ -1186,13 +1470,13 @@
 
   function abrirModalImportar64() {
     if (!podeEditarEscala()) return toast('Sem permissão.');
-    abrirModal('Importar / Colar Nomes', `<p class="subtexto">Cole 1 nome por linha (ou <code>Nome ; Matrícula ; Equipe</code>).</p><textarea id="txtImportarNomes" rows="9"></textarea><label class="check-linha"><input type="checkbox" id="chkSubstituirModelo"><span>Substituir lista atual</span></label>`, [
+    abrirModal('Importar Nomes', `<p class="subtexto">Cole 1 nome por linha (ou <code>Nome ; Nº ; Equipe</code>).</p><textarea id="txtImportarNomes" rows="9"></textarea><label class="check-linha"><input type="checkbox" id="chkSubstituirModelo"><span>Substituir lista atual</span></label>`, [
       { texto: 'Cancelar', classe: 'btn-sec', onClick: fecharModal },
       { texto: 'Importar', classe: 'btn-primario', onClick: async () => {
-        const ls = ($('txtImportarNomes').value||'').split(/\r?\n/).map(x => x.trim()).filter(Boolean); if (!ls.length) return toast('Cole ao menos um nome.');
-        const novos = ls.map((l, i) => { const p = l.split(/[;|\t]/).map(x => x.trim()); return { id: 'ag_i_' + Date.now().toString(36) + '_' + i, matricula: (p[1] || ('GCM-' + String(ESTADO.efetivo.length + i + 1).padStart(3,'0'))).toUpperCase(), nome: p[0], qra: gerarQra(p[0]), sexo: 'M', telefone: '', equipe: p[2] || EQUIPES[i % 4], area: 'PATRULHAMENTO', funcao: 'PATRULHEIRO_03', regime: '24X72', situacao: 'ATIVO' }; });
+        const ls = ($('txtImportarNomes').value||'').split(/\r?\n/).map(x=>x.trim()).filter(Boolean); if (!ls.length) return toast('Cole nomes.');
+        const novos = ls.map((l,i) => { const p = l.split(/[;|\t]/).map(x=>x.trim()); return { id:'ag_i_'+Date.now().toString(36)+'_'+i, matricula: (p[1]||String(ESTADO.efetivo.length+i+1).padStart(2,'0')).toUpperCase(), nome:p[0], nomeGuerra:gerarNomeGuerra(p[0]), sexo:'M', telefone:'', equipe:p[2]||EQUIPES[i%4], area:'PATRULHAMENTO', funcao:'PATRULHEIRO_03', regime:'24X72', situacao:'ATIVO' }; });
         ESTADO.efetivo = $('chkSubstituirModelo').checked ? novos : ESTADO.efetivo.concat(novos);
-        await salvarTudo(); fecharModal(); atualizarTodasVistas(); toast(`${novos.length} guarda(s) importado(s)!`);
+        await salvarTudo(); fecharModal(); atualizarTodasVistas(); toast(`${novos.length} importado(s)!`);
       }}
     ]);
   }
@@ -1208,47 +1492,44 @@
   function renderConfigBase() {
     $('inpBaseNome').value = ESTADO.config.baseNome || ''; $('inpBaseLat').value = ESTADO.config.baseLat ?? -16.0658;
     $('inpBaseLon').value = ESTADO.config.baseLon ?? -47.9756; $('inpBaseRaio').value = ESTADO.config.baseRaioMetros ?? 500;
-    $('selBloquearSuspeito').value = ESTADO.config.acaoSuspeita || 'ALERTAR'; $('chkNuvemAtiva').checked = !!ESTADO.config.nuvemAtiva;
+    $('chkNuvemAtiva').checked = !!ESTADO.config.nuvemAtiva;
     const fb = window.EscalaCloud.lerConfigFirebase();
     $('txtFirebaseConfigJson').value = fb ? JSON.stringify(fb, null, 2) : '';
-    $('statusDbProprio').textContent = fb ? `Conectado ao projeto "${fb.projectId}" · Sincronização: ${ESTADO.config.nuvemAtiva ? 'ATIVA' : 'Pausada'}` : 'Status: Modo Local (100% funcional sem Firebase).';
+    $('statusDbProprio').textContent = fb ? `Conectado ao projeto "${fb.projectId}" · Sincronização: ${ESTADO.config.nuvemAtiva ? 'ATIVA' : 'Pausada'}` : 'Modo Local (sem Firebase configurado).';
   }
 
   // =========================================================================
-  // PDFS COLORIDOS POR EQUIPE E SETOR (EXPLICANDO CADA PESSOA — ZERO AZUL)
+  // PDFS OFICIAIS (POLICIAL SOBRIO — ZERO AZUL, ZERO CARNAVAL)
   // =========================================================================
   function cabecalhoPdfHtml(titulo, subtitulo) {
     return `<div class="pdf-cab"><img src="__LOGO__" class="pdf-logo" onerror="this.style.display='none'"><div><div class="pdf-org">PREFEITURA MUNICIPAL DE VALPARAÍSO DE GOIÁS — GUARDA CIVIL MUNICIPAL</div><h1>${esc(titulo)}</h1><div class="pdf-sub">${esc(subtitulo)}</div></div></div>`;
   }
   function rodapeAssinaturasPdfHtml() {
     const r = ESTADO.config.responsaveis || {};
-    return `<div class="pdf-assinaturas"><div class="ass-col"><div class="ass-linha"></div><strong>${esc(r.escalanteNome || 'Responsável pela Escala')}</strong><div>${esc(r.escalanteCargo || 'Escalante GCM')} · Mat.: ${esc(r.escalanteMat || '—')}</div></div><div class="ass-col"><div class="ass-linha"></div><strong>${esc(r.comandoNome || 'Comandante da GCM')}</strong><div>${esc(r.comandoCargo || 'Comandante GCM')} · ${esc(r.comandoMat || '—')}</div></div></div><div class="pdf-emitido">Sistema de Escala 24x72, Código Q, Cartão Programa e Ponto — GCM Valparaíso de Goiás · ${formatarDataHoraBR(new Date().toISOString())}</div>`;
+    return `<div class="pdf-assinaturas"><div class="ass-col"><div class="ass-linha"></div><strong>${esc(r.escalanteNome || 'Responsável pela Escala')}</strong><div>${esc(r.escalanteCargo || 'Escalante GCM')} · Mat.: ${esc(r.escalanteMat || '—')}</div></div><div class="ass-col"><div class="ass-linha"></div><strong>${esc(r.comandoNome || 'Comandante da GCM')}</strong><div>${esc(r.comandoCargo || 'Comandante GCM')} · ${esc(r.comandoMat || '—')}</div></div></div><div class="pdf-emitido">GCM Valparaíso de Goiás · Emitido em ${formatarDataHoraBR(new Date().toISOString())}</div>`;
   }
   function montarDocumentoPdf(titulo, corpoHtml, paisagem) {
     return `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><title>${esc(titulo)}</title><style>
       @page { size: A4 ${paisagem ? 'landscape' : 'portrait'}; margin: 11mm; }
-      body { font-family: Arial, Helvetica, sans-serif; color: #111111; background: #FFFFFF; font-size: 10.5px; line-height: 1.35; margin: 0; }
-      .pdf-cab { display: flex; align-items: center; gap: 12px; border-bottom: 2px solid #111111; padding-bottom: 8px; margin-bottom: 10px; }
+      body { font-family: Arial, Helvetica, sans-serif; color: #141414; background: #FFFFFF; font-size: 10.5px; line-height: 1.35; margin: 0; }
+      .pdf-cab { display: flex; align-items: center; gap: 12px; border-bottom: 2px solid #141414; padding-bottom: 8px; margin-bottom: 10px; }
       .pdf-logo { width: 50px; height: 50px; object-fit: contain; }
-      .pdf-org { font-size: 9.5px; font-weight: 700; letter-spacing: 0.04em; color: #333333; }
-      h1 { font-size: 15px; margin: 2px 0; } h2 { font-size: 12px; margin: 10px 0 5px; padding: 4px 8px; background: #111111; color: #FFFFFF; }
-      h3 { font-size: 11.5px; margin: 8px 0 4px; padding: 3px 8px; border-left: 5px solid #111111; background: #F4F4F4; }
-      .pdf-sub { font-size: 10.5px; color: #444444; }
-      table { width: 100%; border-collapse: collapse; margin-top: 5px; font-size: 10px; }
-      th, td { border: 1px solid #333333; padding: 4px 6px; text-align: left; vertical-align: top; }
-      th { background: #EBEBEB; font-weight: 700; text-transform: uppercase; font-size: 9px; }
-      .box { border: 1px solid #333333; padding: 8px; margin-bottom: 8px; }
+      .pdf-org { font-size: 9.5px; font-weight: 700; letter-spacing: 0.04em; color: #333; }
+      h1 { font-size: 15px; margin: 2px 0; } h2 { font-size: 11.5px; margin: 10px 0 5px; padding: 4px 8px; background: #141414; color: #FFFFFF; letter-spacing: 0.03em; }
+      h3 { font-size: 11px; margin: 8px 0 4px; padding: 3px 8px; border-left: 4px solid #141414; background: #EFEFED; }
+      .pdf-sub { font-size: 10px; color: #444; }
+      table { width: 100%; border-collapse: collapse; margin-top: 5px; font-size: 9.8px; }
+      th, td { border: 1px solid #333; padding: 4px 6px; text-align: left; vertical-align: top; }
+      th { background: #EBEBE8; font-weight: 700; text-transform: uppercase; font-size: 8.8px; }
+      .box { border: 1px solid #333; padding: 8px; margin-bottom: 8px; }
       .grid-info { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 6px; }
-      .tag { display: inline-block; padding: 2px 6px; font-weight: 700; font-size: 9px; border: 1px solid #111111; border-radius: 3px; }
-      .tag-dark { background: #111111; color: #FFFFFF; }
-      .tag-ok { background: #DCFCE7; color: #15803D; border-color: #15803D; }
-      .tag-warn { background: #FEF3C7; color: #B45309; border-color: #B45309; }
-      .tag-err { background: #FEE2E2; color: #B91C1C; border-color: #B91C1C; }
+      .cp-topo-mapa { display: grid; grid-template-columns: 1fr 255px; gap: 10px; align-items: start; margin-bottom: 6px; }
+      .insig-pdf { display: inline-block; padding: 1px 6px; font-weight: 700; font-size: 9px; background: #EFEFED; border: 1px solid #666; border-left-width: 4px; }
       .quebra { page-break-before: always; }
-      .foto-pdf { width: 52px; height: 40px; object-fit: cover; border: 1px solid #333333; }
-      .pdf-assinaturas { display: grid; grid-template-columns: 1fr 1fr; gap: 36px; margin-top: 24px; page-break-inside: avoid; }
-      .ass-col { text-align: center; font-size: 10px; } .ass-linha { border-top: 1px solid #111111; margin-bottom: 4px; }
-      .pdf-emitido { margin-top: 12px; font-size: 8.5px; color: #555555; text-align: right; border-top: 1px solid #CCCCCC; padding-top: 4px; }
+      .foto-pdf { width: 46px; height: 36px; object-fit: cover; border: 1px solid #333; }
+      .pdf-assinaturas { display: grid; grid-template-columns: 1fr 1fr; gap: 36px; margin-top: 22px; page-break-inside: avoid; }
+      .ass-col { text-align: center; font-size: 10px; } .ass-linha { border-top: 1px solid #141414; margin-bottom: 4px; }
+      .pdf-emitido { margin-top: 10px; font-size: 8.5px; color: #555; text-align: right; border-top: 1px solid #CCC; padding-top: 4px; }
     </style></head><body>${corpoHtml}</body></html>`;
   }
   async function exportarHtmlParaPdf(html, nome, paisagem) {
@@ -1265,151 +1546,150 @@
     win.document.close();
   }
 
-  function gerarPdfEscalaMensal(somenteQuadroPessoas) {
-    const mesVal = $('selMesEscala').value || mesAtualISO();
-    const [ano, mes] = mesVal.split('-').map(Number);
-    const ult = new Date(ano, mes, 0).getDate();
-
-    const tagEq = (eq) => {
-      const c = EQUIPE_CORES[eq] || { cor: '#27272A', bg: '#E4E4E7' };
-      return `<span class="tag" style="background:${c.bg};color:${c.cor};border-color:${c.cor};">${esc(eq)}</span>`;
-    };
-    const tagSetor = (nome, cor) => `<span class="tag" style="background:${esc(cor||'#27272A')};color:#FFFFFF;border-color:${esc(cor||'#27272A')};">${esc(nome)}</span>`;
-
-    // Quadro Nominal Explicativo (explicando cada guarda, equipe colorida, setor colorido, funcao e dias de servico no mes)
-    const ordemEq = { ALFA: 1, BRAVO: 2, CHARLIE: 3, DELTA: 4, ADM: 5, '12X36': 6 };
-    const fltEq = somenteQuadroPessoas ? ($('fltQpEquipe').value || '') : '';
-    const listaPessoas = ESTADO.efetivo
-      .filter(a => a.situacao === 'ATIVO' && (!fltEq || a.equipe === fltEq))
-      .sort((a,b) => (ordemEq[a.equipe]||9) - (ordemEq[b.equipe]||9) || a.matricula.localeCompare(b.matricula));
-
-    const rowsPessoas = listaPessoas.map(a => {
-      const inf = descobrirSetorDoAgente(a);
-      const dias = diasServicoNoMes(a.equipe, mesVal);
-      return `<tr><td><strong>${esc(a.matricula)}</strong></td><td><strong>${esc(a.nome)}</strong></td><td>${esc(a.qra||'—')}</td><td>${tagEq(a.equipe)}</td><td>${tagSetor(inf.nome, inf.cor)}</td><td>${esc(inf.funcao)}</td><td><strong>${esc(dias)}</strong></td></tr>`;
+  function gerarPdfFolhaDia() {
+    const data = $('inpFreqData').value || hojeISO();
+    const { ciclo, escalados } = obterEscaladosDaData(data);
+    const rows = escalados.map(item => {
+      const a = item.agente, r = resumirDiaAgente(data, a.id);
+      const stTxt = r.status === 'JUSTIFICADO' ? `${r.just.motivo}${r.just.obs ? ' ('+r.just.obs+')' : ''}` : (r.status === 'PRESENTE' ? 'Presente (Completo)' : (r.status === 'PARCIAL' ? 'Em Serviço (Parcial)' : 'Sem Batida / Pendente'));
+      return `<tr><td><strong>${esc(a.matricula)}</strong></td><td><strong>${esc(a.nome)}</strong></td><td>${esc(a.equipe)} · ${esc(item.posto)}</td><td>${r.ent ? r.ent.horaLocal.slice(0,5) : '—'}</td><td>${r.sAlm ? r.sAlm.horaLocal.slice(0,5) : '—'}</td><td>${r.rAlm ? r.rAlm.horaLocal.slice(0,5) : '—'}</td><td>${r.sai ? r.sai.horaLocal.slice(0,5) : '—'}</td><td><strong>${esc(stTxt)}</strong></td></tr>`;
     }).join('');
+    const corpo = `${cabecalhoPdfHtml(`FOLHA DE PONTO DIÁRIA — ${formatarDataBR(data)}`, `Equipe 24x72: ${ciclo.equipeServico} · Total de Escalados: ${escalados.length}`)}<table><thead><tr><th>Nº</th><th>Guarda GCM</th><th>Equipe / Setor</th><th>Entrada</th><th>S. Almoço</th><th>R. Almoço</th><th>Saída</th><th>Situação / Justificativa</th></tr></thead><tbody>${rows}</tbody></table>${rodapeAssinaturasPdfHtml()}`;
+    exportarHtmlParaPdf(montarDocumentoPdf(`Folha de Ponto ${data}`, corpo, true), `folha-ponto-diaria-${data}.pdf`, true);
+  }
 
-    if (somenteQuadroPessoas) {
-      const corpo = `${cabecalhoPdfHtml(`QUADRO NOMINAL EXPLICATIVO DA ESCALA — ${MESES_EXT[mes-1].toUpperCase()} / ${ano}`, `Separação por Cor de Equipe e Setor · Horário: ${ESTADO.config.horarioTroca}`)}<table><thead><tr><th>Matrícula</th><th>Guarda GCM</th><th>QRA</th><th>Equipe</th><th>Setor / Viatura</th><th>Função</th><th>Dias de Serviço no Mês</th></tr></thead><tbody>${rowsPessoas}</tbody></table>${rodapeAssinaturasPdfHtml()}`;
-      exportarHtmlParaPdf(montarDocumentoPdf(`Quadro Explicativo ${mesVal}`, corpo, true), `quadro-explicativo-escala-${mesVal}.pdf`, true);
+  function gerarPdfFolhaMensal() {
+    const lista = filtrarPontosHistorico(), m = $('fltPontoMes').value || mesAtualISO();
+    const rows = lista.map(p => { const loc = p.localizacao||{}; return `<tr><td><img src="${p.foto}" class="foto-pdf"></td><td><strong>${formatarDataBR(p.dataLocal)}</strong><br>${esc(p.horaLocal)}</td><td><strong>Nº ${esc(p.agenteMatricula)} — ${esc(p.agenteNome)}</strong><br>${esc(p.equipe)} · ${esc(p.posto)}</td><td>${esc(TIPO_PONTO_LABEL[p.tipo]||p.tipo)}</td><td>${esc(loc.endereco||'—')}<br><small>${esc(loc.resumoDist||'')}</small></td><td>${esc(loc.status||'OK')}</td></tr>`; }).join('') || '<tr><td colspan="6" style="text-align:center;">Sem batidas no período.</td></tr>';
+    exportarHtmlParaPdf(montarDocumentoPdf(`Espelho Ponto ${m}`, `${cabecalhoPdfHtml('ESPELHO MENSAL DE FOLHA DE PONTO', `Competência: ${m} · Total: ${lista.length} batida(s)`)}<table><thead><tr><th>Foto</th><th>Data / Hora</th><th>Guarda</th><th>Batida</th><th>Localização</th><th>Status</th></tr></thead><tbody>${rows}</tbody></table>${rodapeAssinaturasPdfHtml()}`, false), `espelho-ponto-${m}.pdf`, false);
+  }
+
+  function gerarPdfEscalaMensal(somenteQuadro) {
+    const { titulo, datas } = gerarListaDatasEscala();
+    const insig = (eq) => `<span class="insig-pdf" style="border-left-color:${EQUIPE_CORES[eq]?.cor||'#18181B'};">${esc(eq)}</span>`;
+    const ordem = { ALFA:1, BRAVO:2, CHARLIE:3, DELTA:4, ADM:5, '12X36':6 };
+    const listaPessoas = ESTADO.efetivo.filter(a => a.situacao==='ATIVO').sort((a,b) => (ordem[a.equipe]||9)-(ordem[b.equipe]||9) || Number(a.matricula)-Number(b.matricula));
+    const rowsPessoas = listaPessoas.map(a => { const inf = descobrirSetorDoAgente(a); return `<tr><td><strong>${esc(a.matricula)}</strong></td><td><strong>${esc(a.nome)}</strong></td><td>${insig(a.equipe)}</td><td>${esc(inf.nome)}</td><td>${esc(inf.funcao)}</td><td><strong>${esc(proximosDiasServico(a.equipe, 30))}</strong></td></tr>`; }).join('');
+
+    if (somenteQuadro) {
+      exportarHtmlParaPdf(montarDocumentoPdf('Quadro Nominal Escala', `${cabecalhoPdfHtml('QUADRO NOMINAL DA ESCALA 24x72', titulo)}<table><thead><tr><th>Nº</th><th>Guarda GCM</th><th>Equipe</th><th>Setor / Viatura</th><th>Função</th><th>Próximos Dias de Serviço</th></tr></thead><tbody>${rowsPessoas}</tbody></table>${rodapeAssinaturasPdfHtml()}`, true), `quadro-nominal-escala.pdf`, true);
       return;
     }
 
-    let linhasCal = '';
-    for (let d = 1; d <= ult; d++) {
-      const iso = `${ano}-${String(mes).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
-      const dt = new Date(ano, mes - 1, d);
+    const linhasCal = datas.map(iso => {
       const c = calcularCiclo24x72(iso);
-      const cel = (eq) => c.mapa[eq].codigo === 'SERVICO' ? tagEq('SERVIÇO 24h · ' + eq) : c.mapa[eq].rotulo;
-      linhasCal += `<tr><td><strong>${String(d).padStart(2,'0')}/${String(mes).padStart(2,'0')}</strong></td><td>${DIAS_SEMANA[dt.getDay()]}</td><td>${tagEq('EQUIPE ' + c.equipeServico)}</td><td>${cel('ALFA')}</td><td>${cel('BRAVO')}</td><td>${cel('CHARLIE')}</td><td>${cel('DELTA')}</td></tr>`;
-    }
-
-    const blocosEquipes = EQUIPES.map(eq => {
-      const c = EQUIPE_CORES[eq], m = ESTADO.equipesMontagem[eq] || {};
-      const rows = ESTADO.postos.map(p => {
-        const g = m[p.id] || {};
-        return `<tr><td>${tagSetor(p.prefixo + ' · ' + p.setor, p.cor)}<br><small>Resp.: ${esc(p.responsavel||'—')}</small></td><td>${esc(nomeAgentePorId(g.g01)||'—')}</td><td>${esc(nomeAgentePorId(g.g02)||'—')}</td><td>${esc(nomeAgentePorId(g.g03)||'—')}</td></tr>`;
-      }).join('');
-      return `<h3 style="border-left-color:${c.cor};background:${c.bg};color:${c.cor};">EQUIPE ${eq} (${c.nome.toUpperCase()}) — Dias de Serviço: ${diasServicoNoMes(eq, mesVal)}</h3><table><thead><tr><th>Setor / Viatura</th><th>01 — Comandante</th><th>02 — Motorista</th><th>03 — Patrulheiro</th></tr></thead><tbody>${rows}</tbody></table>`;
+      const cel = (eq) => c.mapa[eq].codigo==='SERVICO' ? insig('SERVIÇO 24h') : c.mapa[eq].rotulo;
+      return `<tr><td><strong>${formatarDataBR(iso)}</strong></td><td>${DIAS_SEMANA[diaSemanaISO(iso)]}</td><td>${insig('EQUIPE ' + c.equipeServico)}</td><td>${cel('ALFA')}</td><td>${cel('BRAVO')}</td><td>${cel('CHARLIE')}</td><td>${cel('DELTA')}</td></tr>`;
     }).join('');
 
-    const rowsAdm = (ESTADO.administrativo || []).map(c => `<tr><td><strong>${esc(c.cargo)}</strong></td><td>${esc(c.titular)}</td><td>${esc(c.horario)}</td><td>${esc(c.obs||'')}</td></tr>`).join('');
-    const rows12 = (ESTADO.escala12x36 || []).map(e => `<tr><td><strong>${esc(e.posto)}</strong></td><td>${esc(e.turno)}</td><td>${esc(e.equipeA)}</td><td>${esc(e.equipeB)}</td></tr>`).join('');
+    const blocosEquipes = EQUIPES.map(eq => {
+      const m = ESTADO.equipesMontagem[eq] || {};
+      const rows = ESTADO.postos.map(p => { const g = m[p.id]||{}; return `<tr><td><strong>${esc(p.prefixo)} — ${esc(p.setor)}</strong><br><small>Resp.: ${esc(p.responsavel||'—')}</small></td><td>${esc(nomeAgentePorId(g.g01)||'—')}</td><td>${esc(nomeAgentePorId(g.g02)||'—')}</td><td>${esc(nomeAgentePorId(g.g03)||'—')}</td></tr>`; }).join('');
+      return `<h3 style="border-left-color:${EQUIPE_CORES[eq].cor};">EQUIPE ${eq} — Próximos Serviços: ${proximosDiasServico(eq, 30)}</h3><table><thead><tr><th>Setor / Viatura</th><th>01 — Comandante</th><th>02 — Motorista</th><th>03 — Patrulheiro</th></tr></thead><tbody>${rows}</tbody></table>`;
+    }).join('');
+    const rowsAdm = (ESTADO.administrativo||[]).map(c => `<tr><td><strong>${esc(c.cargo)}</strong></td><td>${esc(c.titular)}</td><td>${esc(c.horario)}</td><td>${esc(c.obs||'')}</td></tr>`).join('');
 
     const corpo = `
-      ${cabecalhoPdfHtml(`ESCALA MENSAL 24x72 — ${MESES_EXT[mes-1].toUpperCase()} / ${ano}`, `Cores: ALFA (Verde) · BRAVO (Laranja) · CHARLIE (Roxo) · DELTA (Vermelho) · Turno: ${ESTADO.config.horarioTroca}`)}
-      <h2>1. CALENDÁRIO OPERACIONAL 24x72 (72 HORAS DE DESCANSO)</h2>
+      ${cabecalhoPdfHtml('ESCALA CONTÍNUA 24x72 — GCM VALPARAÍSO DE GOIÁS', `${titulo} · Turno ${ESTADO.config.horarioTroca}`)}
+      <h2>1. CALENDÁRIO OPERACIONAL CONTÍNUO 24x72</h2>
       <table><thead><tr><th>Data</th><th>Dia</th><th>Serviço 24h</th><th>ALFA</th><th>BRAVO</th><th>CHARLIE</th><th>DELTA</th></tr></thead><tbody>${linhasCal}</tbody></table>
       <div class="quebra"></div>
-      ${cabecalhoPdfHtml(`COMPOSIÇÃO DAS EQUIPES POR SETOR — ${MESES_EXT[mes-1].toUpperCase()} / ${ano}`, 'Cada Equipe e Setor separado por cor')}
-      <h2>2. GUARNIÇÕES POR EQUIPE E SETOR</h2>${blocosEquipes}
+      ${cabecalhoPdfHtml('COMPOSIÇÃO DAS 4 EQUIPES OPERACIONAIS', 'Viaturas, Setores e Responsáveis')}
+      <h2>2. GUARNIÇÕES POR EQUIPE</h2>${blocosEquipes}
       <div class="quebra"></div>
-      ${cabecalhoPdfHtml(`QUADRO NOMINAL EXPLICATIVO POR GUARDA — ${MESES_EXT[mes-1].toUpperCase()} / ${ano}`, 'Localização exata de cada integrante, equipe, setor, função e dias de serviço no mês')}
-      <h2>3. RELAÇÃO NOMINAL EXPLICATIVA (EFETIVO ATIVO)</h2>
-      <table><thead><tr><th>Matrícula</th><th>Guarda GCM</th><th>QRA</th><th>Equipe</th><th>Setor / Viatura</th><th>Função</th><th>Dias de Serviço no Mês</th></tr></thead><tbody>${rowsPessoas}</tbody></table>
-      <h2>4. EXPEDIENTE ADMINISTRATIVO (SEGUNDA A SEXTA) &amp; 12x36</h2>
-      <table><thead><tr><th>Cargo / Autoridade</th><th>Titular</th><th>Horário</th><th>Observação</th></tr></thead><tbody>${rowsAdm}</tbody></table>
-      <table><thead><tr><th>Posto 12x36</th><th>Turno</th><th>Turma A</th><th>Turma B</th></tr></thead><tbody>${rows12}</tbody></table>
+      ${cabecalhoPdfHtml('QUADRO NOMINAL EXPLICATIVO POR GUARDA', 'Dias exatos de serviço de cada integrante nos próximos 30 dias')}
+      <h2>3. RELAÇÃO NOMINAL DO EFETIVO</h2>
+      <table><thead><tr><th>Nº</th><th>Guarda GCM</th><th>Equipe</th><th>Setor / Viatura</th><th>Função</th><th>Próximos Dias de Serviço</th></tr></thead><tbody>${rowsPessoas}</tbody></table>
+      <h2>4. EXPEDIENTE ADMINISTRATIVO (SEGUNDA A SEXTA)</h2>
+      <table><thead><tr><th>Cargo</th><th>Titular</th><th>Horário</th><th>Obs.</th></tr></thead><tbody>${rowsAdm}</tbody></table>
       ${rodapeAssinaturasPdfHtml()}
     `;
-    exportarHtmlParaPdf(montarDocumentoPdf(`Escala 24x72 GCM ${mesVal}`, corpo, true), `escala-24x72-colorida-gcm-${mesVal}.pdf`, true);
+    exportarHtmlParaPdf(montarDocumentoPdf('Escala Continua 24x72 GCM', corpo, true), `escala-24x72-gcm-${hojeISO()}.pdf`, true);
   }
 
   function blocoHtmlCartaoPrograma(data, eq, posto) {
     const cp = obterDadosCartao(data, eq, posto.id);
-    const cEq = EQUIPE_CORES[eq] || { cor: '#27272A', bg: '#E4E4E7' };
-    const linhasPb = (cp.pontosBase||[]).map(pb => `<tr><td><strong>${esc(pb.hora)}</strong></td><td>${esc(pb.local)}</td><td>${esc(pb.atividade)}</td></tr>`).join('');
+    const croqui = gerarCroquiSvgSetor(posto, cp.pontosBase);
+    const linhasPb = (cp.pontosBase||[]).map((pb, i) => `<tr><td><strong>PB ${i+1}</strong></td><td><strong>${esc(pb.hora)}</strong></td><td>${esc(pb.local)}</td><td>${esc(pb.atividade)}</td></tr>`).join('');
     return `
-      <div class="box" style="border-left:6px solid ${esc(posto.cor || '#27272A')};">
-        <div style="display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #333;padding-bottom:5px;margin-bottom:6px;">
+      <div class="box" style="border-left:5px solid ${esc(posto.cor||'#18181B')};">
+        <div style="display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #333;padding-bottom:4px;margin-bottom:6px;">
           <strong style="font-size:13px;">${esc(cp.prefixo || posto.id)} — ${esc(cp.setor)}</strong>
+          <span class="insig-pdf" style="border-left-color:${EQUIPE_CORES[eq]?.cor||'#18181B'};">EQUIPE ${esc(eq)} · ${formatarDataBR(data)}</span>
+        </div>
+        <div class="cp-topo-mapa">
           <div>
-            <span class="tag" style="background:${cEq.bg};color:${cEq.cor};border-color:${cEq.cor};">EQUIPE ${esc(eq)}</span>
-            <span class="tag" style="background:${esc(posto.cor||'#27272A')};color:#FFFFFF;border-color:${esc(posto.cor||'#27272A')};">${esc(posto.setor)}</span>
+            <div><strong>Turno:</strong> ${esc(ESTADO.config.horarioTroca)} · <strong>Resp. Setor:</strong> ${esc(cp.responsavel || 'A definir')}</div>
+            <div style="margin-top:3px;"><strong>Bairros de Cobertura:</strong> ${esc(cp.bairros)}</div>
+            <table style="margin-top:6px;"><thead><tr><th>01 — Comandante</th><th>02 — Motorista</th><th>03 — Patrulheiro</th></tr></thead><tbody><tr><td>${esc(cp.g01||'—')}</td><td>${esc(cp.g02||'—')}</td><td>${esc(cp.g03||'2 integrantes')}</td></tr></tbody></table>
+            <div style="margin-top:6px;"><strong>Objetivo do Turno:</strong> ${esc(cp.missao)}</div>
           </div>
+          <div>${croqui}</div>
         </div>
-        <div class="grid-info">
-          <div><strong>Data / Turno:</strong><br>${formatarDataBR(data)} (${esc(ESTADO.config.horarioTroca)})</div>
-          <div><strong>Responsável pelo Setor:</strong><br>${esc(cp.responsavel || 'A definir')}</div>
-          <div><strong>Cobertura / Bairros:</strong><br>${esc(cp.bairros)}</div>
-        </div>
-        <table><thead><tr><th>01 — Comandante</th><th>02 — Motorista</th><th>03 — Patrulheiro</th></tr></thead><tbody><tr><td>${esc(cp.g01||'—')}</td><td>${esc(cp.g02||'—')}</td><td>${esc(cp.g03||'Guarnição de 2 integrantes')}</td></tr></tbody></table>
-        <div style="margin-top:5px;"><strong>Missão:</strong> ${esc(cp.missao)}</div>
-        <table><thead><tr><th style="width:105px;">Horário</th><th style="width:190px;">Ponto Base (PB)</th><th>Atividade</th></tr></thead><tbody>${linhasPb || '<tr><td colspan="3">—</td></tr>'}</tbody></table>
-        <div style="margin-top:5px;"><strong>Recomendações:</strong> ${esc(cp.obs||'—')}</div>
+        <table><thead><tr><th style="width:40px;">PB</th><th style="width:95px;">Horário</th><th style="width:175px;">Onde Ficar (Local)</th><th>Como Fazer na Prática</th></tr></thead><tbody>${linhasPb || '<tr><td colspan="4">—</td></tr>'}</tbody></table>
+        <div style="margin-top:5px;"><strong>Conduta / Recomendações:</strong> ${esc(cp.obs||'—')}</div>
       </div>
     `;
   }
+
   function gerarPdfCartaoPrograma(apenasAtual) {
     const d = $('inpCartaoData').value || hojeISO(), eq = $('selCartaoEquipe').value || 'ALFA', pid = $('selCartaoPosto').value;
     const lista = apenasAtual ? ESTADO.postos.filter(p => p.id === pid) : ESTADO.postos;
-    const blocos = lista.map((p, i) => (i > 0 && i % 2 === 0 ? '<div class="quebra"></div>' : '') + blocoHtmlCartaoPrograma(d, eq, p)).join('');
-    const tit = apenasAtual ? `CARTÃO PROGRAMA — ${lista[0]?.prefixo||''}` : `CARTÃO PROGRAMA DO TURNO — EQUIPE ${eq}`;
+    const blocos = lista.map((p, i) => (i > 0 ? '<div class="quebra"></div>' : '') + blocoHtmlCartaoPrograma(d, eq, p)).join('');
+    const tit = apenasAtual ? `CARTÃO PROGRAMA — ${lista[0]?.prefixo||''} (${lista[0]?.setor||''})` : `CARTÃO PROGRAMA DO TURNO — EQUIPE ${eq}`;
     exportarHtmlParaPdf(montarDocumentoPdf(tit, `${cabecalhoPdfHtml(tit, `Data: ${formatarDataBR(d)} · Turno: ${ESTADO.config.horarioTroca} · Equipe ${eq}`)}${blocos}${rodapeAssinaturasPdfHtml()}`, false), apenasAtual ? `cartao-${pid}-${d}.pdf` : `cartao-completo-${eq}-${d}.pdf`, false);
-  }
-  function gerarPdfFolhaPonto() {
-    const lista = filtrarPontos(), m = $('fltPontoMes').value || mesAtualISO(), ag = agentePorId($('fltPontoAgente').value);
-    const sub = ag ? `Guarda: ${ag.nome} (${ag.matricula}) · Mês: ${m}` : `Relatório Geral de Pontos · Mês: ${m} · Total: ${lista.length}`;
-    const rows = lista.map(p => { const a = p.auditoria||{}, cls = a.status==='VERIFICADO'?'tag-ok':(a.status==='ATENCAO'?'tag-warn':'tag-err'); return `<tr><td><img src="${p.foto}" class="foto-pdf"></td><td><strong>${formatarDataBR(p.dataLocal)}</strong><br>${esc(p.horaLocal)}</td><td><strong>${esc(p.agenteNome)}</strong><br>${esc(p.agenteMatricula)} · ${esc(p.equipe)} · ${esc(p.posto)}</td><td><span class="tag ${p.tipo==='ENTRADA'?'tag-dark':''}">${esc(p.tipo)}</span></td><td>${esc(a.endereco||'—')}<br><small>${esc(a.resumoDistancia||'')}</small></td><td><span class="tag ${cls}">${esc(a.status||'—')} (${a.score??0}%)</span><br><small>SHA: ${esc((p.hashIntegridade||'').slice(0,12))}</small></td></tr>`; }).join('') || '<tr><td colspan="6" style="text-align:center;">Sem registros.</td></tr>';
-    exportarHtmlParaPdf(montarDocumentoPdf(`Folha de Ponto ${m}`, `${cabecalhoPdfHtml('FOLHA DE PONTO OFICIAL — FOTO AO VIVO + GPS ANTIFRAUDE', sub)}<table><thead><tr><th>Foto</th><th>Data / Hora</th><th>Guarda</th><th>Tipo</th><th>Local</th><th>Auditoria / SHA</th></tr></thead><tbody>${rows}</tbody></table>${rodapeAssinaturasPdfHtml()}`, false), `folha-ponto-gcm-${m}.pdf`, false);
   }
 
   // =========================================================================
   // NAVEGACAO & EVENTOS
   // =========================================================================
+  function ativarSubtab(idSecao, idSub) {
+    const sec = $(idSecao); if (!sec) return;
+    sec.querySelectorAll('.subtab').forEach(x => x.classList.toggle('ativo', x.getAttribute('data-sub') === idSub));
+    sec.querySelectorAll('.subpainel').forEach(p => p.classList.toggle('ativo', p.id === idSub));
+  }
+
   function abrirAba(idSecao) {
     document.querySelectorAll('.secao-aba').forEach(s => s.classList.toggle('ativa', s.id === idSecao));
     document.querySelectorAll('.side-btn').forEach(b => b.classList.toggle('ativo', b.getAttribute('data-aba') === idSecao));
     if ($('lblTituloPaginaAtual')) $('lblTituloPaginaAtual').textContent = TITULOS_ABAS[idSecao] || 'GCM Valparaíso';
     fecharSidebarMobile();
     if (idSecao !== 'secPonto') pararCamera();
-    if (idSecao === 'secPainel') renderPainel();
+    if (idSecao === 'secPonto') { renderFaixaPlantaoHoje(); renderResumoEscaladosHoje(); renderFrequenciaDia(); renderTabelaPontos(); }
     if (idSecao === 'secEscalas') { renderCalendario24(); renderQuadroPessoas(); renderMontagemEquipe(); renderSetoresResponsaveis(); renderAdmE12x36(); renderResponsaveis(); }
     if (idSecao === 'secCartao') { popularSelectsCartao(); carregarEditorCartao(); }
     if (idSecao === 'secEventos') renderListaEventos();
-    if (idSecao === 'secPonto') { popularSelectsPonto(); renderTabelaPontos(); }
-    if (idSecao === 'secCodigoQ') renderCodigoQ();
     if (idSecao === 'secEfetivo') renderEfetivo();
     if (idSecao === 'secSistema') { renderContas(); renderConfigBase(); }
   }
 
   function atualizarTodasVistas() {
-    renderPainel(); renderCalendario24(); renderQuadroPessoas(); renderMontagemEquipe();
-    renderSetoresResponsaveis(); renderAdmE12x36(); renderResponsaveis(); renderListaEventos();
-    popularSelectsCartao(); carregarEditorCartao(); popularSelectsPonto(); renderTabelaPontos();
-    renderCodigoQ(); renderEfetivo(); renderContas(); renderConfigBase();
+    renderFaixaPlantaoHoje(); renderResumoEscaladosHoje(); renderFrequenciaDia(); renderTabelaPontos();
+    renderCalendario24(); renderQuadroPessoas(); renderMontagemEquipe(); renderSetoresResponsaveis();
+    renderAdmE12x36(); renderResponsaveis(); popularSelectsCartao(); carregarEditorCartao();
+    renderListaEventos(); renderEfetivo(); renderContas(); renderConfigBase();
   }
 
   function iniciarAppLogado(sessao) {
     SESSAO = sessao;
     $('telaAuth').classList.add('oculto'); $('appShell').classList.remove('oculto');
     $('lblUsuarioTopo').textContent = sessao.nome; $('lblPerfilTopo').textContent = sessao.perfil;
-    $('selMesEscala').value = mesAtualISO(); $('inpCartaoData').value = hojeISO(); $('fltPontoMes').value = mesAtualISO();
+    $('inpFreqData').value = hojeISO(); $('fltPontoMes').value = mesAtualISO();
+    $('selMesEscala').value = mesAtualISO(); $('inpCartaoData').value = hojeISO();
     sincronizarDataCartao(); atualizarTodasVistas();
+    abrirAba('secPonto'); // Primeira tela ao entrar = Folha de Ponto!
+
+    // Se o usuario logado tiver numero/matricula de um guarda, pre-seleciona na tela de ponto
+    if (sessao.matricula) {
+      const numL = sessao.matricula.replace(/\D/g,'').replace(/^0+/,'');
+      const meu = ESTADO.efetivo.find(a => a.matricula.replace(/\D/g,'').replace(/^0+/,'') === numL);
+      if (meu) selecionarGuardaParaPonto(meu);
+    }
+
     if (timerRelogio) clearInterval(timerRelogio);
     timerRelogio = setInterval(() => { if ($('lblRelogioPonto')) $('lblRelogioPonto').textContent = new Date().toLocaleTimeString('pt-BR'); }, 1000);
     if (ESTADO.config?.nuvemAtiva && window.EscalaCloud.lerConfigFirebase()) {
-      window.EscalaCloud.assinarNuvem(true, (rem) => { if (!rem?.efetivo) return; ESTADO = rem; window.EscalaCloud.salvarEstadoLocal(ESTADO); atualizarBadgeSync('Nuvem Própria OK', 'badge-ok'); atualizarTodasVistas(); });
+      window.EscalaCloud.assinarNuvem(true, (rem) => { if (!rem?.efetivo) return; ESTADO = rem; window.EscalaCloud.salvarEstadoLocal(ESTADO); atualizarBadgeSync('Nuvem OK', 'badge-ok'); atualizarTodasVistas(); });
     }
   }
 
@@ -1419,6 +1699,13 @@
     $('btnToggleMenu').addEventListener('click', alternarSidebar);
     $('btnFecharSidebar').addEventListener('click', fecharSidebarMobile);
     $('sidebarBackdrop').addEventListener('click', fecharSidebarMobile);
+
+    // Botao permanente no topo para abrir direto a Folha de Ponto
+    $('btnTopoRegistrarPonto').addEventListener('click', () => {
+      abrirAba('secPonto');
+      ativarSubtab('secPonto', 'subPtRegistrar');
+      $('inpIdentificaGuarda').focus();
+    });
 
     $('btnTabEntrar').addEventListener('click', () => { $('btnTabEntrar').classList.add('ativo'); $('btnTabCadastrar').classList.remove('ativo'); $('formLogin').classList.remove('oculto'); $('formCadastro').classList.add('oculto'); });
     $('btnTabCadastrar').addEventListener('click', () => { $('btnTabCadastrar').classList.add('ativo'); $('btnTabEntrar').classList.remove('ativo'); $('formCadastro').classList.remove('oculto'); $('formLogin').classList.add('oculto'); });
@@ -1432,7 +1719,7 @@
     $('formCadastro').addEventListener('submit', (e) => {
       e.preventDefault(); const b = $('msgCadInfo'); b.classList.remove('oculto','erro','ok');
       const r = window.EscalaCloud.cadastrarUsuario({ nome: $('inpCadNome').value, login: $('inpCadUser').value, matricula: $('inpCadMat').value, senha: $('inpCadPass').value, perfil: 'AGENTE', aprovado: false });
-      b.classList.add(r.ok ? 'ok' : 'erro'); b.textContent = r.ok ? 'Solicitação enviada! Aguarde aprovação do Admin.' : r.erro;
+      b.classList.add(r.ok ? 'ok' : 'erro'); b.textContent = r.ok ? 'Solicitação enviada! Aguarde aprovação do Administrador.' : r.erro;
       if (r.ok) $('formCadastro').reset();
     });
     $('btnSair').addEventListener('click', () => { pararCamera(); window.EscalaCloud.salvarSessao(null); SESSAO = null; $('appShell').classList.add('oculto'); $('telaAuth').classList.remove('oculto'); });
@@ -1446,16 +1733,28 @@
       sec.querySelectorAll('.subpainel').forEach(p => p.classList.toggle('ativo', p.id === alvo));
     })));
 
-    // Atalhos Painel
-    $('btnAtalhoPdfEscala').addEventListener('click', () => gerarPdfEscalaMensal(false));
-    $('btnAtalhoCartaoHoje').addEventListener('click', () => { $('inpCartaoData').value = hojeISO(); sincronizarDataCartao(); gerarPdfCartaoPrograma(false); });
-    $('btnAtalhoPonto').addEventListener('click', () => abrirAba('secPonto'));
-    $('btnAtalhoCodigoQ').addEventListener('click', () => abrirAba('secCodigoQ'));
-    $('btnIrEventosPainel').addEventListener('click', () => abrirAba('secEventos'));
+    // Folha de Ponto
+    $('inpIdentificaGuarda').addEventListener('input', buscarGuardaDigitado);
+    $('btnAbrirCamera').addEventListener('click', abrirCameraAoVivo);
+    $('btnCapturarFoto').addEventListener('click', capturarFotoComCarimbo);
+    $('btnRefazerFoto').addEventListener('click', () => { fotoCapturadaDataUrl = null; abrirCameraAoVivo(); });
+    $('btnColetarGps').addEventListener('click', coletarLocalizacaoPonto);
+    $('btnConfirmarPonto').addEventListener('click', confirmarRegistroPonto);
+    $('btnVerFrequenciaCompleta').addEventListener('click', () => { ativarSubtab('secPonto', 'subPtFrequencia'); renderFrequenciaDia(); });
+    $('inpFreqData').addEventListener('change', renderFrequenciaDia);
+    $('fltFreqBusca').addEventListener('input', renderFrequenciaDia);
+    $('fltFreqSituacao').addEventListener('change', renderFrequenciaDia);
+    $('btnPdfFolhaDia').addEventListener('click', gerarPdfFolhaDia);
+    $('fltPontoMes').addEventListener('change', renderTabelaPontos);
+    $('fltPontoBusca').addEventListener('input', renderTabelaPontos);
+    $('fltPontoTipo').addEventListener('change', renderTabelaPontos);
+    $('fltPontoStatus').addEventListener('change', renderTabelaPontos);
+    $('btnPdfFolhaMensal').addEventListener('click', gerarPdfFolhaMensal);
 
-    // Escalas
-    $('selMesEscala').addEventListener('change', () => { renderCalendario24(); renderQuadroPessoas(); });
-    $('btnSalvarCiclo24').addEventListener('click', async () => { if (!podeEditarEscala()) return toast('Sem permissão.'); ESTADO.config.dataBaseAlfa = $('inpDataBaseAlfa').value || hojeISO(); ESTADO.config.horarioTroca = $('inpHorarioTroca').value.trim() || '07:00 às 07:00'; await salvarTudo(); renderCalendario24(); renderQuadroPessoas(); renderPainel(); });
+    // Escala Continua
+    $('selModoEscala').addEventListener('change', renderCalendario24);
+    $('selMesEscala').addEventListener('change', renderCalendario24);
+    $('btnSalvarCiclo24').addEventListener('click', async () => { if (!podeEditarEscala()) return toast('Sem permissão.'); ESTADO.config.dataBaseAlfa = $('inpDataBaseAlfa').value || hojeISO(); ESTADO.config.horarioTroca = $('inpHorarioTroca').value.trim() || '07:00 às 07:00'; await salvarTudo(); renderCalendario24(); renderQuadroPessoas(); renderFaixaPlantaoHoje(); renderResumoEscaladosHoje(); });
     $('btnExportarPdfEscala').addEventListener('click', () => gerarPdfEscalaMensal(false));
     $('fltQpEquipe').addEventListener('change', renderQuadroPessoas);
     $('fltQpBusca').addEventListener('input', renderQuadroPessoas);
@@ -1466,120 +1765,80 @@
     $('btnAdicionarPosto').addEventListener('click', abrirModalNovoPosto);
     $('btnAddSetorDireto').addEventListener('click', abrirModalNovoPosto);
     $('btnSalvarSetoresResp').addEventListener('click', salvarSetoresResponsaveis);
+    $('btnAddCargoAdm').addEventListener('click', () => { if (!podeEditarEscala()) return toast('Sem permissão.'); ESTADO.administrativo.push({ id:'adm_'+Date.now(), cargo:'Novo Cargo', titular:'A definir', horario:'Seg–Sex · 08h às 17h', obs:'' }); renderAdmE12x36(); });
+    $('btnSalvarAdm').addEventListener('click', async () => { if (!podeEditarEscala()) return toast('Sem permissão.'); const l = []; $('listaCargosAdm').querySelectorAll('.linha-editavel').forEach((el,i) => l.push({ id:'adm_'+i, cargo:el.querySelector('.adm-cargo').value.trim(), titular:el.querySelector('.adm-titular').value.trim(), horario:el.querySelector('.adm-horario').value.trim(), obs:el.querySelector('.adm-obs').value.trim() })); ESTADO.administrativo = l; await salvarTudo(); });
+    $('btnAddPosto12x36').addEventListener('click', () => { if (!podeEditarEscala()) return toast('Sem permissão.'); ESTADO.escala12x36.push({ id:'e12_'+Date.now(), posto:'Novo Posto 12x36', turno:'Diurno', equipeA:'A definir', equipeB:'A definir' }); renderAdmE12x36(); });
+    $('btnSalvar12x36').addEventListener('click', async () => { if (!podeEditarEscala()) return toast('Sem permissão.'); const l = []; $('listaPostos12x36').querySelectorAll('.linha-editavel').forEach((el,i) => l.push({ id:'e12_'+i, posto:el.querySelector('.e12-posto').value.trim(), turno:el.querySelector('.e12-turno').value.trim(), equipeA:el.querySelector('.e12-a').value.trim(), equipeB:el.querySelector('.e12-b').value.trim() })); ESTADO.escala12x36 = l; await salvarTudo(); });
+    $('btnSalvarResponsaveis').addEventListener('click', async () => { if (!podeEditarEscala()) return toast('Sem permissão.'); ESTADO.config.responsaveis = { escalanteNome:$('inpRespEscalanteNome').value.trim(), escalanteCargo:$('inpRespEscalanteCargo').value.trim(), escalanteMat:$('inpRespEscalanteMat').value.trim(), comandoNome:$('inpRespComandoNome').value.trim(), comandoCargo:$('inpRespComandoCargo').value.trim(), comandoMat:$('inpRespComandoMat').value.trim() }; await salvarTudo(); });
 
-    $('btnAddCargoAdm').addEventListener('click', () => { if (!podeEditarEscala()) return toast('Sem permissão.'); ESTADO.administrativo.push({ id: 'adm_' + Date.now(), cargo: 'Novo Cargo', titular: 'A definir (Editar)', horario: 'Seg–Sex · 08h às 17h', obs: '' }); renderAdmE12x36(); });
-    $('btnSalvarAdm').addEventListener('click', async () => { if (!podeEditarEscala()) return toast('Sem permissão.'); const l = []; $('listaCargosAdm').querySelectorAll('.linha-editavel').forEach((el, i) => l.push({ id: 'adm_' + i, cargo: el.querySelector('.adm-cargo').value.trim(), titular: el.querySelector('.adm-titular').value.trim(), horario: el.querySelector('.adm-horario').value.trim(), obs: el.querySelector('.adm-obs').value.trim() })); ESTADO.administrativo = l; await salvarTudo(); });
-    $('btnAddPosto12x36').addEventListener('click', () => { if (!podeEditarEscala()) return toast('Sem permissão.'); ESTADO.escala12x36.push({ id: 'e12_' + Date.now(), posto: 'Novo Posto 12x36', turno: 'Diurno (07h às 19h)', equipeA: 'A definir', equipeB: 'A definir' }); renderAdmE12x36(); });
-    $('btnSalvar12x36').addEventListener('click', async () => { if (!podeEditarEscala()) return toast('Sem permissão.'); const l = []; $('listaPostos12x36').querySelectorAll('.linha-editavel').forEach((el, i) => l.push({ id: 'e12_' + i, posto: el.querySelector('.e12-posto').value.trim(), turno: el.querySelector('.e12-turno').value.trim(), equipeA: el.querySelector('.e12-a').value.trim(), equipeB: el.querySelector('.e12-b').value.trim() })); ESTADO.escala12x36 = l; await salvarTudo(); });
-    $('btnSalvarResponsaveis').addEventListener('click', async () => { if (!podeEditarEscala()) return toast('Sem permissão.'); ESTADO.config.responsaveis = { escalanteNome: $('inpRespEscalanteNome').value.trim(), escalanteCargo: $('inpRespEscalanteCargo').value.trim(), escalanteMat: $('inpRespEscalanteMat').value.trim(), comandoNome: $('inpRespComandoNome').value.trim(), comandoCargo: $('inpRespComandoCargo').value.trim(), comandoMat: $('inpRespComandoMat').value.trim() }; await salvarTudo(); });
-
-    // Cartao Programa
+    // Cartao Programa & Mapa
     $('inpCartaoData').addEventListener('change', sincronizarDataCartao);
     $('selCartaoEquipe').addEventListener('change', carregarEditorCartao);
     $('selCartaoPosto').addEventListener('change', carregarEditorCartao);
-    $('btnAddLinhaPb').addEventListener('click', () => { const a = lerCartaoDoEditor().pontosBase; a.push({ hora: '', local: '', atividade: '' }); renderLinhasPb(a); });
+    $('chkMostrarTodosSetores').addEventListener('change', atualizarDesenhoMapaSetor);
+    $('btnCentralizarSetor').addEventListener('click', atualizarDesenhoMapaSetor);
+    $('btnModoMarcarPb').addEventListener('click', () => {
+      if (!podeEditarEscala()) return toast('Sem permissão.');
+      modoMarcarPbMapa = !modoMarcarPbMapa;
+      $('avisoCliqueMapa').classList.toggle('oculto', !modoMarcarPbMapa);
+      $('btnModoMarcarPb').textContent = modoMarcarPbMapa ? 'Cancelar Marcação' : '+ Marcar PB clicando no Mapa';
+    });
+    $('btnAddLinhaPb').addEventListener('click', () => { const a = lerCartaoDoEditor().pontosBase; a.push({ hora:'', local:'', atividade:'', lat:null, lon:null }); renderLinhasPb(a); });
     $('btnPuxarGuarnicaoEscala').addEventListener('click', () => { const m = (ESTADO.equipesMontagem[$('selCartaoEquipe').value]||{})[$('selCartaoPosto').value]||{}, p = ESTADO.postos.find(x => x.id === $('selCartaoPosto').value); $('inpCpG01').value = nomeAgentePorId(m.g01)||''; $('inpCpG02').value = nomeAgentePorId(m.g02)||''; $('inpCpG03').value = nomeAgentePorId(m.g03)||''; if (p) $('inpCpRespSetor').value = p.responsavel||''; toast('Sincronizado.'); });
-    $('btnSalvarCartaoDia').addEventListener('click', async () => { if (!podeEditarEscala()) return toast('Sem permissão.'); ESTADO.cartoesDia[chaveCartao($('inpCartaoData').value, $('selCartaoEquipe').value, $('selCartaoPosto').value)] = lerCartaoDoEditor(); await salvarTudo(); });
-    $('btnSalvarModeloSetor').addEventListener('click', async () => { if (!podeEditarEscala()) return toast('Sem permissão.'); const pid = $('selCartaoPosto').value, d = lerCartaoDoEditor(); ESTADO.cartoesModelo[pid] = { setor: d.setor, bairros: d.bairros, prefixo: d.prefixo, responsavel: d.responsavel, missao: d.missao, pontosBase: d.pontosBase, obs: d.obs }; const p = ESTADO.postos.find(x => x.id === pid); if (p) Object.assign(p, { setor: d.setor, bairros: d.bairros, prefixo: d.prefixo, responsavel: d.responsavel }); await salvarTudo(); toast('Modelo padrão atualizado!'); });
+    $('btnSalvarCartaoDia').addEventListener('click', async () => { if (!podeEditarEscala()) return toast('Sem permissão.'); ESTADO.cartoesDia[chaveCartao($('inpCartaoData').value, $('selCartaoEquipe').value, $('selCartaoPosto').value)] = lerCartaoDoEditor(); await salvarTudo(); atualizarDesenhoMapaSetor(); });
+    $('btnSalvarModeloSetor').addEventListener('click', async () => { if (!podeEditarEscala()) return toast('Sem permissão.'); const pid = $('selCartaoPosto').value, d = lerCartaoDoEditor(); ESTADO.cartoesModelo[pid] = { setor:d.setor, bairros:d.bairros, prefixo:d.prefixo, responsavel:d.responsavel, missao:d.missao, pontosBase:d.pontosBase, obs:d.obs }; const p = ESTADO.postos.find(x => x.id === pid); if (p) Object.assign(p, { setor:d.setor, bairros:d.bairros, prefixo:d.prefixo, responsavel:d.responsavel }); await salvarTudo(); atualizarDesenhoMapaSetor(); toast('Padrão do setor atualizado!'); });
     $('btnPdfCartaoIndividual').addEventListener('click', () => gerarPdfCartaoPrograma(true));
     $('btnPdfCartaoCompleto').addEventListener('click', () => gerarPdfCartaoPrograma(false));
     $('btnCopiarWhatsApp').addEventListener('click', copiarResumoWhatsApp);
 
     // Eventos
-    $('btnNovoEvento').addEventListener('click', async () => { if (!podeEditarEscala()) return toast('Sem permissão.'); const novo = { id: 'ev_' + Date.now().toString(36), nome: 'Novo Evento Extra', local: 'Valparaíso de Goiás', data: hojeISO(), inicio: '16:00', fim: '23:00', regime: 'HORA_EXTRA', coordenador: '', missao: '', obs: '', viaturas: [{ id: 'evv_1', prefixo: 'VTR-EVENTO 01', setor: 'Principal', g01:'', g02:'', g03:'', g04:'' }, { id: 'evv_2', prefixo: 'VTR-EVENTO 02', setor: 'Apoio', g01:'', g02:'', g03:'', g04:'' }] }; ESTADO.eventos.unshift(novo); eventoSelecionadoId = novo.id; await salvarTudo(true); renderListaEventos(); renderPainel(); });
+    $('btnNovoEvento').addEventListener('click', async () => { if (!podeEditarEscala()) return toast('Sem permissão.'); const novo = { id:'ev_'+Date.now().toString(36), nome:'Novo Evento Extra', local:'Valparaíso de Goiás', data:hojeISO(), inicio:'16:00', fim:'23:00', regime:'HORA_EXTRA', coordenador:'', missao:'', obs:'', viaturas:[{ id:'evv_1', prefixo:'VTR-EVENTO 01', setor:'Principal', g01:'', g02:'', g03:'', g04:'' }, { id:'evv_2', prefixo:'VTR-EVENTO 02', setor:'Apoio', g01:'', g02:'', g03:'', g04:'' }] }; ESTADO.eventos.unshift(novo); eventoSelecionadoId = novo.id; await salvarTudo(true); renderListaEventos(); });
     $('inpEvData').addEventListener('change', () => { const cur = lerEventoDoEditor(); atualizarDicaFolgaEvento(cur.data); renderViaturasEvento(cur.viaturas, cur.data); });
-    $('btnAddVtrEvento').addEventListener('click', () => { if (!podeEditarEscala()) return toast('Sem permissão.'); const cur = lerEventoDoEditor(); cur.viaturas.push({ id: 'evv_'+Date.now(), prefixo: `VTR-EVENTO 0${cur.viaturas.length+1}`, setor:'', g01:'', g02:'', g03:'', g04:'' }); renderViaturasEvento(cur.viaturas, cur.data); });
-    $('btnSalvarEvento').addEventListener('click', async () => { if (!podeEditarEscala()) return toast('Sem permissão.'); const cur = lerEventoDoEditor(), i = ESTADO.eventos.findIndex(e => e.id === cur.id); if (i >= 0) ESTADO.eventos[i] = cur; await salvarTudo(); renderListaEventos(); renderPainel(); });
-    $('btnExcluirEvento').addEventListener('click', async () => { if (!podeEditarEscala()) return toast('Sem permissão.'); if (!confirm('Excluir evento?')) return; ESTADO.eventos = ESTADO.eventos.filter(e => e.id !== eventoSelecionadoId); eventoSelecionadoId = null; await salvarTudo(); renderListaEventos(); renderPainel(); });
+    $('btnAddVtrEvento').addEventListener('click', () => { if (!podeEditarEscala()) return toast('Sem permissão.'); const cur = lerEventoDoEditor(); cur.viaturas.push({ id:'evv_'+Date.now(), prefixo:`VTR-EVENTO 0${cur.viaturas.length+1}`, setor:'', g01:'', g02:'', g03:'', g04:'' }); renderViaturasEvento(cur.viaturas, cur.data); });
+    $('btnSalvarEvento').addEventListener('click', async () => { if (!podeEditarEscala()) return toast('Sem permissão.'); const cur = lerEventoDoEditor(), i = ESTADO.eventos.findIndex(e => e.id === cur.id); if (i >= 0) ESTADO.eventos[i] = cur; await salvarTudo(); renderListaEventos(); renderFrequenciaDia(); });
+    $('btnExcluirEvento').addEventListener('click', async () => { if (!podeEditarEscala()) return toast('Sem permissão.'); if (!confirm('Excluir evento?')) return; ESTADO.eventos = ESTADO.eventos.filter(e => e.id !== eventoSelecionadoId); eventoSelecionadoId = null; await salvarTudo(); renderListaEventos(); });
     $('btnWhatsAppEvento').addEventListener('click', copiarWhatsAppEvento);
     $('btnPdfEvento').addEventListener('click', gerarPdfEvento);
 
-    // Ponto
-    $('btnAbrirCamera').addEventListener('click', abrirCameraAoVivo);
-    $('btnCapturarFoto').addEventListener('click', capturarFotoComCarimbo);
-    $('btnRefazerFoto').addEventListener('click', () => { fotoCapturadaDataUrl = null; abrirCameraAoVivo(); });
-    $('btnColetarGpsAntifraude').addEventListener('click', coletarGpsAntifraude);
-    $('btnConfirmarPonto').addEventListener('click', confirmarRegistroPonto);
-    $('fltPontoMes').addEventListener('change', renderTabelaPontos);
-    $('fltPontoAgente').addEventListener('change', renderTabelaPontos);
-    $('fltPontoStatus').addEventListener('change', renderTabelaPontos);
-    $('btnPdfFolhaPonto').addEventListener('click', gerarPdfFolhaPonto);
-
-    // Codigo Q & QRA
-    $('fltBuscaQ').addEventListener('input', renderCodigoQ);
-    $('fltCatQ').addEventListener('change', renderCodigoQ);
-    $('btnAddCodigoQ').addEventListener('click', () => {
-      if (!podeEditarEscala()) return toast('Sem permissão.');
-      abrirModal('Adicionar Código Q Personalizado',
-        `<div class="grid-2"><div class="campo"><label>Código</label><input type="text" id="mQCod" placeholder="Ex.: QSO-10"></div><div class="campo"><label>Categoria</label><select id="mQCat">${Object.entries(CAT_Q_LABEL).map(([k,v]) => `<option value="${k}">${v}</option>`).join('')}</select></div></div><div class="campo"><label>Significado / Uso na GCM</label><input type="text" id="mQSig" placeholder="Descreva o significado..."></div>`,
-        [
-          { texto: 'Cancelar', classe: 'btn-sec', onClick: fecharModal },
-          { texto: 'Salvar Código', classe: 'btn-primario', onClick: async () => {
-            const cod = ($('mQCod').value||'').trim().toUpperCase(), sig = ($('mQSig').value||'').trim();
-            if (!cod || !sig) return toast('Preencha código e significado.');
-            ESTADO.codigosQ.push({ id: 'q_' + Date.now(), codigo: cod, categoria: $('mQCat').value, significado: sig });
-            await salvarTudo(); fecharModal(); renderCodigoQ();
-          }}
-        ]
-      );
-    });
-    $('btnPdfCodigoQ').addEventListener('click', () => gerarPdfCodigoQ(false));
-    $('btnPdfListaQra').addEventListener('click', () => gerarPdfCodigoQ(true));
-    $('btnSalvarQraLote').addEventListener('click', async () => {
-      if (!podeEditarEscala()) return toast('Sem permissão.');
-      $('tbodyListaQra').querySelectorAll('.inp-qra-lote').forEach(inp => {
-        const ag = agentePorId(inp.getAttribute('data-qra-id'));
-        if (ag) ag.qra = inp.value.trim() || gerarQra(ag.nome);
-      });
-      await salvarTudo(); atualizarTodasVistas();
-    });
-
-    // Efetivo
+    // Efetivo & Sistema (Codigo 4 digitos)
     $('fltEfBusca').addEventListener('input', renderEfetivo);
     $('fltEfEquipe').addEventListener('change', renderEfetivo);
     $('fltEfArea').addEventListener('change', renderEfetivo);
     $('btnNovoAgente').addEventListener('click', () => { if (!podeEditarEscala()) return toast('Sem permissão.'); abrirModalAgente(null); });
     $('btnAbrirImportar64').addEventListener('click', abrirModalImportar64);
-    $('btnDistribuir64').addEventListener('click', async () => {
-      if (!podeEditarEscala()) return toast('Sem permissão.');
-      if (!confirm('Rebalancear os guardas operacionais igualmente nas 4 equipes (ALFA, BRAVO, CHARLIE, DELTA)?')) return;
-      const alvos = ESTADO.efetivo.filter(a => a.situacao === 'ATIVO' && a.equipe !== 'ADM' && a.equipe !== '12X36');
-      alvos.forEach((a, i) => { a.equipe = EQUIPES[i % 4]; a.regime = '24X72'; });
-      await salvarTudo(); atualizarTodasVistas(); toast(`${alvos.length} guardas rebalanceados!`);
-    });
+    $('btnDistribuir64').addEventListener('click', async () => { if (!podeEditarEscala()) return toast('Sem permissão.'); if (!confirm('Rebalancear operacionais nas 4 equipes?')) return; const alvos = ESTADO.efetivo.filter(a => a.situacao==='ATIVO' && a.equipe!=='ADM' && a.equipe!=='12X36'); alvos.forEach((a,i) => { a.equipe = EQUIPES[i%4]; a.regime = '24X72'; }); await salvarTudo(); atualizarTodasVistas(); toast(`${alvos.length} guardas rebalanceados!`); });
 
-    // Sistema / Contas / Base / Banco
     $('btnCriarContaAdmin').addEventListener('click', () => {
       if (!isAdmin()) return toast('Apenas Admin.');
-      abrirModal('Criar Conta', `<div class="campo"><label>Nome</label><input type="text" id="mUsNome"></div><div class="grid-2"><div class="campo"><label>Login</label><input type="text" id="mUsLogin"></div><div class="campo"><label>Matrícula</label><input type="text" id="mUsMat"></div></div><div class="grid-2"><div class="campo"><label>Senha (mín. 6)</label><input type="password" id="mUsPass"></div><div class="campo"><label>Perfil</label><select id="mUsPerfil"><option value="AGENTE">Agente</option><option value="ESCALANTE">Escalante</option><option value="ADMIN">Admin</option></select></div></div>`, [
+      abrirModal('Criar Conta (Código 4+ dígitos)', `<div class="campo"><label>Nome</label><input type="text" id="mUsNome"></div><div class="grid-2"><div class="campo"><label>Login</label><input type="text" id="mUsLogin"></div><div class="campo"><label>Nº Provisório / Matrícula</label><input type="text" id="mUsMat" placeholder="Ex.: 03"></div></div><div class="grid-2"><div class="campo"><label>Código de Acesso (mín. 4 dígitos)</label><input type="password" id="mUsPass" minlength="4"></div><div class="campo"><label>Perfil</label><select id="mUsPerfil"><option value="AGENTE">Agente</option><option value="ESCALANTE">Escalante</option><option value="ADMIN">Admin</option></select></div></div>`, [
         { texto: 'Cancelar', classe: 'btn-sec', onClick: fecharModal },
-        { texto: 'Criar', classe: 'btn-primario', onClick: () => { const r = window.EscalaCloud.cadastrarUsuario({ nome: $('mUsNome').value, login: $('mUsLogin').value, matricula: $('mUsMat').value, senha: $('mUsPass').value, perfil: $('mUsPerfil').value, aprovado: true }); if (!r.ok) return toast(r.erro); fecharModal(); renderContas(); salvarTudo(true); toast('Conta criada!'); }}
+        { texto: 'Criar', classe: 'btn-primario', onClick: () => { const r = window.EscalaCloud.cadastrarUsuario({ nome:$('mUsNome').value, login:$('mUsLogin').value, matricula:$('mUsMat').value, senha:$('mUsPass').value, perfil:$('mUsPerfil').value, aprovado:true }); if (!r.ok) return toast(r.erro); fecharModal(); renderContas(); salvarTudo(true); toast('Conta criada!'); }}
       ]);
     });
     $('btnCapturarBaseGps').addEventListener('click', () => {
-      if (!navigator.geolocation) return toast('GPS indisponível.');
-      navigator.geolocation.getCurrentPosition(pos => { $('inpBaseLat').value = pos.coords.latitude.toFixed(6); $('inpBaseLon').value = pos.coords.longitude.toFixed(6); toast('GPS da Base capturado!'); }, () => toast('Falha no GPS.'), { enableHighAccuracy: true, maximumAge: 0, timeout: 10000 });
+      if (!navigator.geolocation) return toast('Sem GPS.');
+      navigator.geolocation.getCurrentPosition(pos => { $('inpBaseLat').value = pos.coords.latitude.toFixed(6); $('inpBaseLon').value = pos.coords.longitude.toFixed(6); toast('GPS capturado!'); }, () => toast('Falha no GPS.'), { enableHighAccuracy:true, maximumAge:0, timeout:10000 });
     });
-    $('btnSalvarConfigBase').addEventListener('click', async () => { if (!isAdmin()) return toast('Apenas Admin.'); Object.assign(ESTADO.config, { baseNome: $('inpBaseNome').value.trim(), baseLat: Number($('inpBaseLat').value), baseLon: Number($('inpBaseLon').value), baseRaioMetros: Math.max(30, Number($('inpBaseRaio').value)||500), acaoSuspeita: $('selBloquearSuspeito').value }); await salvarTudo(); });
+    $('btnSalvarConfigBase').addEventListener('click', async () => { if (!isAdmin()) return toast('Apenas Admin.'); Object.assign(ESTADO.config, { baseNome:$('inpBaseNome').value.trim(), baseLat:Number($('inpBaseLat').value), baseLon:Number($('inpBaseLon').value), baseRaioMetros:Math.max(30, Number($('inpBaseRaio').value)||500) }); await salvarTudo(); });
     $('btnSalvarFirebaseProprio').addEventListener('click', async () => {
       if (!isAdmin()) return toast('Apenas Admin.');
       const obj = window.EscalaCloud.extrairObjetoFirebase($('txtFirebaseConfigJson').value);
       if (!obj) return toast('Cole um firebaseConfig válido.');
-      if (obj.projectId === 'cco-viaturas') return toast('BLOQUEADO: Esse é o banco do CCO Viaturas! Use um projeto separado.');
-      $('statusDbProprio').textContent = 'Testando conexão...';
+      if (obj.projectId === 'cco-viaturas') return toast('BLOQUEADO: Esse é o banco do CCO Viaturas! Crie um novo projeto separado.');
+      $('statusDbProprio').textContent = 'Testando...';
       const t = await window.EscalaCloud.testarConexaoFirebase(obj);
-      if (!t.ok) { $('statusDbProprio').textContent = 'Erro: ' + (t.erro||'verifique Firestore.'); return toast('Falha na conexão.'); }
+      if (!t.ok) { $('statusDbProprio').textContent = 'Erro: ' + (t.erro||''); return toast('Falha na conexão.'); }
       window.EscalaCloud.salvarConfigFirebase(obj); ESTADO.config.nuvemAtiva = true; $('chkNuvemAtiva').checked = true;
       await salvarTudo(true); renderConfigBase(); toast(`Firebase "${obj.projectId}" conectado!`);
     });
-    $('btnDesconectarFirebase').addEventListener('click', async () => { if (!isAdmin()) return toast('Apenas Admin.'); window.EscalaCloud.salvarConfigFirebase(null); ESTADO.config.nuvemAtiva = false; $('chkNuvemAtiva').checked = false; await salvarTudo(true); renderConfigBase(); atualizarBadgeSync('Modo Local', 'badge-neutro'); toast('Sistema operando 100% local.'); });
+    $('btnDesconectarFirebase').addEventListener('click', async () => { if (!isAdmin()) return toast('Apenas Admin.'); window.EscalaCloud.salvarConfigFirebase(null); ESTADO.config.nuvemAtiva = false; $('chkNuvemAtiva').checked = false; await salvarTudo(true); renderConfigBase(); atualizarBadgeSync('Local', 'badge-neutro'); toast('Modo local ativo.'); });
     $('chkNuvemAtiva').addEventListener('change', async () => { if (!isAdmin()) { $('chkNuvemAtiva').checked = !!ESTADO.config.nuvemAtiva; return; } if ($('chkNuvemAtiva').checked && !window.EscalaCloud.lerConfigFirebase()) { $('chkNuvemAtiva').checked = false; return toast('Configure o firebaseConfig primeiro.'); } ESTADO.config.nuvemAtiva = $('chkNuvemAtiva').checked; await salvarTudo(); renderConfigBase(); });
-    $('btnSyncAgora').addEventListener('click', async () => { if (!window.EscalaCloud.lerConfigFirebase()) return toast('Modo local ativo (sem Firebase).'); const r = await window.EscalaCloud.sincronizarBaixarNuvem(); if (r.ok && r.dados) { ESTADO = r.dados; await window.EscalaCloud.salvarEstadoLocal(ESTADO); atualizarTodasVistas(); toast('Sincronizado!'); } else await salvarTudo(); });
-    $('btnAlterarMinhaSenha').addEventListener('click', () => abrirModal('Alterar Senha', `<div class="campo"><label>Nova Senha (mín. 6)</label><input type="password" id="mNovaSenha" minlength="6"></div>`, [{ texto: 'Cancelar', classe: 'btn-sec', onClick: fecharModal }, { texto: 'Salvar', classe: 'btn-primario', onClick: () => { const s = $('mNovaSenha').value; if (!s || s.length < 6) return toast('Mínimo 6 caracteres.'); window.EscalaCloud.atualizarUsuario(SESSAO.login, { novaSenha: s }); fecharModal(); salvarTudo(true); toast('Senha alterada!'); }}]));
+    $('btnSyncAgora').addEventListener('click', async () => { if (!window.EscalaCloud.lerConfigFirebase()) return toast('Modo local ativo.'); const r = await window.EscalaCloud.sincronizarBaixarNuvem(); if (r.ok && r.dados) { ESTADO = r.dados; await window.EscalaCloud.salvarEstadoLocal(ESTADO); atualizarTodasVistas(); toast('Sincronizado!'); } else await salvarTudo(); });
+    $('btnAlterarMinhaSenha').addEventListener('click', () => abrirModal('Alterar Código de Acesso', `<div class="campo"><label>Novo Código / Senha (mínimo 4 dígitos)</label><input type="password" id="mNovaSenha" minlength="4" placeholder="Mínimo 4 dígitos"></div>`, [{ texto:'Cancelar', classe:'btn-sec', onClick:fecharModal }, { texto:'Salvar', classe:'btn-primario', onClick: () => { const s = $('mNovaSenha').value; if (!s || s.length < 4) return toast('Mínimo 4 dígitos.'); window.EscalaCloud.atualizarUsuario(SESSAO.login, { novaSenha:s }); fecharModal(); salvarTudo(true); toast('Código alterado!'); }}]));
     $('btnExportarBackup').addEventListener('click', async () => {
-      const pac = { sistema: 'ESCALA_GCM_V3', exportadoEm: new Date().toISOString(), estado: ESTADO, usuarios: window.EscalaCloud.lerUsuariosLocal() };
-      if (window.escalaAPI?.exportarBackup) { const r = await window.escalaAPI.exportarBackup(pac); if (r?.ok) toast('Backup salvo em: ' + r.caminho); return; }
-      const b = new Blob([JSON.stringify(pac, null, 2)], { type: 'application/json' }), u = URL.createObjectURL(b), a = document.createElement('a'); a.href = u; a.download = `backup-escala-gcm-${hojeISO()}.json`; a.click(); URL.revokeObjectURL(u); toast('Backup JSON baixado!');
+      const pac = { sistema:'GCM_VALP_ESCALA_V4', exportadoEm:new Date().toISOString(), estado:ESTADO, usuarios:window.EscalaCloud.lerUsuariosLocal() };
+      if (window.escalaAPI?.exportarBackup) { const r = await window.escalaAPI.exportarBackup(pac); if (r?.ok) toast('Backup salvo em: '+r.caminho); return; }
+      const b = new Blob([JSON.stringify(pac,null,2)], { type:'application/json' }), u = URL.createObjectURL(b), a = document.createElement('a'); a.href = u; a.download = `backup-gcm-escala-${hojeISO()}.json`; a.click(); URL.revokeObjectURL(u); toast('Backup baixado!');
     });
     $('btnImportarBackup').addEventListener('click', async () => {
       if (!isAdmin()) return toast('Apenas Admin.');
@@ -1588,18 +1847,18 @@
     });
     $('inpFileBackup').addEventListener('change', async (e) => {
       const f = e.target.files[0]; if (!f) return;
-      try { const p = JSON.parse(await f.text()); if (!p.estado?.efetivo) throw new Error('Inválido.'); ESTADO = p.estado; if (Array.isArray(p.usuarios)) window.EscalaCloud.salvarUsuariosLocal(p.usuarios); await salvarTudo(); atualizarTodasVistas(); toast('Backup restaurado!'); } catch (er) { toast('Erro: ' + er.message); }
+      try { const p = JSON.parse(await f.text()); if (!p.estado?.efetivo) throw new Error('Inválido.'); ESTADO = p.estado; if (Array.isArray(p.usuarios)) window.EscalaCloud.salvarUsuariosLocal(p.usuarios); await salvarTudo(); atualizarTodasVistas(); toast('Backup restaurado!'); } catch (er) { toast('Erro: '+er.message); }
       e.target.value = '';
     });
   }
 
   async function init() {
-    aplicarTema(localStorage.getItem('escala_gcm_tema_v3') || 'claro');
+    aplicarTema(localStorage.getItem('escala_gcm_tema_v4') || 'claro');
     if ('serviceWorker' in navigator && location.protocol.startsWith('http')) navigator.serviceWorker.register('./sw.js').catch(() => {});
     const carregado = await window.EscalaCloud.carregarEstadoLocal();
-    ESTADO = (carregado && carregado.efetivo && carregado.postos && carregado.versao >= 3) ? carregado : criarEstadoInicial();
+    ESTADO = (carregado && carregado.efetivo && carregado.postos && carregado.versao >= 4) ? carregado : criarEstadoInicial();
+    if (!ESTADO.justificativas) ESTADO.justificativas = {};
     if (!Array.isArray(ESTADO.eventos)) ESTADO.eventos = [];
-    if (!Array.isArray(ESTADO.codigosQ)) ESTADO.codigosQ = CODIGO_Q_INICIAL.map((c,i) => ({ id:'q_'+i, codigo:c[0], categoria:c[1], significado:c[2] }));
     await window.EscalaCloud.salvarEstadoLocal(ESTADO);
     registrarEventos();
     const s = window.EscalaCloud.lerSessao();
