@@ -185,7 +185,7 @@
     desconectarFirebase();
     if (!inicializarFirebase(cfg) || !db) return { ok: false, erro: 'Configuração inválida ou sem internet.' };
     try {
-      await db.collection(COLECAO_BASE).doc('ping').set({ v: 'estavel', em: new Date().toISOString() });
+      await db.collection(COLECAO_BASE).doc('ping').set({ v: '15', em: new Date().toISOString() });
       return { ok: true, projectId: cfg.projectId };
     } catch (e) { return { ok: false, erro: String(e && e.message ? e.message : e) }; }
   }
@@ -358,11 +358,39 @@
     return String(txt || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/\s+/g, ' ').trim();
   }
 
+  function validarNovaSenha(senha) {
+    const s = String(senha || '');
+    if (s.length < 6) return { ok: false, erro: 'A senha deve ter pelo menos 6 caracteres (use letras, números ou uma frase fácil de lembrar).' };
+    if (/^\s+$/.test(s)) return { ok: false, erro: 'A senha não pode conter apenas espaços.' };
+    return { ok: true };
+  }
+
+  function montarSessaoUsuario(u) {
+    return {
+      login: u.login,
+      nome: u.nome,
+      matricula: u.matricula || '',
+      email: u.email || '',
+      tipoEmail: u.tipoEmail || 'PESSOAL',
+      fotoUsuario: u.fotoUsuario || '',
+      agenteVinculadoId: u.agenteVinculadoId || '',
+      constaNoRolOficial: u.constaNoRolOficial !== false,
+      trocarSenhaObrigatoria: !!u.trocarSenhaObrigatoria,
+      perfil: u.perfil || 'AGENTE',
+      mestre: !!u.mestre
+    };
+  }
+
+  function obterUsuarioPorLogin(loginAlvo) {
+    const l = normalizarLogin(loginAlvo);
+    return lerUsuariosLocal().find(x => normalizarLogin(x.login) === l) || null;
+  }
+
   async function tentarLogin(id, senha) {
     const n = normalizarLogin(id);
     const nomeNorm = normalizarNomeAuth(id);
-    if (!n || !senha) return { ok: false, erro: 'Informe seu login (ou nome completo) e código de acesso.' };
-    if (String(senha).length < 4) return { ok: false, erro: 'O código de acesso deve ter no mínimo 4 dígitos.' };
+    if (!n || !senha) return { ok: false, erro: 'Informe seu login (ou nome completo) e senha.' };
+    if (String(senha).length < 4) return { ok: false, erro: 'Digite sua senha completa.' };
     let users = lerUsuariosLocal();
     let u = users.find(x => normalizarLogin(x.login) === n || (nomeNorm && normalizarNomeAuth(x.nome) === nomeNorm));
     if (!u && lerConfigFirebase()) {
@@ -371,43 +399,90 @@
       u = users.find(x => normalizarLogin(x.login) === n || (nomeNorm && normalizarNomeAuth(x.nome) === nomeNorm));
     }
     if (!u) return { ok: false, erro: 'Login ou nome não encontrados.' };
-    if (!u.aprovado) return { ok: false, erro: 'Conta aguardando aprovação do Administrador.' };
+    if (!u.aprovado) return { ok: false, erro: 'Conta aguardando aprovação ou bloqueada pelo Administrador.' };
     const hashAntes = u.senhaHash;
-    if (!conferirSenhaComMigracao(u, senha)) return { ok: false, erro: 'Código de acesso incorreto.' };
+    if (!conferirSenhaComMigracao(u, senha)) return { ok: false, erro: 'Senha incorreta. Caso tenha esquecido, clique em "Esqueci minha senha".' };
     if (u.senhaHash !== hashAntes) salvarUsuariosLocal(users);
-    const sessao = {
-      login: u.login,
-      nome: u.nome,
-      matricula: u.matricula || '',
-      agenteVinculadoId: u.agenteVinculadoId || '',
-      constaNoRolOficial: u.constaNoRolOficial !== false,
-      perfil: u.perfil || 'AGENTE',
-      mestre: !!u.mestre
-    };
+    const sessao = montarSessaoUsuario(u);
     salvarSessao(sessao);
     return { ok: true, sessao };
   }
 
-  function cadastrarUsuario({ nome, login, matricula, senha, perfil, aprovado, constaNoRolOficial, agenteVinculadoId, alertaCadastro }) {
+  function cadastrarUsuario({ nome, login, matricula, email, tipoEmail, senha, perfil, aprovado, constaNoRolOficial, agenteVinculadoId, alertaCadastro }) {
     const l = normalizarLogin(login);
-    if (!nome || !l || !senha || String(senha).length < 4) return { ok: false, erro: 'Preencha nome completo, login e código (mínimo 4 dígitos).' };
+    if (!nome || !l) return { ok: false, erro: 'Preencha seu Nome Completo e Login.' };
+    const vSenha = validarNovaSenha(senha);
+    if (!vSenha.ok) return vSenha;
     const users = lerUsuariosLocal();
-    if (users.some(x => normalizarLogin(x.login) === l)) return { ok: false, erro: 'Login já cadastrado.' };
+    if (users.some(x => normalizarLogin(x.login) === l)) return { ok: false, erro: 'Este login já está cadastrado.' };
     const novo = {
       login: l,
       nome: String(nome).trim(),
       matricula: String(matricula || '').trim().toUpperCase(),
+      email: String(email || '').trim().toLowerCase(),
+      tipoEmail: tipoEmail || 'PESSOAL',
+      fotoUsuario: '',
       perfil: perfil || 'AGENTE',
       mestre: false,
       aprovado: !!aprovado,
       constaNoRolOficial: constaNoRolOficial === true,
       agenteVinculadoId: agenteVinculadoId || '',
       alertaCadastro: alertaCadastro || '',
+      trocarSenhaObrigatoria: false,
+      solicitouResetEm: '',
       senhaHash: hashSenha(l, senha),
       criadoEm: new Date().toISOString()
     };
     users.push(novo); salvarUsuariosLocal(users);
     return { ok: true, usuario: novo };
+  }
+
+  function alterarPropriaSenha(loginAlvo, senhaAtual, novaSenha) {
+    const users = lerUsuariosLocal();
+    const u = users.find(x => normalizarLogin(x.login) === normalizarLogin(loginAlvo));
+    if (!u) return { ok: false, erro: 'Usuário não encontrado.' };
+    if (!conferirSenhaComMigracao(u, senhaAtual)) {
+      return { ok: false, erro: 'A senha atual informada está incorreta.' };
+    }
+    const v = validarNovaSenha(novaSenha);
+    if (!v.ok) return v;
+    u.senhaHash = hashSenha(u.login, novaSenha);
+    u.trocarSenhaObrigatoria = false;
+    u.solicitouResetEm = '';
+    u.senhaAlteradaEm = new Date().toISOString();
+    salvarUsuariosLocal(users);
+    const sessaoAt = lerSessao();
+    if (sessaoAt && normalizarLogin(sessaoAt.login) === normalizarLogin(u.login)) {
+      salvarSessao(montarSessaoUsuario(u));
+    }
+    return { ok: true, usuario: u };
+  }
+
+  function redefinirSenhaPorAdmin(loginAlvo, senhaTemporaria, exigirTrocaProximoLogin) {
+    const users = lerUsuariosLocal();
+    const u = users.find(x => normalizarLogin(x.login) === normalizarLogin(loginAlvo));
+    if (!u) return { ok: false, erro: 'Usuário não encontrado.' };
+    const v = validarNovaSenha(senhaTemporaria);
+    if (!v.ok) return v;
+    u.senhaHash = hashSenha(u.login, senhaTemporaria);
+    u.trocarSenhaObrigatoria = exigirTrocaProximoLogin !== false;
+    u.solicitouResetEm = '';
+    u.senhaRedefinidaPorAdminEm = new Date().toISOString();
+    salvarUsuariosLocal(users);
+    return { ok: true, usuario: u };
+  }
+
+  function solicitarResetSenha(identificador) {
+    const n = normalizarLogin(identificador);
+    const nomeNorm = normalizarNomeAuth(identificador);
+    if (!n) return { ok: false, erro: 'Informe seu login ou Nome Completo.' };
+    const users = lerUsuariosLocal();
+    const u = users.find(x => normalizarLogin(x.login) === n || (nomeNorm && normalizarNomeAuth(x.nome) === nomeNorm));
+    if (!u) return { ok: false, erro: 'Login ou nome não encontrado no sistema.' };
+    if (u.mestre) return { ok: false, erro: 'A conta Administrador Mestre deve alterar a senha em Configurações do Usuário.' };
+    u.solicitouResetEm = new Date().toISOString();
+    salvarUsuariosLocal(users);
+    return { ok: true, nome: u.nome, login: u.login };
   }
 
   function atualizarUsuario(loginAlvo, alt) {
@@ -416,28 +491,34 @@
     if (!u) return { ok: false, erro: 'Não encontrado.' };
     if (alt.nome !== undefined) u.nome = String(alt.nome).trim();
     if (alt.matricula !== undefined) u.matricula = String(alt.matricula).trim().toUpperCase();
+    if (alt.email !== undefined) u.email = String(alt.email).trim().toLowerCase();
+    if (alt.tipoEmail !== undefined) u.tipoEmail = alt.tipoEmail;
+    if (alt.fotoUsuario !== undefined) u.fotoUsuario = alt.fotoUsuario;
     if (alt.constaNoRolOficial !== undefined) u.constaNoRolOficial = !!alt.constaNoRolOficial;
     if (alt.agenteVinculadoId !== undefined) u.agenteVinculadoId = alt.agenteVinculadoId || '';
     if (alt.alertaCadastro !== undefined) u.alertaCadastro = alt.alertaCadastro || '';
+    if (alt.trocarSenhaObrigatoria !== undefined) u.trocarSenhaObrigatoria = !!alt.trocarSenhaObrigatoria;
+    if (alt.solicitouResetEm !== undefined) u.solicitouResetEm = alt.solicitouResetEm || '';
     if (alt.perfil !== undefined && !u.mestre) u.perfil = alt.perfil;
     if (alt.aprovado !== undefined && !u.mestre) u.aprovado = !!alt.aprovado;
-    if (alt.novaSenha && String(alt.novaSenha).length >= 4) u.senhaHash = hashSenha(u.login, alt.novaSenha);
+    if (alt.novaSenha && String(alt.novaSenha).length >= 6) {
+      u.senhaHash = hashSenha(u.login, alt.novaSenha);
+      u.trocarSenhaObrigatoria = false;
+      u.solicitouResetEm = '';
+    }
     salvarUsuariosLocal(users);
+    const sessaoAt = lerSessao();
+    if (sessaoAt && normalizarLogin(sessaoAt.login) === normalizarLogin(u.login)) {
+      salvarSessao(montarSessaoUsuario(u));
+    }
     return { ok: true, usuario: u };
   }
 
-  function removerUsuario(loginAlvo) {
-    const users = lerUsuariosLocal();
-    const u = users.find(x => normalizarLogin(x.login) === normalizarLogin(loginAlvo));
-    if (!u) return { ok: false, erro: 'Não encontrado.' };
-    if (u.mestre) return { ok: false, erro: 'Admin Mestre não pode ser excluído.' };
-    salvarUsuariosLocal(users.filter(x => normalizarLogin(x.login) !== normalizarLogin(loginAlvo)));
-    return { ok: true };
-  }
-
   window.EscalaCloud = {
-    sha256Hex, lerConfigFirebase, salvarConfigFirebase, extrairObjetoFirebase, testarConexaoFirebase, desconectarFirebase,
+    sha256Hex, validarNovaSenha, obterUsuarioPorLogin, montarSessaoUsuario,
+    lerConfigFirebase, salvarConfigFirebase, extrairObjetoFirebase, testarConexaoFirebase, desconectarFirebase,
     carregarEstadoLocal, salvarEstadoLocal, obterMotorStorage, enviarPontoIndividualNuvem, sincronizarEnviarNuvem, sincronizarBaixarNuvem, assinarNuvem,
-    lerSessao, salvarSessao, lerUsuariosLocal, salvarUsuariosLocal, tentarLogin, cadastrarUsuario, atualizarUsuario, removerUsuario
+    lerSessao, salvarSessao, lerUsuariosLocal, salvarUsuariosLocal, tentarLogin, cadastrarUsuario, atualizarUsuario,
+    alterarPropriaSenha, redefinirSenhaPorAdmin, solicitarResetSenha
   };
 })();

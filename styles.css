@@ -1,5 +1,5 @@
 /* =========================================================================
-   GCM VALPARAÍSO DE GOIÁS — v13.0 Estável
+   GCM VALPARAÍSO DE GOIÁS — v16.0
    Identidade Policial Tática Sóbria: Branco (Claro) e Preto (Noturno)
    ZERO AZUL · ZERO CORES CHAMATIVAS
    Insígnias Táticas: ALFA (Grafite), BRAVO (Oliva), CHARLIE (Caqui), DELTA (Bordô)
@@ -715,39 +715,49 @@ html, body {
   }
 }
 
-/* CELULAR (<= 640px): 1 coluna rigorosa minmax(0,1fr), zero corte lateral */
+/* CELULAR / APLICATIVO (<= 640px): BOTOES LINEARES, COMPACTOS E SEM COLAR UM NO OUTRO */
 @media (max-width: 640px) {
   .topbar {
     flex-direction: column;
     align-items: stretch;
-    padding: 8px 10px;
+    padding: 7px 10px;
     gap: 7px;
+  }
+  .topbar-esq {
+    gap: 8px;
   }
   .topbar-sub {
     display: none;
   }
   .topbar-dir {
     width: 100%;
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto auto;
-    gap: 6px;
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
     align-items: center;
+    gap: 6px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 2px;
+  }
+  .topbar-dir .btn,
+  .topbar-dir .badge {
+    flex: 0 0 auto;
+    width: auto;
+    white-space: nowrap;
+    padding: 5px 9px;
+    font-size: 11px;
+    min-height: 30px;
   }
   #btnTopoRegistrarPonto {
-    grid-column: 1 / -1;
-    width: 100%;
-    padding: 10px 10px;
-    font-size: 13.5px;
-  }
-  #btnAtualizarApp {
-    font-size: 11px;
-    padding: 6px 8px;
+    padding: 5px 10px;
+    font-size: 11.5px;
   }
   .conteudo {
-    padding: 8px;
+    padding: 9px;
   }
   .card {
-    padding: 11px 10px;
+    padding: 12px 10px;
   }
   .box-borda, .box-fora-valp, .posto-card {
     padding: 10px 9px;
@@ -756,15 +766,38 @@ html, body {
     flex-direction: column;
     align-items: stretch;
     gap: 8px;
+    margin-bottom: 12px;
   }
-  .cab-secao .acoes-linha {
+  /* Todos os grupos de acoes no celular ficam LINEARES (lado a lado), compactos e rolaveis se passarem da tela */
+  .acoes-linha,
+  .cab-secao .acoes-linha,
+  .card-cab .acoes-linha,
+  .modal-rodape {
+    display: flex !important;
+    flex-direction: row !important;
+    flex-wrap: nowrap !important;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 7px;
     width: 100%;
-    display: grid;
-    grid-template-columns: minmax(0, 1fr);
-    gap: 6px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    padding: 2px 1px 4px;
   }
-  .cab-secao .acoes-linha .btn {
-    width: 100%;
+  .acoes-linha .btn,
+  .cab-secao .acoes-linha .btn,
+  .card-cab .acoes-linha .btn,
+  .modal-rodape .btn {
+    flex: 0 0 auto !important;
+    width: auto !important;
+    white-space: nowrap !important;
+    padding: 6px 10px;
+    font-size: 11.5px;
+    min-height: 33px;
+    line-height: 1.2;
+  }
+  .modal-rodape {
+    justify-content: flex-end;
   }
   .grid-2, .grid-3, .grid-4, .grid-2-assimetrico, .linha-editavel, .checklist-grid {
     grid-template-columns: minmax(0, 1fr);
@@ -782,9 +815,13 @@ html, body {
   }
   .filtros-linha .campo-btn .btn {
     width: 100%;
+    min-height: 36px;
+    font-size: 12px;
+    padding: 7px 10px;
   }
   .faixa-kpis {
     grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 6px;
   }
   .faixa-kpi strong { font-size: 15px; }
   .faixa-kpi span { font-size: 9.5px; }
@@ -793,31 +830,34 @@ html, body {
     align-items: flex-start;
     gap: 6px;
   }
-  .card-cab .acoes-linha {
-    width: 100%;
-  }
   .campo input, .campo select, .campo textarea {
-    font-size: 16px;
-    padding: 9px 10px;
+    font-size: 15px;
+    padding: 8px 10px;
   }
   .btn {
-    min-height: 40px;
+    min-height: 34px;
+    padding: 7px 11px;
+    font-size: 12px;
+    line-height: 1.2;
+  }
+  .btn-bloco {
+    width: 100%;
+    min-height: 38px;
+    font-size: 13px;
     white-space: normal;
-    text-align: center;
-    line-height: 1.25;
   }
   .btn-sm {
-    min-height: 36px;
-    padding: 6px 9px;
-  }
-  .acoes-linha .btn {
-    flex: 1 1 auto;
+    min-height: 31px;
+    padding: 5px 9px;
+    font-size: 11.5px;
   }
   .banner-prioritario {
     padding: 10px;
+    gap: 8px;
   }
   .banner-prioritario .btn {
-    width: 100%;
+    width: auto;
+    align-self: flex-start;
   }
   .mapa-setor-box {
     height: 250px;
@@ -831,11 +871,9 @@ html, body {
     padding: 12px;
     max-height: 92vh;
   }
-  .modal-rodape {
-    flex-direction: column-reverse;
-  }
-  .modal-rodape .btn {
-    width: 100%;
+  /* Rodape da tela de login e da barra lateral tambem lineares e com respiro */
+  .auth-rodape .acoes-linha {
+    justify-content: center;
   }
 }
 
@@ -858,4 +896,97 @@ html, body {
 }
 .row-alerta-nome {
   background: var(--danger-bg) !important;
+}
+
+
+/* ABA CONFIGURACOES DO USUARIO E FORCA DA SENHA */
+.campo-fixo-readonly {
+  background: var(--surface-2) !important;
+  color: var(--text-muted) !important;
+  cursor: not-allowed;
+  font-weight: 600;
+}
+.forca-senha-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+  font-size: 11.5px;
+}
+.forca-senha-barra {
+  flex: 1;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  overflow: hidden;
+}
+.forca-senha-fill {
+  height: 100%;
+  width: 0%;
+  transition: width 0.2s ease, background 0.2s ease;
+}
+.forca-fraca { background: var(--danger); }
+.forca-media { background: var(--pend); }
+.forca-forte { background: var(--ok); }
+.senha-input-wrap {
+  display: flex;
+  gap: 6px;
+  align-items: stretch;
+}
+.senha-input-wrap input { flex: 1; min-width: 0; }
+.foto-usuario-grande {
+  width: 116px;
+  height: 138px;
+  border-radius: 8px;
+  border: 1.5px solid var(--border-strong);
+  background: var(--surface-2);
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  font-size: 11.5px;
+  color: var(--text-muted);
+  text-align: center;
+  padding: 6px;
+}
+.foto-usuario-grande img { width: 100%; height: 100%; object-fit: cover; }
+.link-discreto {
+  background: none;
+  border: none;
+  padding: 4px 2px;
+  color: var(--text-muted);
+  font-size: 12.5px;
+  font-weight: 600;
+  text-decoration: underline;
+  cursor: pointer;
+  align-self: center;
+}
+.link-discreto:hover { color: var(--text); }
+
+
+/* BARRA DE INSTALACAO DIRETA EM 1 TOQUE (SEM LINK EXTERNO) */
+.install-direto-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 12px;
+  margin-bottom: 14px;
+  border-radius: 8px;
+  border: 1.5px solid var(--border-strong);
+  border-left: 5px solid var(--ok);
+  background: var(--ok-bg);
+  flex-wrap: wrap;
+}
+.install-direto-bar strong {
+  display: block;
+  font-size: 13px;
+  color: var(--ok);
+}
+.install-direto-bar span {
+  display: block;
+  font-size: 11.5px;
+  color: var(--text);
 }

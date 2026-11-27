@@ -78,6 +78,7 @@
     secEventos: 'Eventos e Operações Extras',
     secEquipeDetalhe: 'Detalhamento da Equipe',
     secAutenticacao: 'Validar Autenticidade (SHA-256)',
+    secUsuario: 'Configurações do Usuário',
     secEfetivo: 'Efetivo da Guarda (64)',
     secAuditoria30: 'Auditoria Operacional de 30 Dias (Admin)',
     secSistema: 'Contas, Base e Banco de Dados (Exclusivo Admin)'
@@ -216,7 +217,7 @@
           { hora: '18:00 - 22:00', local: 'PB 4 — Paradas de Ônibus / Operação Saturação', atividade: 'Manter viatura visível com luzes de alerta nas paradas de maior desembarque de trabalhadores na margem da BR-040 e acessos das Etapas.', lat: -16.0725, lon: -47.9775 },
           { hora: '22:00 - 06:30', local: 'PB 5 — Ronda Patrimonial Noturna (Setor 01)', atividade: 'Circular em baixa velocidade verificando cadeados, portões, muros e iluminação de escolas, UBSs e próprios municipais. Reportar ao CCO qualquer vulnerabilidade encontrada.', lat: -16.0772, lon: -47.9835 }
         ],
-        obs: 'Informar ao CCO o início e o término de cada PB. Registrar saída/retorno de almoço e saída final na Folha de Ponto com KM final anotado.'
+        obs: 'Informar ao CCO o início e o término de cada PB. Registrar Entrada e Saída na Folha de Ponto com KM final anotado.'
       };
     }
     if (posto.id === 'VTR-02') {
@@ -358,7 +359,7 @@
     postos.forEach(p => { cartoesModelo[p.id] = criarModeloCartaoPadrao(p); });
 
     return {
-      versao: 13,
+      versao: 16,
       config: {
         dataBaseAlfa: hojeISO(),
         horarioTroca: '07:00 às 07:00',
@@ -461,7 +462,7 @@
         return {
           precisaBater: false, tipo: 'EM_SERVICO', classe: 'folga',
           titulo: `Expediente Administrativo em andamento (Entrada às ${rHoje.ent.horaLocal.slice(0,5)})`,
-          subtexto: 'Lembre-se de registrar Almoço e Saída ao finalizar o expediente.'
+          subtexto: 'Lembre-se de registrar sua Saída ao finalizar o expediente.'
         };
       }
       return {
@@ -525,20 +526,34 @@
     const banner = $('bannerCadastrosAdmin');
     if (!banner || !SESSAO || !ESTADO) return;
     if (!isAdmin()) { banner.classList.add('oculto'); return; }
-    const pendentes = window.EscalaCloud.lerUsuariosLocal().filter(u => !u.mestre && !u.aprovado);
-    if (!pendentes.length) { banner.classList.add('oculto'); return; }
+    const todosUsers = window.EscalaCloud.lerUsuariosLocal();
+    const pendentes = todosUsers.filter(u => !u.mestre && !u.aprovado);
+    const pediuReset = todosUsers.filter(u => !u.mestre && u.solicitouResetEm);
+
+    if (!pendentes.length && !pediuReset.length) { banner.classList.add('oculto'); return; }
 
     const foraDoRol = pendentes.filter(u => !verificarNomeNoRolOficial(u.nome).constaNoRol);
     banner.classList.remove('oculto', 'urgente', 'auditoria');
+
     if (foraDoRol.length) {
       banner.classList.add('urgente');
       const nomesFora = foraDoRol.map(u => `${u.nome} (${u.login})`).join(', ');
       banner.innerHTML = `
         <div class="banner-prioritario-texto">
           <strong>ALERTA DE CADASTRO — NOME FORA DA LISTA OFICIAL DOS GUARDAS (PDF)</strong>
-          <span><strong>${foraDoRol.length}</strong> solicitação(ões) pendente(s) com nome que <strong>NÃO consta</strong> na relação oficial dos 64 guardas: <strong>${esc(nomesFora)}</strong>.${pendentes.length > foraDoRol.length ? ` (+${pendentes.length - foraDoRol.length} pendente(s) com nome válido).` : ''}</span>
+          <span><strong>${foraDoRol.length}</strong> solicitação(ões) com nome fora dos 64 guardas: <strong>${esc(nomesFora)}</strong>.${pediuReset.length ? ` · ${pediuReset.length} pedido(s) de redefinição de senha.` : ''}</span>
         </div>
         <button type="button" class="btn btn-perigo btn-sm" id="btnAbrirContasAlerta">Verificar Contas Agora</button>
+      `;
+    } else if (pediuReset.length) {
+      banner.classList.add('auditoria');
+      const nomesReset = pediuReset.map(u => `${u.nome} (${u.login})`).join(', ');
+      banner.innerHTML = `
+        <div class="banner-prioritario-texto">
+          <strong>PEDIDO DE REDEFINIÇÃO DE SENHA (${pediuReset.length})</strong>
+          <span>Usuário(s) que esqueceram a senha e aguardam senha temporária: <strong>${esc(nomesReset)}</strong>.${pendentes.length ? ` · +${pendentes.length} cadastro(s) pendente(s).` : ''}</span>
+        </div>
+        <button type="button" class="btn btn-primario btn-sm" id="btnAbrirContasAlerta">Redefinir em Contas</button>
       `;
     } else {
       banner.classList.add('auditoria');
@@ -661,7 +676,7 @@
       return false;
     }
     const motorLbl = window.EscalaCloud.obterMotorStorage ? window.EscalaCloud.obterMotorStorage() : 'Local';
-    atualizarBadgeSync(motorLbl === 'IndexedDB' ? 'IndexedDB OK' : (motorLbl.includes('Disco') ? 'Disco PC OK' : 'Salvo Local'), 'badge-ok');
+    atualizarBadgeSync(motorLbl.includes('Disco') ? 'Salvo no PC' : 'Salvo no Aparelho', 'badge-ok');
     if (ESTADO.config?.nuvemAtiva && window.EscalaCloud.lerConfigFirebase()) {
       atualizarBadgeSync('Sincronizando...', 'badge-warn');
       const r = await window.EscalaCloud.sincronizarEnviarNuvem(ESTADO);
@@ -1101,10 +1116,6 @@
       $('selPontoTipo').value = 'SAIDA';
     } else if (!resumo.ent) {
       $('selPontoTipo').value = 'ENTRADA';
-    } else if (!resumo.sAlm) {
-      $('selPontoTipo').value = 'SAIDA_ALMOCO';
-    } else if (!resumo.rAlm) {
-      $('selPontoTipo').value = 'RETORNO_ALMOCO';
     } else {
       $('selPontoTipo').value = 'SAIDA';
     }
@@ -1123,7 +1134,7 @@
         <span class="insig eq-${esc(ag.equipe)}">${esc(ag.equipe)}</span>
       </div>
       <div>${linhaStatusEsc}</div>
-      <div class="subtexto">Turno ${formatarDataBR(dataRefTurno)}: Ent. <strong>${resumo.ent ? resumo.ent.horaLocal.slice(0,5) : '—'}</strong> · Almoço <strong>${resumo.sAlm ? resumo.sAlm.horaLocal.slice(0,5) : '—'}/${resumo.rAlm ? resumo.rAlm.horaLocal.slice(0,5) : '—'}</strong> · Saída <strong>${formatarHoraSaidaTurno(resumo)}</strong></div>
+      <div class="subtexto">Turno ${formatarDataBR(dataRefTurno)}: Entrada <strong>${resumo.ent ? resumo.ent.horaLocal.slice(0,5) : '—'}</strong> · Saída <strong>${formatarHoraSaidaTurno(resumo)}</strong></div>
     `;
     atualizarBoxJanelaHorario();
   }
@@ -1163,8 +1174,8 @@
     $('lblResumoEscaladosHoje').textContent = `${formatarDataBR(hoje)} · Equipe ${ciclo.equipeServico} (${escalados.length} escalados)`;
     $('tbodyResumoHoje').innerHTML = escalados.map(item => {
       const a = item.agente, r = resumirDiaAgente(hoje, a.id, item.permutaSaida), st = estiloStatusPonto(r, true);
-      return `<tr><td><strong>${esc(a.matricula)}</strong></td><td><strong>${esc(a.nomeGuerra || a.nome)}</strong></td><td>${esc(item.posto)}</td><td>${r.ent ? r.ent.horaLocal.slice(0,5) : '—'}</td><td>${r.sAlm ? r.sAlm.horaLocal.slice(0,5) : '—'}${r.rAlm ? '–' + r.rAlm.horaLocal.slice(0,5) : ''}</td><td>${formatarHoraSaidaTurno(r)}</td><td><span class="badge ${st.cls}">${esc(st.txt)}</span></td></tr>`;
-    }).join('') || '<tr><td colspan="7" class="subtexto" style="text-align:center;">Nenhum escalado hoje.</td></tr>';
+      return `<tr><td><strong>${esc(a.matricula)}</strong></td><td><strong>${esc(a.nomeGuerra || a.nome)}</strong></td><td>${esc(item.posto)}</td><td>${r.ent ? r.ent.horaLocal.slice(0,5) : '—'}</td><td>${formatarHoraSaidaTurno(r)}</td><td><span class="badge ${st.cls}">${esc(st.txt)}</span></td></tr>`;
+    }).join('') || '<tr><td colspan="6" class="subtexto" style="text-align:center;">Nenhum escalado hoje.</td></tr>';
   }
 
   function renderFrequenciaDia() {
@@ -1188,12 +1199,12 @@
           <td><strong>${esc(a.matricula)}</strong></td>
           <td><strong>${esc(a.nome)}</strong></td>
           <td><span class="insig eq-${esc(a.equipe)}">${esc(a.equipe)}</span> <span class="subtexto">${esc(item.posto)}</span></td>
-          <td>${celH(r.ent)}</td><td>${celH(r.sAlm)}</td><td>${celH(r.rAlm)}</td><td>${celH(r.sai, r.virouDia ? '(+1d)' : '')}</td>
+          <td>${celH(r.ent)}</td><td>${celH(r.sai, r.virouDia ? '(+1d)' : '')}</td>
           <td><span class="badge ${st.cls}">${esc(st.txt)}</span></td>
           <td class="so-gestao">${podeEditarEscala() ? `<button type="button" class="btn btn-sec btn-sm" data-just-ag="${esc(a.id)}">${r.just ? 'Alterar' : 'Falta / Justificar'}</button>` : '—'}</td>
         </tr>
       `;
-    }).join('') || '<tr><td colspan="9" class="subtexto" style="text-align:center;padding:16px;">Nenhum registro para este filtro.</td></tr>';
+    }).join('') || '<tr><td colspan="7" class="subtexto" style="text-align:center;padding:16px;">Nenhum registro para este filtro.</td></tr>';
 
     $('tbodyFrequenciaDia').querySelectorAll('[data-ver-ponto]').forEach(img => img.addEventListener('click', () => abrirDetalhePonto(img.getAttribute('data-ver-ponto'))));
     $('tbodyFrequenciaDia').querySelectorAll('[data-just-ag]').forEach(btn => btn.addEventListener('click', () => abrirModalJustificativa(data, btn.getAttribute('data-just-ag'))));
@@ -2099,27 +2110,27 @@
     ` : '';
 
     const blocoAssinaturaServidor = `
-      <div class="pdf-assinaturas" style="margin-top:20px;">
-        <div class="ass-col"><div class="ass-linha"></div><strong>${esc(ag.nome)}</strong><div>Servidor GCM · Nº ${esc(ag.matricula)}</div></div>
-        <div class="ass-col"><div class="ass-linha"></div><strong>${esc(ESTADO.config?.responsaveis?.comandoNome || 'Chefia / Comando GCM')}</strong><div>${esc(ESTADO.config?.responsaveis?.comandoCargo || 'Comandante GCM')}</div></div>
+      <div class="pdf-assinaturas">
+        <div class="ass-col"><div class="ass-espaco"></div><div class="ass-linha"></div><strong>${esc(ag.nome)}</strong><div>Servidor GCM · Nº ${esc(ag.matricula)}</div></div>
+        <div class="ass-col"><div class="ass-espaco"></div><div class="ass-linha"></div><strong>${esc(ESTADO.config?.responsaveis?.comandoNome || 'Chefia / Comando GCM')}</strong><div>${esc(ESTADO.config?.responsaveis?.comandoCargo || 'Comandante GCM')}</div></div>
       </div>
     `;
 
-    // Agrupamento consolidado por Turno real (inclui virada de meia-noite 24x72!)
+    // Agrupamento consolidado por Turno real (somente Entrada e Saida, com virada de meia-noite 24x72)
     const datasTurnos = Array.from(new Set(batidas.map(b => dataTurnoEfetivaPonto(b)))).sort();
     const rowsTurnos = datasTurnos.map(dt => {
       const t = obterBatidasDoTurno(dt, ag.id);
       const situ = t.ent && t.sai
         ? (t.virouDia ? 'Plantão 24h Completo (Virou Dia)' : 'Turno Completo (Entrada e Saída)')
         : (t.ent ? 'Entrada Registrada (Aguardando Saída)' : 'Registro Parcial');
-      return `<tr><td style="width:12%;"><strong>${formatarDataBR(dt)}</strong></td><td style="width:12%;">${t.ent ? '<strong>'+t.ent.horaLocal.slice(0,5)+'</strong>' : '—'}</td><td style="width:12%;">${t.sAlm ? t.sAlm.horaLocal.slice(0,5) : '—'}</td><td style="width:12%;">${t.rAlm ? t.rAlm.horaLocal.slice(0,5) : '—'}</td><td style="width:12%;">${t.sai ? '<strong>'+formatarHoraSaidaTurno(t)+'</strong>' : '—'}</td><td style="width:12%;"><strong>${formatarMinutosHM(t.duracaoMin, false)}</strong></td><td style="width:28%;">${esc(situ)}</td></tr>`;
-    }).join('') || '<tr><td colspan="7" style="text-align:center;">Nenhum turno registrado neste período.</td></tr>';
+      return `<tr><td style="width:15%;"><strong>${formatarDataBR(dt)}</strong></td><td style="width:15%;">${t.ent ? '<strong>'+t.ent.horaLocal.slice(0,5)+'</strong>' : '—'}</td><td style="width:16%;">${t.sai ? '<strong>'+formatarHoraSaidaTurno(t)+'</strong>' : '—'}</td><td style="width:14%;"><strong>${formatarMinutosHM(t.duracaoMin, false)}</strong></td><td style="width:40%;">${esc(situ)}</td></tr>`;
+    }).join('') || '<tr><td colspan="5" style="text-align:center;">Nenhum turno registrado neste período.</td></tr>';
 
     const corpo = `
       ${cardServidor}
-      <h2>1. RESUMO CONSOLIDADO POR TURNO (ENTRADA, ALMOÇO E SAÍDA)</h2>
+      <h2>1. RESUMO CONSOLIDADO POR TURNO (ENTRADA E SAÍDA)</h2>
       <table>
-        <thead><tr><th style="width:12%;">Data</th><th style="width:12%;">Entrada</th><th style="width:12%;">S. Almoço</th><th style="width:12%;">R. Almoço</th><th style="width:12%;">Saída</th><th style="width:12%;">Total</th><th style="width:28%;">Situação do Turno</th></tr></thead>
+        <thead><tr><th style="width:15%;">Data</th><th style="width:15%;">Entrada</th><th style="width:16%;">Saída</th><th style="width:14%;">Total</th><th style="width:40%;">Situação do Turno</th></tr></thead>
         <tbody>${rowsTurnos}</tbody>
       </table>
       <h2>2. PROVA FOTOGRÁFICA, DATA, HORÁRIO, LOCALIZAÇÃO E PROTOCOLOS (ENTRADA E SAÍDA)</h2>
@@ -3493,6 +3504,60 @@
     ]);
   }
 
+  function gerarSenhaTemporariaAmigavel() {
+    const num = String(Math.floor(1000 + Math.random() * 9000));
+    return `Gcm@${num}`;
+  }
+
+  function abrirModalRedefinirSenhaAdmin(u) {
+    if (!isAdmin() || !u) return;
+    const sugestao = gerarSenhaTemporariaAmigavel();
+    abrirModal(
+      `Redefinir Senha — ${u.nome} (${u.login})`,
+      `
+        <div class="regra-box">
+          <strong>Segurança:</strong> A senha atual deste usuário é criptografada (SHA-256) e <strong>não pode ser visualizada</strong>. Ao confirmar abaixo, o sistema define uma nova senha temporária sem excluir nem alterar nenhum dado do cadastro.
+        </div>
+        <div class="campo mt-8">
+          <label for="mAdminTempPass">Nova Senha Temporária (mín. 6 caracteres — letras, números ou frase)</label>
+          <div class="senha-input-wrap">
+            <input type="text" id="mAdminTempPass" value="${esc(sugestao)}" minlength="6" placeholder="Digite ou gere uma senha temporária">
+            <button type="button" class="btn btn-sec btn-sm" id="btnGerarTempAdmin">Gerar</button>
+            <button type="button" class="btn btn-sec btn-sm" id="btnCopiarTempAdmin">Copiar</button>
+          </div>
+        </div>
+        <label class="check-linha mt-8">
+          <input type="checkbox" id="chkExigirTrocaTemp" checked>
+          <span>Exigir que o usuário crie uma nova senha pessoal assim que entrar</span>
+        </label>
+        <div id="msgResetAdminErro" class="alerta-inline erro oculto mt-8"></div>
+      `,
+      [
+        { texto: 'Cancelar', classe: 'btn-sec', onClick: fecharModal },
+        { texto: 'Confirmar Redefinição de Senha', classe: 'btn-primario', onClick: () => {
+          const temp = ($('mAdminTempPass').value || '').trim();
+          const exigir = $('chkExigirTrocaTemp').checked;
+          const r = window.EscalaCloud.redefinirSenhaPorAdmin(u.login, temp, exigir);
+          if (!r.ok) {
+            $('msgResetAdminErro').textContent = r.erro;
+            $('msgResetAdminErro').classList.remove('oculto');
+            return;
+          }
+          salvarTudo(true);
+          fecharModal();
+          renderContas();
+          renderBannerCadastrosAdmin();
+          toast(`Senha temporária definida para ${u.nome}. Repasse ao guarda com segurança.`);
+        }}
+      ]
+    );
+    $('btnGerarTempAdmin').addEventListener('click', () => { $('mAdminTempPass').value = gerarSenhaTemporariaAmigavel(); });
+    $('btnCopiarTempAdmin').addEventListener('click', () => {
+      const val = $('mAdminTempPass').value;
+      if (navigator.clipboard?.writeText) navigator.clipboard.writeText(`Login: ${u.login} | Senha temporária: ${val}`).then(() => toast('Dados copiados!'));
+    });
+  }
+
   function renderContas() {
     if (!isAdmin()) return;
     const users = window.EscalaCloud.lerUsuariosLocal();
@@ -3503,16 +3568,20 @@
         : (conf.constaNoRol
             ? `<span class="badge badge-ok">Consta no Rol (PDF)</span>${conf.agente ? `<div class="subtexto" style="font-size:11px;">Vinculado pelo nome · Equipe ${esc(conf.agente.equipe)}</div>` : ''}`
             : `<span class="badge badge-erro">NÃO CONSTA NA LISTA (PDF)</span><div style="font-size:11px;color:var(--danger);font-weight:700;margin-top:2px;">ALERTA: Nome não encontrado nos 64 guardas!</div>`);
+      const emailTxt = u.email ? `${esc(u.email)} (${u.tipoEmail === 'INSTITUCIONAL' ? 'Institucional' : 'Pessoal'})` : 'E-mail não informado';
+      const badgeReset = u.solicitouResetEm ? '<div class="mt-4"><span class="badge badge-erro">Pediu Nova Senha</span></div>' : (u.trocarSenhaObrigatoria ? '<div class="mt-4"><span class="badge badge-pendente">Senha Temporária Ativa</span></div>' : '');
       const rowCls = (!u.mestre && !conf.constaNoRol) ? 'row-alerta-nome' : '';
       return `
         <tr class="${rowCls}">
           <td><strong>${esc(u.login)}</strong> ${u.mestre?'<span class="badge badge-invertido">Mestre</span>':''}</td>
-          <td><strong>${esc(u.nome)}</strong></td>
+          <td><strong>${esc(u.nome)}</strong><div class="subtexto" style="font-size:11px;">${emailTxt}</div></td>
           <td>${badgeConf}</td>
-          <td>${esc(u.matricula||'—')}</td>
+          <td>${esc(u.matricula || (conf.agente ? conf.agente.matricula : '—'))}</td>
           <td>${!u.mestre ? `<select data-perfil-u="${esc(u.login)}"><option value="ADMIN" ${u.perfil==='ADMIN'?'selected':''}>Administrador</option><option value="ESCALANTE" ${u.perfil==='ESCALANTE'?'selected':''}>Escalante</option><option value="AGENTE" ${u.perfil==='AGENTE'?'selected':''}>Agente (Consulta e Ponto)</option></select>` : `<span class="badge badge-neutro">ADMIN</span>`}</td>
-          <td><span class="badge ${u.aprovado?'badge-ok':'badge-pendente'}">${u.aprovado?'Aprovado':'Pendente'}</span></td>
-          <td>${!u.mestre ? `<button type="button" class="btn btn-sec btn-sm" data-aprovar-u="${esc(u.login)}">${u.aprovado?'Bloquear':'Aprovar'}</button> <button type="button" class="btn btn-sec btn-sm" data-del-u="${esc(u.login)}">X</button>` : '—'}</td>
+          <td><span class="badge ${u.aprovado?'badge-ok':'badge-pendente'}">${u.aprovado?'Ativo':'Bloqueado/Pend.'}</span>${badgeReset}</td>
+          <td>
+            ${!u.mestre ? `<div class="acoes-linha"><button type="button" class="btn btn-sec btn-sm" data-aprovar-u="${esc(u.login)}">${u.aprovado?'Bloquear':'Aprovar'}</button><button type="button" class="btn btn-acao-destaque btn-sm" data-reset-u="${esc(u.login)}">Redefinir Senha</button></div>` : '<span class="subtexto">Gerencie em Configurações do Usuário</span>'}
+          </td>
         </tr>
       `;
     }).join('');
@@ -3527,10 +3596,9 @@
       window.EscalaCloud.atualizarUsuario(l, { aprovado: !u.aprovado, constaNoRolOficial: conf.constaNoRol, agenteVinculadoId: conf.agente ? conf.agente.id : '' });
       renderContas(); renderBannerCadastrosAdmin(); salvarTudo(true);
     }));
-    $('tbodyContas').querySelectorAll('[data-del-u]').forEach(b => b.addEventListener('click', () => {
-      if (!confirm('Excluir conta?')) return;
-      window.EscalaCloud.removerUsuario(b.getAttribute('data-del-u'));
-      renderContas(); renderBannerCadastrosAdmin(); salvarTudo(true);
+    $('tbodyContas').querySelectorAll('[data-reset-u]').forEach(b => b.addEventListener('click', () => {
+      const u = window.EscalaCloud.obterUsuarioPorLogin(b.getAttribute('data-reset-u'));
+      if (u) abrirModalRedefinirSenhaAdmin(u);
     }));
   }
 
@@ -3552,7 +3620,7 @@
   }
   function rodapeAssinaturasPdfHtml() {
     const r = ESTADO.config.responsaveis || {};
-    return `<div class="pdf-assinaturas"><div class="ass-col"><div class="ass-linha"></div><strong>${esc(r.escalanteNome || 'Responsável pela Escala')}</strong><div>${esc(r.escalanteCargo || 'Escalante GCM')} · Mat.: ${esc(r.escalanteMat || '—')}</div></div><div class="ass-col"><div class="ass-linha"></div><strong>${esc(r.comandoNome || 'Comandante da GCM')}</strong><div>${esc(r.comandoCargo || 'Comandante GCM')} · ${esc(r.comandoMat || '—')}</div></div></div>`;
+    return `<div class="pdf-assinaturas"><div class="ass-col"><div class="ass-espaco"></div><div class="ass-linha"></div><strong>${esc(r.escalanteNome || 'Responsável pela Escala')}</strong><div>${esc(r.escalanteCargo || 'Escalante GCM')} · Mat.: ${esc(r.escalanteMat || '—')}</div></div><div class="ass-col"><div class="ass-espaco"></div><div class="ass-linha"></div><strong>${esc(r.comandoNome || 'Comandante da GCM')}</strong><div>${esc(r.comandoCargo || 'Comandante GCM')} · ${esc(r.comandoMat || '—')}</div></div></div>`;
   }
 
   async function emitirPdfAutenticado({ tipoDoc, titulo, subtitulo, corpoHtml, nomeArquivo, paisagem, qtdRegistros, incluirAssinaturas }) {
@@ -3582,9 +3650,10 @@
       .insig-pdf { display: inline-block; padding: 1px 5px; font-weight: 700; font-size: 8px; background: #EFEFED; border: 1px solid #666; border-left-width: 4px; }
       .quebra { page-break-before: always; break-before: page; }
       .foto-pdf { width: 42px; height: 32px; object-fit: cover; border: 1px solid #333; display: block; }
-      .pdf-assinaturas { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; margin-top: 18px; break-inside: avoid; page-break-inside: avoid; }
-      .ass-col { text-align: center; font-size: 9px; }
-      .ass-linha { border-top: 1px solid #141414; margin-bottom: 4px; }
+      .pdf-assinaturas { display: grid; grid-template-columns: 1fr 1fr; gap: 52px; margin-top: 28px; margin-bottom: 14px; break-inside: avoid; page-break-inside: avoid; }
+      .ass-col { text-align: center; font-size: 9px; padding: 0 10px; }
+      .ass-espaco { height: 54px; }
+      .ass-linha { border-top: 1px solid #141414; margin-bottom: 5px; }
       .selo-autenticacao { margin-top: 12px; border: 1.5px solid #141414; border-left: 5px solid #166534; background: #F7F7F5; padding: 7px 9px; font-size: 8px; break-inside: avoid; page-break-inside: avoid; }
       .selo-topo { display: flex; justify-content: space-between; align-items: center; gap: 8px; border-bottom: 1px solid #CCC; padding-bottom: 3px; margin-bottom: 4px; font-size: 8.5px; }
       .selo-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; margin-bottom: 4px; }
@@ -3636,9 +3705,9 @@
     const rows = escalados.map(item => {
       const a = item.agente, r = resumirDiaAgente(data, a.id, item.permutaSaida), st = estiloStatusPonto(r, false);
       const corPdf = r.status==='EM_SERVICO'||r.status==='PRESENTE' ? 'background:#E7F4EC;color:#166534;border:1px solid #166534;' : (r.status==='PENDENTE' ? 'background:#FFEDD5;color:#C2410C;border:1px solid #EA580C;' : (r.status==='FALTOU' ? 'background:#F9E6E6;color:#991B1B;border:1px solid #991B1B;' : 'background:#F6EFE0;color:#854D0E;border:1px solid #854D0E;'));
-      return `<tr><td style="width:5%;"><strong>${esc(a.matricula)}</strong></td><td style="width:23%;"><strong>${esc(a.nome)}</strong></td><td style="width:18%;">${esc(a.equipe)} · ${esc(item.posto)}</td><td style="width:8%;">${r.ent?r.ent.horaLocal.slice(0,5):'—'}</td><td style="width:8%;">${r.sAlm?r.sAlm.horaLocal.slice(0,5):'—'}</td><td style="width:8%;">${r.rAlm?r.rAlm.horaLocal.slice(0,5):'—'}</td><td style="width:8%;">${formatarHoraSaidaTurno(r)}</td><td style="width:22%;"><span style="display:inline-block;padding:1.5px 5px;border-radius:3px;font-weight:700;font-size:8px;${corPdf}">${esc(st.txt)}</span></td></tr>`;
+      return `<tr><td style="width:6%;"><strong>${esc(a.matricula)}</strong></td><td style="width:26%;"><strong>${esc(a.nome)}</strong></td><td style="width:20%;">${esc(a.equipe)} · ${esc(item.posto)}</td><td style="width:11%;">${r.ent?r.ent.horaLocal.slice(0,5):'—'}</td><td style="width:12%;">${formatarHoraSaidaTurno(r)}</td><td style="width:25%;"><span style="display:inline-block;padding:1.5px 5px;border-radius:3px;font-weight:700;font-size:8px;${corPdf}">${esc(st.txt)}</span></td></tr>`;
     }).join('');
-    const corpo = `<table><thead><tr><th style="width:5%;">Nº</th><th style="width:23%;">Guarda GCM</th><th style="width:18%;">Equipe / Setor</th><th style="width:8%;">Entr.</th><th style="width:8%;">S.Alm.</th><th style="width:8%;">R.Alm.</th><th style="width:8%;">Saída</th><th style="width:22%;">Situação / Justificativa</th></tr></thead><tbody>${rows}</tbody></table>`;
+    const corpo = `<table><thead><tr><th style="width:6%;">Nº</th><th style="width:26%;">Guarda GCM</th><th style="width:20%;">Equipe / Setor</th><th style="width:11%;">Entrada</th><th style="width:12%;">Saída</th><th style="width:25%;">Situação / Justificativa</th></tr></thead><tbody>${rows}</tbody></table>`;
     emitirPdfAutenticado({ tipoDoc:'FOLHA_PONTO_DIARIA', titulo:`FOLHA DE PONTO DIÁRIA — ${formatarDataBR(data)}`, subtitulo:`Equipe 24x72: ${ciclo.equipeServico} · Total de Escalados: ${escalados.length}`, corpoHtml:corpo, nomeArquivo:`folha-ponto-diaria-${data}.pdf`, paisagem:true, qtdRegistros:escalados.length });
   }
 
@@ -3750,9 +3819,9 @@
           </tr></tbody>
         </table>
         <div style="margin-top:8px;"><strong>Motivo / Justificativa:</strong> ${esc(pm.motivo || '—')}</div>
-        <div class="pdf-assinaturas" style="margin-top:26px;">
-          <div class="ass-col"><div class="ass-linha"></div><strong>${sol ? esc(sol.nome) : 'Solicitante'}</strong><div>Guarda Solicitante (Nº ${sol ? esc(sol.matricula) : '—'})</div></div>
-          <div class="ass-col"><div class="ass-linha"></div><strong>${sub ? esc(sub.nome) : 'Substituto'}</strong><div>Guarda Substituto (Nº ${sub ? esc(sub.matricula) : '—'})</div></div>
+        <div class="pdf-assinaturas">
+          <div class="ass-col"><div class="ass-espaco"></div><div class="ass-linha"></div><strong>${sol ? esc(sol.nome) : 'Solicitante'}</strong><div>Guarda Solicitante (Nº ${sol ? esc(sol.matricula) : '—'})</div></div>
+          <div class="ass-col"><div class="ass-espaco"></div><div class="ass-linha"></div><strong>${sub ? esc(sub.nome) : 'Substituto'}</strong><div>Guarda Substituto (Nº ${sub ? esc(sub.matricula) : '—'})</div></div>
         </div>
       </div>
     `;
@@ -4064,6 +4133,153 @@
     toast('Base CSV da Auditoria 30 dias exportada!');
   }
 
+
+  // =========================================================================
+  // 7B. CONFIGURACOES DO USUARIO (FOTO, DADOS FIXOS, EMAIL E ALTERAR SENHA)
+  // =========================================================================
+  function avaliarForcaSenha(senha) {
+    const s = String(senha || '');
+    if (!s) return { pct: 0, cls: '', rotulo: '—' };
+    let pts = 0;
+    if (s.length >= 6) pts++;
+    if (s.length >= 10) pts++;
+    if (/[a-z]/.test(s) && /[A-Z]/.test(s)) pts++;
+    if (/[0-9]/.test(s)) pts++;
+    if (/[^a-zA-Z0-9]/.test(s)) pts++;
+    if (s.length < 6) return { pct: 25, cls: 'forca-fraca', rotulo: 'Muito curta (mín. 6 caracteres)' };
+    if (pts <= 2) return { pct: 45, cls: 'forca-fraca', rotulo: 'Simples — pode adicionar letras ou números' };
+    if (pts === 3) return { pct: 72, cls: 'forca-media', rotulo: 'Boa' };
+    return { pct: 100, cls: 'forca-forte', rotulo: 'Forte' };
+  }
+
+  function atualizarMedidorForcaSenha() {
+    const s = $('inpUsrNovaSenha')?.value || '';
+    const f = avaliarForcaSenha(s);
+    const bar = $('barraForcaSenha'), lbl = $('lblForcaSenha');
+    if (bar) {
+      bar.style.width = f.pct + '%';
+      bar.className = 'forca-senha-fill ' + f.cls;
+    }
+    if (lbl) lbl.textContent = f.rotulo;
+  }
+
+  function renderConfigUsuario() {
+    if (!SESSAO) return;
+    const u = window.EscalaCloud.obterUsuarioPorLogin(SESSAO.login) || SESSAO;
+    const ag = agenteLogadoAtual();
+    const foto = (ag && ag.fotoPerfil) || u.fotoUsuario || obterFotoIdentificacaoAgente(ag) || '';
+    const infSetor = ag ? descobrirSetorDoAgente(ag) : null;
+
+    $('avisoTrocaSenhaObrigatoria')?.classList.toggle('oculto', !u.trocarSenhaObrigatoria);
+    if ($('badgeUsrPerfil')) $('badgeUsrPerfil').textContent = u.perfil || 'AGENTE';
+    if ($('lblUsrNomeDestaque')) $('lblUsrNomeDestaque').textContent = u.nome || '—';
+    if ($('lblUsrEquipeSetor')) $('lblUsrEquipeSetor').textContent = ag ? `Equipe ${ag.equipe} · ${infSetor.nome} (${infSetor.funcao})` : `Perfil ${u.perfil} · Conta do Sistema`;
+    if ($('lblUsrLoginInfo')) $('lblUsrLoginInfo').textContent = `Login: ${u.login} · Matrícula fixa: ${u.matricula || (ag ? ag.matricula : 'Ainda não atribuída')}`;
+
+    const boxFoto = $('boxFotoUsuarioPerfil');
+    if (boxFoto) {
+      boxFoto.innerHTML = foto ? `<img src="${foto}" alt="Foto do Usuário">` : '<span>Sem foto cadastrada</span>';
+    }
+
+    if ($('inpUsrNomeFixo')) $('inpUsrNomeFixo').value = u.nome || '';
+    if ($('inpUsrMatriculaFixa')) $('inpUsrMatriculaFixa').value = u.matricula || (ag ? ag.matricula : 'Não atribuída');
+    if ($('inpUsrLoginFixo')) $('inpUsrLoginFixo').value = u.login || '';
+    if ($('inpUsrEquipeFixa')) $('inpUsrEquipeFixa').value = ag ? `Equipe ${ag.equipe} — ${infSetor.nome}` : 'Sem vínculo operacional';
+    if ($('selUsrTipoEmail')) $('selUsrTipoEmail').value = u.tipoEmail || 'PESSOAL';
+    if ($('inpUsrEmail')) $('inpUsrEmail').value = u.email || '';
+  }
+
+  function abrirModalAtualizarFotoUsuario() {
+    if (!SESSAO) return;
+    const u = window.EscalaCloud.obterUsuarioPorLogin(SESSAO.login) || SESSAO;
+    const ag = agenteLogadoAtual();
+    const fotoAtual = (ag && ag.fotoPerfil) || u.fotoUsuario || '';
+    let streamUsr = null;
+    let fotoNova = null;
+
+    abrirModal(
+      `Foto do Usuário — ${u.nome}`,
+      `
+        <p class="subtexto">Esta foto aparece nas suas Configurações do Usuário, no cabeçalho da sua Folha de Ponto em PDF e na Conferência de Identidade.</p>
+        <div class="camera-box">
+          <video id="vidFotoUsr" autoplay playsinline muted class="oculto"></video>
+          <canvas id="cvsFotoUsr" class="oculto"></canvas>
+          <img id="imgFotoUsrPrev" class="${fotoAtual ? '' : 'oculto'}" src="${fotoAtual}" alt="Foto do usuário">
+          <div id="phFotoUsr" class="camera-placeholder ${fotoAtual ? 'oculto' : ''}">Clique em "Ligar Câmera" para tirar sua foto de perfil.</div>
+        </div>
+        <div class="acoes-linha">
+          <button type="button" class="btn btn-acao-destaque btn-sm" id="btnLigarCamUsr">Ligar Câmera</button>
+          <button type="button" class="btn btn-primario btn-sm" id="btnBaterFotoUsr" disabled>Capturar Foto</button>
+        </div>
+      `,
+      [
+        { texto: 'Cancelar', classe: 'btn-sec', onClick: () => { if (streamUsr) streamUsr.getTracks().forEach(t => t.stop()); fecharModal(); } },
+        { texto: 'Salvar Minha Foto', classe: 'btn-primario', onClick: async () => {
+          if (streamUsr) streamUsr.getTracks().forEach(t => t.stop());
+          if (!fotoNova) return toast('Capture uma foto primeiro.');
+          window.EscalaCloud.atualizarUsuario(SESSAO.login, { fotoUsuario: fotoNova });
+          SESSAO.fotoUsuario = fotoNova;
+          if (ag) ag.fotoPerfil = fotoNova;
+          await salvarTudo(true);
+          fecharModal();
+          renderConfigUsuario();
+          renderMinhaFolha();
+          toast('Foto do usuário salva com sucesso!');
+        }}
+      ]
+    );
+
+    $('btnLigarCamUsr').addEventListener('click', async () => {
+      try {
+        streamUsr = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', width: { ideal: 480 }, height: { ideal: 480 } }, audio: false });
+        const v = $('vidFotoUsr'); v.srcObject = streamUsr; v.classList.remove('oculto');
+        $('phFotoUsr').classList.add('oculto'); $('imgFotoUsrPrev').classList.add('oculto');
+        $('btnBaterFotoUsr').disabled = false;
+      } catch (_) { toast('Permita acesso à câmera.'); }
+    });
+
+    $('btnBaterFotoUsr').addEventListener('click', () => {
+      const v = $('vidFotoUsr'), c = $('cvsFotoUsr');
+      if (!v || !v.videoWidth) return;
+      const w = 320, h = Math.round((v.videoHeight / v.videoWidth) * w) || 320;
+      c.width = w; c.height = h;
+      c.getContext('2d').drawImage(v, 0, 0, w, h);
+      fotoNova = c.toDataURL('image/jpeg', 0.72);
+      if (streamUsr) { streamUsr.getTracks().forEach(t => t.stop()); streamUsr = null; }
+      v.classList.add('oculto');
+      const img = $('imgFotoUsrPrev'); img.src = fotoNova; img.classList.remove('oculto');
+      $('btnBaterFotoUsr').disabled = true;
+      toast('Foto capturada! Clique em "Salvar Minha Foto".');
+    });
+  }
+
+  function abrirModalEsqueciSenha() {
+    abrirModal(
+      'Esqueci Minha Senha',
+      `
+        <p class="subtexto">Por segurança, ninguém visualiza sua senha. Informe seu <strong>Login</strong> ou <strong>Nome Completo</strong> abaixo para enviar uma solicitação ao Administrador, que gerará uma senha temporária para você voltar a acessar.</p>
+        <div class="campo mt-8">
+          <label for="inpResetIdent">Seu Login ou Nome Completo</label>
+          <input type="text" id="inpResetIdent" placeholder="Ex.: anderson ou Anderson Pereira Costa">
+        </div>
+        <div id="msgResetSolic" class="alerta-inline oculto mt-8"></div>
+      `,
+      [
+        { texto: 'Fechar', classe: 'btn-sec', onClick: fecharModal },
+        { texto: 'Solicitar Nova Senha ao Admin', classe: 'btn-primario', onClick: () => {
+          const box = $('msgResetSolic'); box.classList.remove('oculto', 'erro', 'ok');
+          const r = window.EscalaCloud.solicitarResetSenha($('inpResetIdent').value);
+          if (!r.ok) {
+            box.classList.add('erro'); box.textContent = r.erro; return;
+          }
+          box.classList.add('ok');
+          box.textContent = `Solicitação registrada para ${r.nome} (${r.login}). Avise o Administrador para gerar sua senha temporária em Contas e Senhas.`;
+          salvarTudo(true);
+        }}
+      ]
+    );
+  }
+
   function ativarSubtab(idSecao, idSub) {
     const sec = $(idSecao); if (!sec) return;
     sec.querySelectorAll('.subtab').forEach(x => x.classList.toggle('ativo', x.getAttribute('data-sub') === idSub));
@@ -4092,6 +4308,7 @@
     if (idSecao === 'secEventos') renderListaEventos();
     if (idSecao === 'secEquipeDetalhe') renderTelaEquipeDetalhe();
     if (idSecao === 'secAutenticacao') renderTelaAutenticacao();
+    if (idSecao === 'secUsuario') renderConfigUsuario();
     if (idSecao === 'secEfetivo') renderEfetivo();
     if (idSecao === 'secAuditoria30') renderAuditoria30();
     if (idSecao === 'secSistema') { renderContas(); renderConfigBase(); }
@@ -4101,7 +4318,7 @@
     renderFaixaPlantaoHoje(); renderResumoEscaladosHoje(); renderFrequenciaDia(); renderTabelaPontos(); renderMinhaFolha();
     renderCalendario24(); renderPermutas(); renderAfastamentos(); renderQuadroPessoas(); renderMontagemEquipe(); renderSetoresResponsaveis();
     renderAdmE12x36(); renderResponsaveis(); popularSelectsCartao(); carregarEditorCartao();
-    renderBancoHoras(); renderListaEventos(); renderTelaEquipeDetalhe(); renderTelaAutenticacao();
+    renderBancoHoras(); renderListaEventos(); renderTelaEquipeDetalhe(); renderTelaAutenticacao(); renderConfigUsuario();
     renderEfetivo(); renderAuditoria30(); renderContas(); renderConfigBase(); aplicarPermissoesVisuais();
   }
 
@@ -4114,7 +4331,13 @@
     $('fltBhMes').value = mesAtualISO();
     aplicarPermissoesVisuais();
     sincronizarDataCartao(); atualizarTodasVistas();
-    abrirAba('secPonto');
+    if (sessao.trocarSenhaObrigatoria) {
+      abrirAba('secUsuario');
+      toast('Sua senha foi redefinida pelo Administrador. Cadastre sua nova senha pessoal agora.');
+      setTimeout(() => $('inpUsrSenhaAtual')?.focus(), 180);
+    } else {
+      abrirAba('secPonto');
+    }
 
     const meuLogado = agenteLogadoAtual();
     if (meuLogado) selecionarGuardaParaPonto(meuLogado);
@@ -4127,19 +4350,76 @@
     }
   }
 
-  function abrirModalAlterarMeuCodigo() {
-    abrirModal('Alterar Meu Código de Acesso', `<div class="campo"><label>Novo Código / Senha (mínimo 4 dígitos)</label><input type="password" id="mNovaSenha" minlength="4" placeholder="Mínimo 4 dígitos"></div>`, [{ texto:'Cancelar', classe:'btn-sec', onClick:fecharModal }, { texto:'Salvar', classe:'btn-primario', onClick: () => { const s = $('mNovaSenha').value; if (!s || s.length < 4) return toast('Mínimo 4 dígitos.'); window.EscalaCloud.atualizarUsuario(SESSAO.login, { novaSenha:s }); fecharModal(); salvarTudo(true); toast('Código alterado!'); }}]);
+  function irParaAlterarMinhaSenha() {
+    abrirAba('secUsuario');
+    setTimeout(() => {
+      $('cardAlterarMinhaSenha')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      $('inpUsrSenhaAtual')?.focus();
+    }, 120);
   }
 
   function registrarEventos() {
     $('btnTema').addEventListener('click', alternarTema);
     $('btnTemaAuth').addEventListener('click', alternarTema);
-    $('btnInstalarAppAuth').addEventListener('click', abrirModalInstalarApp);
-    $('btnInstalarAppSide').addEventListener('click', () => { fecharSidebarMobile(); abrirModalInstalarApp(); });
+    $('btnInstalarAppAuth').addEventListener('click', acionarInstalacaoDiretaNoCelular);
+    $('btnInstallDiretoLogin').addEventListener('click', acionarInstalacaoDiretaNoCelular);
+    $('btnInstallDiretoApp').addEventListener('click', acionarInstalacaoDiretaNoCelular);
+    $('btnFecharBannerInstall').addEventListener('click', () => {
+      sessionStorage.setItem('gcm_install_dispensado', '1');
+      atualizarBotoesInstalacaoDireta();
+    });
+    $('btnInstalarAppSide').addEventListener('click', () => { fecharSidebarMobile(); acionarInstalacaoDiretaNoCelular(); });
     $('btnToggleMenu').addEventListener('click', alternarSidebar);
     $('btnFecharSidebar').addEventListener('click', fecharSidebarMobile);
     $('sidebarBackdrop').addEventListener('click', fecharSidebarMobile);
-    $('btnAlterarMeuCodigoTopo').addEventListener('click', abrirModalAlterarMeuCodigo);
+    $('btnAlterarMeuCodigoTopo').addEventListener('click', irParaAlterarMinhaSenha);
+    $('btnEsqueciSenha').addEventListener('click', abrirModalEsqueciSenha);
+
+    // Eventos da aba Configurações do Usuário
+    $('btnUsrTirarFoto').addEventListener('click', abrirModalAtualizarFotoUsuario);
+    $('btnUsrFotoCard').addEventListener('click', abrirModalAtualizarFotoUsuario);
+    $('btnUsrAbrirMinhaFolha').addEventListener('click', () => abrirAba('secMinhaFolha'));
+    $('inpUsrNovaSenha').addEventListener('input', atualizarMedidorForcaSenha);
+    document.querySelectorAll('[data-toggle-pass]').forEach(btn => btn.addEventListener('click', () => {
+      const inp = $(btn.getAttribute('data-toggle-pass'));
+      if (!inp) return;
+      const mostrar = inp.type === 'password';
+      inp.type = mostrar ? 'text' : 'password';
+      btn.textContent = mostrar ? 'Ocultar' : 'Ver';
+    }));
+    $('btnSalvarEmailUsuario').addEventListener('click', async () => {
+      if (!SESSAO) return;
+      const email = ($('inpUsrEmail').value || '').trim().toLowerCase();
+      const tipoEmail = $('selUsrTipoEmail').value || 'PESSOAL';
+      if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        return toast('Informe um endereço de e-mail válido.');
+      }
+      const r = window.EscalaCloud.atualizarUsuario(SESSAO.login, { email, tipoEmail });
+      if (!r.ok) return toast(r.erro);
+      SESSAO.email = email; SESSAO.tipoEmail = tipoEmail;
+      await salvarTudo(true);
+      renderConfigUsuario();
+      if (isAdmin()) renderContas();
+      toast('E-mail atualizado com sucesso!');
+    });
+    $('btnSalvarNovaSenhaUsuario').addEventListener('click', async () => {
+      if (!SESSAO) return;
+      const box = $('msgUsrSenha'); box.classList.remove('oculto', 'erro', 'ok');
+      const atual = $('inpUsrSenhaAtual').value;
+      const nova = $('inpUsrNovaSenha').value;
+      const conf = $('inpUsrConfirmaSenha').value;
+      if (!atual) { box.classList.add('erro'); box.textContent = 'Informe sua senha atual.'; return; }
+      if (nova !== conf) { box.classList.add('erro'); box.textContent = 'A nova senha e a confirmação não conferem.'; return; }
+      const r = window.EscalaCloud.alterarPropriaSenha(SESSAO.login, atual, nova);
+      if (!r.ok) { box.classList.add('erro'); box.textContent = r.erro; return; }
+      SESSAO.trocarSenhaObrigatoria = false;
+      $('inpUsrSenhaAtual').value = ''; $('inpUsrNovaSenha').value = ''; $('inpUsrConfirmaSenha').value = '';
+      atualizarMedidorForcaSenha();
+      $('avisoTrocaSenhaObrigatoria')?.classList.add('oculto');
+      box.classList.add('ok'); box.textContent = 'Sua senha foi alterada com sucesso e salva com criptografia SHA-256.';
+      await salvarTudo(true);
+      toast('Senha alterada com sucesso!');
+    });
 
     // Barra Inferior Mobile (estilo CCO Viaturas)
     document.querySelectorAll('[data-mob-aba]').forEach(b => b.addEventListener('click', () => abrirAba(b.getAttribute('data-mob-aba'))));
@@ -4181,20 +4461,22 @@
 
     $('btnTopoRegistrarPonto').addEventListener('click', () => { abrirAba('secPonto'); ativarSubtab('secPonto', 'subPtRegistrar'); $('inpIdentificaGuarda').focus(); });
 
-    // Botao Atualizar App (limpa caches antigos do GitHub Pages / Service Worker e recarrega)
+    // Botao Atualizar App (atualiza SOMENTE este app, sem afetar o CCO Viaturas)
     $('btnAtualizarApp').addEventListener('click', async () => {
-      toast('Limpando cache antigo e carregando versão mais recente...');
+      toast('Atualizando para a versão mais recente...');
       try {
-        if ('serviceWorker' in navigator) {
-          const regs = await navigator.serviceWorker.getRegistrations();
-          for (const r of regs) await r.unregister();
-        }
         if ('caches' in window) {
           const keys = await caches.keys();
-          for (const k of keys) await caches.delete(k);
+          for (const k of keys) {
+            if (k.startsWith('gcm-valparaiso-escala-') || k.startsWith('escala-gcm-')) await caches.delete(k);
+          }
+        }
+        if ('serviceWorker' in navigator) {
+          const reg = await navigator.serviceWorker.getRegistration('./');
+          if (reg) await reg.update();
         }
       } catch (_) {}
-      setTimeout(() => location.reload(true), 350);
+      setTimeout(() => location.reload(), 350);
     });
 
     // Atestados, Ferias, Afastamentos e Relatorio Oficial p/ Comando
@@ -4262,6 +4544,8 @@
         nome: nomeInf,
         login: $('inpCadUser').value,
         matricula: $('inpCadMat').value,
+        email: $('inpCadEmail')?.value || '',
+        tipoEmail: $('selCadTipoEmail')?.value || 'PESSOAL',
         senha: $('inpCadPass').value,
         perfil: 'AGENTE',
         aprovado: false,
@@ -4461,16 +4745,18 @@
     $('btnCriarContaAdmin').addEventListener('click', () => {
       if (!isAdmin()) return toast('Acesso exclusivo do Administrador.');
       const dlNomes = `<datalist id="dlNomesOficiaisConta">${ESTADO.efetivo.map(a => `<option value="${esc(a.nome)}">`).join('')}</datalist>`;
-      abrirModal('Criar Conta (Vínculo pelo Nome Completo)', `${dlNomes}<div class="campo"><label>Nome Completo (selecione da lista oficial ou digite)</label><input type="text" id="mUsNome" list="dlNomesOficiaisConta" placeholder="Ex.: Anderson Pereira Costa"></div><div class="grid-2"><div class="campo"><label>Login</label><input type="text" id="mUsLogin" placeholder="Ex.: anderson"></div><div class="campo"><label>Matrícula (Opcional — informativo)</label><input type="text" id="mUsMat" placeholder="Opcional"></div></div><div class="grid-2"><div class="campo"><label>Código de Acesso (mín. 4 dígitos)</label><input type="password" id="mUsPass" minlength="4"></div><div class="campo"><label>Perfil</label><select id="mUsPerfil"><option value="AGENTE">Agente (Consulta e Ponto)</option><option value="ESCALANTE">Escalante (Escala/Cartão/Banco)</option><option value="ADMIN">Administrador (Acesso Total)</option></select></div></div>`, [
+      abrirModal('Criar Conta de Usuário', `${dlNomes}<div class="campo"><label>Nome Completo (conferido no rol oficial)</label><input type="text" id="mUsNome" list="dlNomesOficiaisConta" placeholder="Ex.: Anderson Pereira Costa"></div><div class="grid-2"><div class="campo"><label>Login</label><input type="text" id="mUsLogin" placeholder="Ex.: anderson"></div><div class="campo"><label>Matrícula (Fixa após criada)</label><input type="text" id="mUsMat" placeholder="Opcional"></div></div><div class="grid-2"><div class="campo"><label>Tipo de E-mail</label><select id="mUsTipoEmail"><option value="INSTITUCIONAL">Institucional</option><option value="PESSOAL" selected>Pessoal (Gmail/Outro)</option></select></div><div class="campo"><label>E-mail</label><input type="email" id="mUsEmail" placeholder="Opcional"></div></div><div class="grid-2"><div class="campo"><label>Senha Inicial (mín. 6 caracteres)</label><input type="password" id="mUsPass" minlength="6" placeholder="Letras, números ou frase"></div><div class="campo"><label>Perfil</label><select id="mUsPerfil"><option value="AGENTE">Agente (Consulta e Ponto)</option><option value="ESCALANTE">Escalante (Escala/Cartão/Banco)</option><option value="ADMIN">Administrador (Acesso Total)</option></select></div></div>`, [
         { texto:'Cancelar', classe:'btn-sec', onClick:fecharModal },
-        { texto:'Criar', classe:'btn-primario', onClick: () => {
+        { texto:'Criar Conta', classe:'btn-primario', onClick: () => {
           const nomeInf = $('mUsNome').value.trim();
           const conf = verificarNomeNoRolOficial(nomeInf);
           if (!conf.constaNoRol && $('mUsPerfil').value === 'AGENTE') {
             if (!confirm(`AVISO: O nome "${nomeInf}" não consta na lista oficial dos 64 guardas (PDF). Deseja criar mesmo assim?`)) return;
           }
           const r = window.EscalaCloud.cadastrarUsuario({
-            nome: nomeInf, login: $('mUsLogin').value, matricula: $('mUsMat').value, senha: $('mUsPass').value,
+            nome: nomeInf, login: $('mUsLogin').value, matricula: $('mUsMat').value,
+            email: $('mUsEmail')?.value || '', tipoEmail: $('mUsTipoEmail')?.value || 'PESSOAL',
+            senha: $('mUsPass').value,
             perfil: $('mUsPerfil').value, aprovado: true,
             constaNoRolOficial: conf.constaNoRol, agenteVinculadoId: conf.agente ? conf.agente.id : '',
             alertaCadastro: conf.constaNoRol ? '' : 'Criado fora do rol oficial (PDF).'
@@ -4500,7 +4786,7 @@
     $('btnDesconectarFirebase').addEventListener('click', async () => { if (!isAdmin()) return toast('Exclusivo Administrador.'); window.EscalaCloud.salvarConfigFirebase(null); ESTADO.config.nuvemAtiva = false; $('chkNuvemAtiva').checked = false; await salvarTudo(true); renderConfigBase(); atualizarBadgeSync('Local', 'badge-neutro'); toast('Modo local ativo.'); });
     $('chkNuvemAtiva').addEventListener('change', async () => { if (!isAdmin()) { $('chkNuvemAtiva').checked = !!ESTADO.config.nuvemAtiva; return; } if ($('chkNuvemAtiva').checked && !window.EscalaCloud.lerConfigFirebase()) { $('chkNuvemAtiva').checked = false; return toast('Configure o firebaseConfig primeiro.'); } ESTADO.config.nuvemAtiva = $('chkNuvemAtiva').checked; await salvarTudo(); renderConfigBase(); });
     $('btnSyncAgora').addEventListener('click', async () => { if (!isAdmin()) return; if (!window.EscalaCloud.lerConfigFirebase()) return toast('Modo local ativo.'); const r = await window.EscalaCloud.sincronizarBaixarNuvem(); if (r.ok && r.dados) { ESTADO = r.dados; await window.EscalaCloud.salvarEstadoLocal(ESTADO); atualizarTodasVistas(); toast('Sincronizado!'); } else await salvarTudo(); });
-    $('btnAlterarMinhaSenha').addEventListener('click', abrirModalAlterarMeuCodigo);
+    $('btnAlterarMinhaSenha').addEventListener('click', irParaAlterarMinhaSenha);
     $('btnExportarBackup').addEventListener('click', async () => {
       if (!isAdmin()) return toast('Exclusivo Administrador.');
       const pac = { sistema:'GCM_VALP_ESCALA_OFICIAL', exportadoEm:new Date().toISOString(), estado:ESTADO, usuarios:window.EscalaCloud.lerUsuariosLocal() };
@@ -4521,70 +4807,117 @@
 
 
   // =========================================================================
-  // INSTALAR APP NO CELULAR / GERAR APK ANDROID (IGUAL CCO VIATURAS)
+  // INSTALACAO DIRETA NO CELULAR EM 1 TOQUE (ZERO LINKS EXTERNOS)
   // =========================================================================
-  let eventoInstallPwa = null;
-  window.addEventListener('beforeinstallprompt', (e) => {
-    e.preventDefault();
-    eventoInstallPwa = e;
-  });
-  window.addEventListener('appinstalled', () => {
-    eventoInstallPwa = null;
-    toast('Aplicativo Escala GCM instalado com sucesso na tela inicial!');
-  });
-
   function estaEmModoAppInstalado() {
-    return (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || window.navigator.standalone === true || !!window.escalaAPI;
+    return (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches)
+      || window.navigator.standalone === true
+      || !!window.escalaAPI
+      || !!window.__pwaInstalado;
   }
 
-  function abrirModalInstalarApp() {
-    const urlAtual = window.location.href.split('#')[0].split('?')[0];
-    const ehLocalFile = window.location.protocol === 'file:';
-    const urlReferencia = ehLocalFile ? 'https://ccogcmvalparaiso.github.io/escala-gcm/' : urlAtual;
-    const jaInstalado = estaEmModoAppInstalado();
+  function detectarNavegadorInterno() {
+    const ua = navigator.userAgent || '';
+    if (/WhatsApp/i.test(ua)) return 'WhatsApp';
+    if (/Instagram|FBAN|FBAV/i.test(ua)) return 'Instagram/Facebook';
+    if (/wv\)/i.test(ua) && /Android/i.test(ua)) return 'navegador interno do aplicativo';
+    return '';
+  }
 
-    const corpo = `
-      ${jaInstalado ? '<div class="alerta-inline ok">Este sistema já está aberto como aplicativo instalado / desktop.</div>' : ''}
-      ${ehLocalFile ? '<div class="alerta-inline erro">Você abriu o arquivo local do computador (file://). Para instalar no celular, abra o link HTTPS publicado no GitHub Pages: <code>https://ccogcmvalparaiso.github.io/escala-gcm/</code></div>' : ''}
-      <div class="install-secao">
-        <h4>1. Instalar Direto no Celular como App (Em 5 segundos — Sem Play Store)</h4>
-        <p class="subtexto">Salva o ícone com o brasão da GCM na tela inicial do celular e abre em tela cheia igual aplicativo nativo, separado do CCO Viaturas.</p>
-        ${eventoInstallPwa ? '<div class="mt-4"><button type="button" class="btn btn-primario btn-bloco" id="btnDispararInstallPwa">INSTALAR APLICATIVO AGORA NESTE CELULAR</button></div>' : ''}
-        <div class="install-passo"><strong>No Android (Google Chrome):</strong> abra o link <code>${esc(urlReferencia)}</code> no Chrome, toque nos <strong>3 pontinhos (⋮)</strong> no canto superior direito e toque em <strong>Instalar aplicativo</strong> (ou <em>Adicionar à tela inicial</em>).</div>
-        <div class="install-passo"><strong>No iPhone / iPad (Safari):</strong> abra o link no Safari, toque em <strong>Compartilhar</strong> (quadrado com seta para cima) e toque em <strong>Adicionar à Tela de Início</strong>.</div>
-      </div>
+  function ehIphoneOuIpad() {
+    return /iPhone|iPad|iPod/i.test(navigator.userAgent || '');
+  }
 
-      <div class="install-secao">
-        <h4>2. Gerar Arquivo .APK Real (Para baixar e enviar no grupo do WhatsApp)</h4>
-        <p class="subtexto">Se quiser um arquivo <strong>.apk</strong> instalável direto no Android (igual ao CCO Viaturas), você gera grátis em 1 minuto:</p>
-        <div class="install-passo"><strong>Passo 1:</strong> No computador, abra <strong>pwabuilder.com</strong>.</div>
-        <div class="install-passo"><strong>Passo 2:</strong> Cole o endereço oficial: <code>${esc(urlReferencia)}</code> e clique em <strong>Start</strong>.</div>
-        <div class="install-passo"><strong>Passo 3:</strong> Clique em <strong>Package for stores</strong> → <strong>Android</strong> → <strong>Generate Package</strong> → baixe o arquivo <strong>app-release-signed.apk</strong> e envie no WhatsApp da GCM.</div>
-        <div class="mt-4"><button type="button" class="btn btn-acao-destaque btn-sm btn-bloco" id="btnCopiarLinkInstall">Copiar Link Oficial (${esc(urlReferencia)})</button></div>
-      </div>
-    `;
+  function atualizarBotoesInstalacaoDireta() {
+    const instalado = estaEmModoAppInstalado();
+    const temPrompt = !!window.__pwaInstallEvent;
+    const dispensado = sessionStorage.getItem('gcm_install_dispensado') === '1';
 
-    abrirModal('Instalar App no Celular / Gerar APK', corpo, [{ texto: 'Fechar', classe: 'btn-sec', onClick: fecharModal }]);
+    const barLogin = $('bannerInstallDiretoLogin');
+    const barApp = $('bannerInstallDiretoApp');
+    if (barLogin) barLogin.classList.toggle('oculto', instalado || !temPrompt);
+    if (barApp) barApp.classList.toggle('oculto', instalado || !temPrompt || dispensado);
 
-    const btnInst = $('btnDispararInstallPwa');
-    if (btnInst && eventoInstallPwa) {
-      btnInst.addEventListener('click', async () => {
-        try {
-          eventoInstallPwa.prompt();
-          const res = await eventoInstallPwa.userChoice;
-          if (res && res.outcome === 'accepted') toast('Instalando aplicativo Escala GCM...');
-          eventoInstallPwa = null;
-          fecharModal();
-        } catch (_) {}
-      });
+    const bAuth = $('btnInstalarAppAuth');
+    const bSide = $('btnInstalarAppSide');
+    if (bAuth) {
+      bAuth.classList.toggle('oculto', instalado);
+      bAuth.textContent = temPrompt ? 'Instalar App Agora (1 Toque)' : 'Instalar App no Celular';
     }
-    const btnCop = $('btnCopiarLinkInstall');
-    if (btnCop) {
-      btnCop.addEventListener('click', () => {
-        if (navigator.clipboard?.writeText) navigator.clipboard.writeText(urlReferencia).then(() => toast('Link copiado!'));
-      });
+    if (bSide) {
+      bSide.classList.toggle('oculto', instalado);
+      bSide.textContent = temPrompt ? 'Instalar App Agora (1 Toque)' : 'Instalar App no Celular';
     }
   }
+
+  async function acionarInstalacaoDiretaNoCelular() {
+    if (estaEmModoAppInstalado()) {
+      toast('O aplicativo Escala GCM já está instalado neste aparelho!');
+      return;
+    }
+
+    // 1. Disparo DIRETO do instalador nativo do Android / Chrome / Edge (ZERO modal, ZERO outro site!)
+    const evPrompt = window.__pwaInstallEvent;
+    if (evPrompt && typeof evPrompt.prompt === 'function') {
+      try {
+        evPrompt.prompt();
+        const escolha = await evPrompt.userChoice;
+        if (escolha && escolha.outcome === 'accepted') {
+          window.__pwaInstallEvent = null;
+          window.__pwaInstalado = true;
+          atualizarBotoesInstalacaoDireta();
+          toast('Instalando o aplicativo Escala GCM diretamente no seu celular...');
+          return;
+        }
+        toast('Instalação cancelada. Você pode tocar em Instalar novamente quando quiser.');
+        return;
+      } catch (_) {}
+    }
+
+    // 2. Se o prompt nativo ainda nao estiver disponivel, explica o motivo exato SEM nenhum link externo
+    const ehLocalFile = location.protocol === 'file:';
+    const navInterno = detectarNavegadorInterno();
+    let corpo = '';
+
+    if (ehLocalFile) {
+      corpo = '<div class="alerta-inline erro">Você abriu o arquivo solto do disco (file://). Para instalar no celular, abra o link publicado no GitHub Pages pelo Chrome.</div>';
+    } else if (navInterno) {
+      corpo = `
+        <div class="alerta-inline erro">Você abriu o link por dentro do <strong>${esc(navInterno)}</strong>, que bloqueia o botão de instalação do celular.</div>
+        <div class="install-secao mt-8">
+          <h4>Como instalar em 2 toques (sem sair do seu site):</h4>
+          <div class="install-passo"><strong>1.</strong> Toque nos <strong>3 pontinhos (⋮)</strong> no canto superior direito desta tela e escolha <strong>Abrir no Chrome</strong>.</div>
+          <div class="install-passo"><strong>2.</strong> Assim que abrir no Chrome, toque em <strong>Instalar Agora</strong> (ou nos 3 pontinhos do Chrome → <strong>Instalar aplicativo</strong>).</div>
+        </div>
+      `;
+    } else if (ehIphoneOuIpad()) {
+      corpo = `
+        <div class="install-secao">
+          <h4>Instalar no iPhone / iPad (Safari):</h4>
+          <div class="install-passo"><strong>1.</strong> Toque no botão <strong>Compartilhar</strong> (quadrado com seta para cima na parte inferior do Safari).</div>
+          <div class="install-passo"><strong>2.</strong> Role para baixo e toque em <strong>Adicionar à Tela de Início</strong> → <strong>Adicionar</strong>.</div>
+        </div>
+      `;
+    } else {
+      corpo = `
+        <div class="install-secao">
+          <h4>Instalar Direto pelo Navegador (Android / PC):</h4>
+          <p class="subtexto">O botão automático de instalação aparece assim que o Chrome termina de atualizar os arquivos. Se não abriu sozinho agora, faça direto aqui no Chrome em 2 toques:</p>
+          <div class="install-passo"><strong>1.</strong> Toque nos <strong>3 pontinhos (⋮)</strong> no canto superior direito do Chrome.</div>
+          <div class="install-passo"><strong>2.</strong> Toque em <strong>Instalar aplicativo</strong> (ou <strong>Adicionar à tela inicial</strong> → <strong>Instalar</strong>).</div>
+          <div class="install-passo"><strong>Obs.:</strong> Se aparecer "Abrir aplicativo" em vez de "Instalar", o app já está salvo na sua gaveta de aplicativos com o nome <strong>Escala GCM</strong>.</div>
+        </div>
+      `;
+    }
+
+    abrirModal('Instalar Aplicativo no Celular', corpo, [{ texto: 'Entendi', classe: 'btn-primario', onClick: fecharModal }]);
+  }
+
+  window.addEventListener('gcm:pwa-pronto', atualizarBotoesInstalacaoDireta);
+  window.addEventListener('gcm:pwa-instalado', () => {
+    atualizarBotoesInstalacaoDireta();
+    toast('Aplicativo Escala GCM instalado na tela inicial do celular!');
+  });
 
   function normalizarEMigrarEstado(carregado) {
     const padrao = criarEstadoInicial();
@@ -4612,14 +4945,14 @@
     st.postos.forEach(p => {
       if (!p.poligono) p.poligono = POLIGONOS_PADRAO[p.id] || POLIGONOS_PADRAO['MUNICIPIO'];
     });
-    st.versao = 13;
+    st.versao = 16;
     return st;
   }
 
   async function init() {
     const temaSalvo = localStorage.getItem('gcm_valp_escala_tema') || localStorage.getItem('escala_gcm_tema_v12') || localStorage.getItem('escala_gcm_tema_v11') || 'claro';
     aplicarTema(temaSalvo);
-    if ('serviceWorker' in navigator && location.protocol.startsWith('http')) navigator.serviceWorker.register('./sw.js').catch(() => {});
+    atualizarBotoesInstalacaoDireta();
     const carregado = await window.EscalaCloud.carregarEstadoLocal();
     ESTADO = normalizarEMigrarEstado(carregado);
     await window.EscalaCloud.salvarEstadoLocal(ESTADO);

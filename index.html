@@ -8,18 +8,43 @@
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-title" content="GCM Ponto/Escala">
-  <link rel="manifest" href="manifest.json">
+  <link rel="manifest" href="manifest.json?v=16">
   <link rel="icon" type="image/png" href="icon-192.png">
   <link rel="apple-touch-icon" href="icon-192.png">
   <title>GCM Valparaíso de Goiás — Folha de Ponto, Escala 24x72, Permutas, Banco de Horas e Cartão Programa</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
-  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="styles.css?v=16">
+  <script>
+    // Captura imediata do instalador nativo do celular ANTES de qualquer script externo carregar
+    window.__pwaInstallEvent = null;
+    window.__pwaInstalado = false;
+    window.addEventListener('beforeinstallprompt', function (e) {
+      e.preventDefault();
+      window.__pwaInstallEvent = e;
+      window.dispatchEvent(new CustomEvent('gcm:pwa-pronto'));
+    });
+    window.addEventListener('appinstalled', function () {
+      window.__pwaInstallEvent = null;
+      window.__pwaInstalado = true;
+      window.dispatchEvent(new CustomEvent('gcm:pwa-instalado'));
+    });
+    if ('serviceWorker' in navigator && location.protocol.indexOf('http') === 0) {
+      navigator.serviceWorker.register('./sw.js?v=16', { scope: './' }).catch(function () {});
+    }
+  </script>
 </head>
 <body data-perfil="AGENTE">
 
   <!-- TELA DE LOGIN (CODIGO 4 DIGITOS) -->
   <div id="telaAuth" class="auth-overlay">
     <div class="auth-card">
+      <div id="bannerInstallDiretoLogin" class="install-direto-bar oculto">
+        <div>
+          <strong>Instalar no Celular</strong>
+          <span>Salva o ícone da GCM na tela inicial (1 toque)</span>
+        </div>
+        <button type="button" class="btn btn-primario btn-sm" id="btnInstallDiretoLogin">Instalar</button>
+      </div>
       <div class="auth-topo">
         <img src="logo.png" alt="Brasão GCM Valparaíso de Goiás" class="auth-logo">
         <div>
@@ -39,12 +64,13 @@
           <input type="text" id="inpLoginUser" autocomplete="username" placeholder="Ex.: admin ou Anderson Pereira Costa" required>
         </div>
         <div class="campo">
-          <label for="inpLoginPass">Código de Acesso / Senha (mín. 4 dígitos)</label>
-          <input type="password" id="inpLoginPass" autocomplete="current-password" minlength="4" placeholder="Digite seu código (ex.: 0153)" required>
+          <label for="inpLoginPass">Senha</label>
+          <input type="password" id="inpLoginPass" autocomplete="current-password" placeholder="Digite sua senha" required>
         </div>
         <div id="msgAuthErro" class="alerta-inline erro oculto"></div>
         <button type="submit" class="btn btn-primario btn-bloco">Entrar no Sistema</button>
-        <p class="auth-dica">Acesso inicial Administrador: usuário <strong>admin</strong> · código <strong>0153</strong></p>
+        <button type="button" class="link-discreto" id="btnEsqueciSenha">Esqueci minha senha (solicitar redefinição ao Administrador)</button>
+        <p class="auth-dica">Acesso inicial Administrador: usuário <strong>admin</strong> · senha inicial <strong>0153</strong></p>
       </form>
 
       <form id="formCadastro" class="auth-form oculto">
@@ -54,9 +80,25 @@
         </div>
         <div class="grid-2">
           <div class="campo"><label for="inpCadUser">Login de Acesso</label><input type="text" id="inpCadUser" placeholder="Ex.: anderson" required></div>
-          <div class="campo"><label for="inpCadMat">Matrícula / Nº Curso (Opcional)</label><input type="text" id="inpCadMat" placeholder="Opcional (vínculo pelo nome)"></div>
+          <div class="campo"><label for="inpCadMat">Matrícula (Fixa após cadastrada)</label><input type="text" id="inpCadMat" placeholder="Opcional se ainda não tiver"></div>
         </div>
-        <div class="campo"><label for="inpCadPass">Código de Acesso (mín. 4 dígitos)</label><input type="password" id="inpCadPass" minlength="4" placeholder="Mínimo 4 dígitos" required></div>
+        <div class="grid-2">
+          <div class="campo">
+            <label for="selCadTipoEmail">Tipo de E-mail</label>
+            <select id="selCadTipoEmail">
+              <option value="INSTITUCIONAL">E-mail Institucional (GCM / Prefeitura)</option>
+              <option value="PESSOAL" selected>E-mail Pessoal (Gmail / Outro)</option>
+            </select>
+          </div>
+          <div class="campo">
+            <label for="inpCadEmail">E-mail</label>
+            <input type="email" id="inpCadEmail" placeholder="Ex.: nome@gmail.com">
+          </div>
+        </div>
+        <div class="campo">
+          <label for="inpCadPass">Crie sua Senha (mín. 6 caracteres — letras, números ou frase curta)</label>
+          <input type="password" id="inpCadPass" minlength="6" placeholder="Crie uma senha fácil de lembrar" required>
+        </div>
         <div id="msgCadInfo" class="alerta-inline oculto"></div>
         <button type="submit" class="btn btn-primario btn-bloco">Enviar Solicitação ao Administrador</button>
         <p class="auth-dica">O sistema cruza seu <strong>Nome Completo</strong> com a base oficial dos 64 guardas e envia para aprovação do Administrador.</p>
@@ -64,7 +106,7 @@
 
       <div class="auth-rodape">
         <div class="acoes-linha" style="justify-content:center;">
-          <button type="button" class="btn btn-acao-destaque btn-sm" id="btnInstalarAppAuth">Instalar App / APK no Celular</button>
+          <button type="button" class="btn btn-acao-destaque btn-sm" id="btnInstalarAppAuth">Instalar App no Celular</button>
           <button type="button" class="btn btn-sec btn-sm" id="btnTemaAuth">Modo Noturno (Preto)</button>
         </div>
       </div>
@@ -81,7 +123,7 @@
         <img src="logo.png" alt="GCM Valparaíso" class="sidebar-logo">
         <div class="sidebar-marca">
           <strong>GCM VALPARAÍSO</strong>
-          <span>Operacional · <strong>v13 Estável</strong></span>
+          <span>Operacional · <strong>v16.0</strong></span>
         </div>
         <button type="button" class="btn btn-sec btn-sm btn-fechar-side" id="btnFecharSidebar">X</button>
       </div>
@@ -112,6 +154,9 @@
         <button type="button" class="side-btn" data-aba="secAutenticacao">
           <span class="side-bar"></span><span>Validar Autenticidade</span>
         </button>
+        <button type="button" class="side-btn" data-aba="secUsuario">
+          <span class="side-bar"></span><span>Configurações do Usuário</span>
+        </button>
       </nav>
 
       <div class="sidebar-grupo so-gestao">GESTÃO E ADMINISTRAÇÃO</div>
@@ -139,8 +184,8 @@
           <strong id="lblUsuarioTopo">—</strong>
           <span id="lblPerfilTopo" class="badge badge-invertido">—</span>
         </div>
-        <button type="button" class="btn btn-acao-destaque btn-sm btn-bloco mt-8" id="btnInstalarAppSide">Instalar App / APK Celular</button>
-        <button type="button" class="btn btn-sec btn-sm btn-bloco mt-4" id="btnAlterarMeuCodigoTopo">Alterar Meu Código</button>
+        <button type="button" class="btn btn-acao-destaque btn-sm btn-bloco mt-8" id="btnInstalarAppSide">Instalar App no Celular</button>
+        <button type="button" class="btn btn-sec btn-sm btn-bloco mt-4" id="btnAlterarMeuCodigoTopo">Alterar a Minha Senha</button>
         <button type="button" class="btn btn-sec btn-sm btn-bloco mt-4" id="btnSair">Sair</button>
       </div>
     </aside>
@@ -157,13 +202,25 @@
         </div>
         <div class="topbar-dir">
           <button type="button" class="btn btn-primario btn-sm" id="btnTopoRegistrarPonto">Registrar Folha de Ponto</button>
-          <button type="button" class="btn btn-sec btn-sm" id="btnAtualizarApp" title="Limpa cache antigo e recarrega a versão mais recente">Atualizar App (v13)</button>
-          <span id="badgeSync" class="badge badge-neutro">Local</span>
+          <button type="button" class="btn btn-sec btn-sm" id="btnAtualizarApp" title="Limpa cache antigo e recarrega a versão mais recente">Atualizar App (v16)</button>
+          <span id="badgeSync" class="badge badge-neutro" title="Mostra onde os dados estão salvos (no aparelho ou na nuvem)">Salvo Local</span>
           <button type="button" class="btn btn-sec btn-sm" id="btnTema">Modo Noturno</button>
         </div>
       </header>
 
       <main class="conteudo">
+        <!-- BARRA DE INSTALACAO DIRETA NO CELULAR (1 TOQUE — SEM LINK EXTERNO) -->
+        <div id="bannerInstallDiretoApp" class="install-direto-bar oculto" style="margin-bottom:12px;">
+          <div>
+            <strong>Instalar Escala GCM direto neste celular</strong>
+            <span>Toque em Instalar para baixar o aplicativo direto na sua tela inicial, sem abrir outro site.</span>
+          </div>
+          <div class="acoes-linha" style="width:auto;">
+            <button type="button" class="btn btn-primario btn-sm" id="btnInstallDiretoApp">Instalar Agora</button>
+            <button type="button" class="btn btn-sec btn-sm" id="btnFecharBannerInstall">Depois</button>
+          </div>
+        </div>
+
         <!-- ALERTA DE CADASTROS PENDENTES / FORA DA LISTA OFICIAL DO PDF (EXCLUSIVO ADMIN) -->
         <div id="bannerCadastrosAdmin" class="banner-prioritario urgente oculto so-admin"></div>
 
@@ -180,7 +237,7 @@
           <div id="faixaPlantaoHoje" class="faixa-plantao"></div>
 
           <div class="subtabs mt-12">
-            <button type="button" class="subtab ativo" data-sub="subPtRegistrar">Registrar Ponto (Entrada / Almoço / Saída)</button>
+            <button type="button" class="subtab ativo" data-sub="subPtRegistrar">Registrar Ponto (Entrada e Saída)</button>
             <button type="button" class="subtab" data-sub="subPtFrequencia">Frequência dos Escalados do Dia e Justificativas</button>
             <button type="button" class="subtab" data-sub="subPtHistorico">Histórico Completo de Batidas</button>
           </div>
@@ -207,9 +264,7 @@
                     <label for="selPontoTipo">Tipo de Batida</label>
                     <select id="selPontoTipo">
                       <option value="ENTRADA">1. ENTRADA (Início de Turno)</option>
-                      <option value="SAIDA_ALMOCO">2. SAÍDA ALMOÇO / REFEIÇÃO</option>
-                      <option value="RETORNO_ALMOCO">3. RETORNO ALMOÇO / REFEIÇÃO</option>
-                      <option value="SAIDA">4. SAÍDA (Encerramento)</option>
+                      <option value="SAIDA">2. SAÍDA (Encerramento de Turno)</option>
                     </select>
                   </div>
                   <div class="campo">
@@ -291,7 +346,7 @@
                 <div class="tabela-wrap mt-12">
                   <table class="tabela">
                     <thead>
-                      <tr><th>Nº</th><th>Guarda</th><th>Setor / VTR</th><th>Ent.</th><th>Almoço</th><th>Saída</th><th>Status</th></tr>
+                      <tr><th>Nº</th><th>Guarda</th><th>Setor / VTR</th><th>Entrada</th><th>Saída</th><th>Status</th></tr>
                     </thead>
                     <tbody id="tbodyResumoHoje"></tbody>
                   </table>
@@ -327,7 +382,7 @@
                   <thead>
                     <tr>
                       <th>Nº</th><th>Guarda GCM</th><th>Equipe / Setor</th>
-                      <th>Entrada</th><th>Saída Almoço</th><th>Retorno Almoço</th><th>Saída</th>
+                      <th>Entrada</th><th>Saída</th>
                       <th>Situação / Justificativa</th><th class="so-gestao">Ação</th>
                     </tr>
                   </thead>
@@ -351,8 +406,6 @@
                   <select id="fltPontoTipo">
                     <option value="">Todos</option>
                     <option value="ENTRADA">Entrada</option>
-                    <option value="SAIDA_ALMOCO">Saída Almoço</option>
-                    <option value="RETORNO_ALMOCO">Retorno Almoço</option>
                     <option value="SAIDA">Saída</option>
                   </select>
                 </div>
@@ -1273,6 +1326,134 @@
           </div>
         </section>
 
+
+        <!-- ===================================================== -->
+        <!-- 7B. CONFIGURACOES DO USUARIO (PERFIL, EMAIL E SENHA)  -->
+        <!-- ===================================================== -->
+        <section id="secUsuario" class="secao-aba">
+          <div class="cab-secao">
+            <div>
+              <h2>Configurações do Usuário</h2>
+              <p class="subtexto">Consulte seus dados fixos de identificação, atualize sua foto ou e-mail e altere a sua senha com segurança.</p>
+            </div>
+            <div class="acoes-linha">
+              <button type="button" class="btn btn-acao-destaque" id="btnUsrTirarFoto">Tirar / Atualizar Minha Foto</button>
+              <button type="button" class="btn btn-sec" id="btnUsrAbrirMinhaFolha">Ver Minha Folha (PDF)</button>
+            </div>
+          </div>
+
+          <div id="avisoTrocaSenhaObrigatoria" class="alerta-inline erro oculto" style="margin-bottom:14px;">
+            <strong>ATENÇÃO:</strong> Sua senha foi redefinida pelo Administrador com uma senha temporária. Cadastre abaixo sua nova senha pessoal agora.
+          </div>
+
+          <div class="grid-2">
+            <!-- DADOS DO GUARDA / USUARIO -->
+            <div class="card">
+              <div class="card-cab">
+                <h3>Identificação do Guarda e E-mail</h3>
+                <span id="badgeUsrPerfil" class="badge badge-invertido">—</span>
+              </div>
+
+              <div class="perfil-ponto-card mt-12">
+                <div class="foto-usuario-grande" id="boxFotoUsuarioPerfil">Sem foto cadastrada</div>
+                <div class="perfil-ponto-info">
+                  <strong id="lblUsrNomeDestaque" style="font-size:15.5px;">—</strong>
+                  <div class="subtexto" id="lblUsrEquipeSetor">—</div>
+                  <div class="subtexto" id="lblUsrLoginInfo">—</div>
+                  <div class="acoes-linha mt-8">
+                    <button type="button" class="btn btn-acao-destaque btn-sm" id="btnUsrFotoCard">Atualizar Foto</button>
+                  </div>
+                </div>
+              </div>
+
+              <div class="grid-2 mt-12">
+                <div class="campo">
+                  <label for="inpUsrNomeFixo">Nome Completo (Fixo — Conferido no Rol Oficial)</label>
+                  <input type="text" id="inpUsrNomeFixo" class="campo-fixo-readonly" readonly>
+                </div>
+                <div class="campo">
+                  <label for="inpUsrMatriculaFixa">Matrícula (Fixa — Não editável pelo usuário)</label>
+                  <input type="text" id="inpUsrMatriculaFixa" class="campo-fixo-readonly" readonly>
+                </div>
+              </div>
+
+              <div class="grid-2 mt-8">
+                <div class="campo">
+                  <label for="inpUsrLoginFixo">Login de Acesso (Fixo)</label>
+                  <input type="text" id="inpUsrLoginFixo" class="campo-fixo-readonly" readonly>
+                </div>
+                <div class="campo">
+                  <label for="inpUsrEquipeFixa">Equipe / Vínculo</label>
+                  <input type="text" id="inpUsrEquipeFixa" class="campo-fixo-readonly" readonly>
+                </div>
+              </div>
+
+              <div class="box-borda mt-12">
+                <h4>E-mail de Contato (Editável)</h4>
+                <p class="subtexto mt-4">Informe o e-mail institucional da GCM/Prefeitura caso já possua; se ainda não tiver, use seu e-mail pessoal (Gmail, Outlook ou outro).</p>
+                <div class="grid-2 mt-8">
+                  <div class="campo">
+                    <label for="selUsrTipoEmail">Tipo de E-mail</label>
+                    <select id="selUsrTipoEmail">
+                      <option value="INSTITUCIONAL">E-mail Institucional (GCM / Prefeitura)</option>
+                      <option value="PESSOAL">E-mail Pessoal (Gmail / Outro)</option>
+                    </select>
+                  </div>
+                  <div class="campo">
+                    <label for="inpUsrEmail">Endereço de E-mail</label>
+                    <input type="email" id="inpUsrEmail" placeholder="Ex.: seu.nome@gmail.com">
+                  </div>
+                </div>
+                <div class="mt-12">
+                  <button type="button" class="btn btn-primario btn-bloco" id="btnSalvarEmailUsuario">Salvar E-mail</button>
+                </div>
+              </div>
+            </div>
+
+            <!-- ALTERAR A MINHA SENHA -->
+            <div class="card" id="cardAlterarMinhaSenha">
+              <h3>Alterar a Minha Senha</h3>
+              <p class="subtexto mt-4">Crie uma senha que você consiga memorizar facilmente (pode usar letras, números, símbolos ou uma frase curta — mínimo de 6 caracteres, sem limite de apenas números).</p>
+
+              <div class="campo mt-12">
+                <label for="inpUsrSenhaAtual">Senha Atual</label>
+                <div class="senha-input-wrap">
+                  <input type="password" id="inpUsrSenhaAtual" autocomplete="current-password" placeholder="Digite sua senha atual">
+                  <button type="button" class="btn btn-sec btn-sm" data-toggle-pass="inpUsrSenhaAtual">Ver</button>
+                </div>
+              </div>
+
+              <div class="campo mt-8">
+                <label for="inpUsrNovaSenha">Nova Senha</label>
+                <div class="senha-input-wrap">
+                  <input type="password" id="inpUsrNovaSenha" autocomplete="new-password" minlength="6" placeholder="Digite a nova senha (mín. 6 caracteres)">
+                  <button type="button" class="btn btn-sec btn-sm" data-toggle-pass="inpUsrNovaSenha">Ver</button>
+                </div>
+                <div class="forca-senha-wrap">
+                  <div class="forca-senha-barra"><div id="barraForcaSenha" class="forca-senha-fill"></div></div>
+                  <span id="lblForcaSenha" class="subtexto">—</span>
+                </div>
+              </div>
+
+              <div class="campo mt-8">
+                <label for="inpUsrConfirmaSenha">Confirmar Nova Senha</label>
+                <div class="senha-input-wrap">
+                  <input type="password" id="inpUsrConfirmaSenha" autocomplete="new-password" minlength="6" placeholder="Repita a nova senha">
+                  <button type="button" class="btn btn-sec btn-sm" data-toggle-pass="inpUsrConfirmaSenha">Ver</button>
+                </div>
+              </div>
+
+              <div id="msgUsrSenha" class="alerta-inline oculto mt-8"></div>
+
+              <button type="button" class="btn btn-primario btn-bloco mt-12" id="btnSalvarNovaSenhaUsuario">Alterar a Minha Senha</button>
+
+              <div class="regra-box mt-16">
+                <strong>Privacidade e Segurança:</strong> Sua senha é gravada com criptografia irreversível (SHA-256). <strong>Nem o Administrador consegue ver sua senha.</strong> Caso você esqueça a senha, o Administrador pode apenas gerar uma senha temporária para você voltar a acessar e cadastrar uma nova.
+              </div>
+            </div>
+          </div>
+        </section>
+
         <!-- ===================================================== -->
         <!-- 8. EFETIVO DA GUARDA (GESTAO: ADMIN E ESCALANTE)      -->
         <!-- ===================================================== -->
@@ -1455,7 +1636,7 @@
             </div>
           </div>
           <div class="subtabs">
-            <button type="button" class="subtab ativo" data-sub="subSisContas">Contas e Códigos (4 dígitos)</button>
+            <button type="button" class="subtab ativo" data-sub="subSisContas">Contas e Senhas</button>
             <button type="button" class="subtab" data-sub="subSisBase">Base GCM e Perímetro</button>
             <button type="button" class="subtab" data-sub="subSisBanco">Banco de Dados e Backup</button>
           </div>
@@ -1464,13 +1645,13 @@
               <div class="card-cab">
                 <div>
                   <h3>Usuários e Níveis de Acesso</h3>
-                  <p class="subtexto"><strong>ADMIN:</strong> acesso total · <strong>ESCALANTE:</strong> gerencia escalas, permutas, banco de horas e cartões · <strong>AGENTE:</strong> consulta escala/cartão, solicita permuta e bate o próprio ponto.</p>
+                  <p class="subtexto"><strong>ADMIN:</strong> acesso total · <strong>ESCALANTE:</strong> escalas/permutas/cartões · <strong>AGENTE:</strong> consulta e ponto. O Administrador <strong>nunca vê</strong> a senha do usuário e <strong>não exclui</strong> cadastros — pode apenas Aprovar/Bloquear ou <strong>Redefinir Senha</strong> (gerando senha temporária).</p>
                 </div>
                 <button type="button" class="btn btn-primario btn-sm" id="btnCriarContaAdmin">+ Criar Conta</button>
               </div>
               <div class="tabela-wrap mt-12">
                 <table class="tabela">
-                  <thead><tr><th>Login</th><th>Nome Informado</th><th>Conferência Rol Oficial (PDF)</th><th>Matrícula (Opcional)</th><th>Perfil</th><th>Status</th><th>Ações</th></tr></thead>
+                  <thead><tr><th>Login</th><th>Nome e E-mail</th><th>Conferência Rol Oficial (PDF)</th><th>Matrícula (Fixa)</th><th>Perfil</th><th>Status</th><th>Ações (Sem Exclusão)</th></tr></thead>
                   <tbody id="tbodyContas"></tbody>
                 </table>
               </div>
@@ -1506,12 +1687,12 @@
                 </div>
               </div>
               <div class="card">
-                <h3>Backup Local e Código de Acesso</h3>
+                <h3>Backup Local e Minha Senha</h3>
                 <p class="subtexto">Exporte ou restaure todos os dados em JSON (incluindo o Livro de Documentos Autenticados, Permutas e Banco de Horas).</p>
                 <div class="acoes-linha mt-16">
                   <button type="button" class="btn btn-primario" id="btnExportarBackup">Exportar Backup JSON</button>
                   <button type="button" class="btn btn-sec" id="btnImportarBackup">Restaurar Backup</button>
-                  <button type="button" class="btn btn-sec" id="btnAlterarMinhaSenha">Alterar Meu Código (4+ dígitos)</button>
+                  <button type="button" class="btn btn-sec" id="btnAlterarMinhaSenha">Alterar a Minha Senha</button>
                   <input type="file" id="inpFileBackup" accept=".json" class="oculto">
                 </div>
               </div>
@@ -1554,7 +1735,7 @@
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
-  <script src="cloud.js"></script>
-  <script src="app.js"></script>
+  <script src="cloud.js?v=16"></script>
+  <script src="app.js?v=16"></script>
 </body>
 </html>
