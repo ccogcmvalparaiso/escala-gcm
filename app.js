@@ -359,7 +359,7 @@
     postos.forEach(p => { cartoesModelo[p.id] = criarModeloCartaoPadrao(p); });
 
     return {
-      versao: 16,
+      versao: 18,
       config: {
         dataBaseAlfa: hojeISO(),
         horarioTroca: '07:00 às 07:00',
@@ -743,6 +743,67 @@
     return { id: '', nome: 'Apoio da Equipe', funcao: FUNCOES_LABEL[ag.funcao] || 'Guarda' };
   }
 
+  // Descobre o posto/setor (ex: VTR-01 / Setor 01) e equipe de um guarda numa data (para baixar Cartao Programa direto!)
+  function obterSetorDoGuardaNaData(ag, dataISO, postoTextoOpcional) {
+    if (!ag) return null;
+    const dt = dataISO || hojeISO();
+    const ciclo = calcularCiclo24x72(dt);
+    const equipeTurno = EQUIPES.includes(ag.equipe) ? ag.equipe : ciclo.equipeServico;
+
+    // 1. Tenta localizar pelo posto atribuido na equipe do guarda
+    const inf = descobrirSetorDoAgente(ag);
+    if (inf && inf.id) {
+      const postoObj = ESTADO.postos.find(p => p.id === inf.id);
+      if (postoObj) return { posto: postoObj, equipe: equipeTurno, data: dt };
+    }
+
+    // 2. Tenta localizar pelo texto do campo posto (ex: permuta em outra VTR/Setor)
+    if (postoTextoOpcional) {
+      const txtN = normalizarNomeChave(postoTextoOpcional);
+      const porTxt = ESTADO.postos.find(p =>
+        txtN.includes(normalizarNomeChave(p.id)) ||
+        txtN.includes(normalizarNomeChave(p.prefixo)) ||
+        txtN.includes(normalizarNomeChave(p.setor))
+      );
+      if (porTxt) return { posto: porTxt, equipe: ciclo.equipeServico, data: dt };
+    }
+
+    // 3. Verifica se o guarda esta na escala do dia via permuta aprovada
+    const { escalados } = obterEscaladosDaData(dt);
+    const esc = escalados.find(x => x.agente.id === ag.id);
+    if (esc && esc.posto) {
+      const txtN = normalizarNomeChave(esc.posto);
+      const porEsc = ESTADO.postos.find(p =>
+        txtN.includes(normalizarNomeChave(p.id)) ||
+        txtN.includes(normalizarNomeChave(p.prefixo)) ||
+        txtN.includes(normalizarNomeChave(p.setor))
+      );
+      if (porEsc) return { posto: porEsc, equipe: ciclo.equipeServico, data: dt };
+    }
+    return null;
+  }
+
+  function gerarPdfCartaoProgramaDoGuarda(agenteId, dataISO, postoTextoOpcional) {
+    const ag = agentePorId(agenteId);
+    if (!ag) return toast('Guarda não encontrado.');
+    const alvo = obterSetorDoGuardaNaData(ag, dataISO, postoTextoOpcional);
+    if (!alvo || !alvo.posto) {
+      return toast('Nenhum setor/viatura vinculado a este guarda no momento. Consulte a aba Cartão Programa e Mapa.');
+    }
+    const { posto, equipe, data } = alvo;
+    const bloco = blocoHtmlCartaoPrograma(data, equipe, posto);
+    const tit = `CARTÃO PROGRAMA — ${posto.prefixo} (${posto.setor})`;
+    emitirPdfAutenticado({
+      tipoDoc: 'CARTAO_PROGRAMA',
+      titulo: tit,
+      subtitulo: `Guarda: ${ag.nome} · Data: ${formatarDataBR(data)} · Turno: ${ESTADO.config.horarioTroca} · Equipe ${equipe}`,
+      corpoHtml: bloco,
+      nomeArquivo: `cartao-${posto.id}-${data}.pdf`,
+      paisagem: false,
+      qtdRegistros: 1
+    });
+  }
+
   // Retorna escalados de uma data integrando 24x72 + ADM + Eventos + PERMUTAS APROVADAS!
   function obterEscaladosDaData(dataISO) {
     const ciclo = calcularCiclo24x72(dataISO);
@@ -1070,6 +1131,47 @@
     const dataExt = `${DIAS_SEMANA[d.getDay()]}, ${d.getDate()} de ${MESES_EXT[d.getMonth()]} de ${d.getFullYear()}`;
     $('lblSubtopo').textContent = `${dataExt} · Turno ${ESTADO.config.horarioTroca}`;
     const info = obterEscaladosDaData(hoje);
+    const corEq = EQUIPE_CORES[info.ciclo.equipeServico]?.cor || '#18181B';
+    $('faixaPlantaoHoje').style.borderLeftColor = corEq;
+
+    // Perfil AGENTE (nem Admin nem Escalante): ve SOMENTE o proprio status — nunca o ponto dos colegas!
+    if (!podeEditarEscala()) {
+      const meu = agenteLogadoAtual();
+      let meuStatusTxt = 'Sem vínculo', meuStatusCls = '', meuSetorTxt = '—';
+      if (meu) {
+        const plantaoAb = encontrarPlantaoAberto(meu.id, new Date().toISOString());
+        const dtRef = (plantaoAb && plantaoAb.dataLocal !== hoje) ? plantaoAb.dataLocal : hoje;
+        const meuEsc = info.escalados.find(x => x.agente.id === meu.id);
+        const rMeu = resumirDiaAgente(dtRef, meu.id, dtRef === hoje ? meuEsc?.permutaSaida : null);
+        const infMeu = descobrirSetorDoAgente(meu);
+        meuSetorTxt = infMeu.nome || '—';
+        if (meuEsc && !meuEsc.permutaSaida || (plantaoAb && plantaoAb.dataLocal !== hoje)) {
+          const stM = estiloStatusPonto(rMeu, true);
+          meuStatusTxt = stM.txt;
+          meuStatusCls = rMeu.status === 'EM_SERVICO' || rMeu.status === 'PRESENTE' ? 'kpi-ok' : (rMeu.status === 'FALTOU' ? 'kpi-falta' : 'kpi-pend');
+        } else if (rMeu.status === 'JUSTIFICADO') {
+          meuStatusTxt = estiloStatusPonto(rMeu, true).txt;
+        } else {
+          meuStatusTxt = 'Folga Hoje';
+          meuStatusCls = 'kpi-ok';
+        }
+      }
+      $('faixaPlantaoHoje').innerHTML = `
+        <div>
+          <div class="subtexto">PLANTÃO EM ANDAMENTO · ${esc(dataExt)}</div>
+          <div style="font-size:18px;font-weight:800;margin-top:3px;">
+            Serviço 24x72: <span class="insig eq-${info.ciclo.equipeServico}" style="font-size:13px;">EQUIPE ${info.ciclo.equipeServico}</span>
+          </div>
+          <div class="subtexto mt-4">Amanhã entra: <strong>EQUIPE ${EQUIPES[(EQUIPES.indexOf(info.ciclo.equipeServico)+1)%4]}</strong> · Turno ${esc(ESTADO.config.horarioTroca)}</div>
+        </div>
+        <div class="faixa-kpis">
+          <div class="faixa-kpi ${meuStatusCls}"><strong>${esc(meuStatusTxt)}</strong><span>Meu Ponto</span></div>
+          <div class="faixa-kpi"><strong>${esc(meuSetorTxt.split('—')[0].trim())}</strong><span>Meu Setor</span></div>
+        </div>
+      `;
+      return;
+    }
+
     let emServico = 0, pendentes = 0, faltas = 0, justif = 0;
     info.escalados.forEach(item => {
       const r = resumirDiaAgente(hoje, item.agente.id, item.permutaSaida);
@@ -1078,8 +1180,6 @@
       else if (r.status === 'JUSTIFICADO') justif++;
       else pendentes++;
     });
-    const corEq = EQUIPE_CORES[info.ciclo.equipeServico]?.cor || '#18181B';
-    $('faixaPlantaoHoje').style.borderLeftColor = corEq;
     $('faixaPlantaoHoje').innerHTML = `
       <div>
         <div class="subtexto">PLANTÃO EM ANDAMENTO · ${esc(dataExt)}</div>
@@ -1128,6 +1228,7 @@
     const linhaStatusEsc = viradaAberta
       ? `<span class="badge badge-pendente">PLANTÃO 24h ABERTO DESDE ${formatarDataBR(plantaoAberto.dataLocal)} às ${esc(plantaoAberto.horaLocal.slice(0,5))}</span> · Saída fecha o turno automaticamente`
       : (escHoje ? `<span class="badge badge-ok">ESCALADO HOJE</span> · ${esc(escHoje.posto)} (${esc(escHoje.funcao)})` : `<span class="badge badge-warn">FORA DA ESCALA DE HOJE</span> · Registro de permuta/extra`);
+    const setorCp = obterSetorDoGuardaNaData(ag, dataRefTurno, $('inpPontoPosto').value);
     card.innerHTML = `
       <div class="card-cab">
         <strong>${esc(ag.nome)}</strong>
@@ -1135,7 +1236,12 @@
       </div>
       <div>${linhaStatusEsc}</div>
       <div class="subtexto">Turno ${formatarDataBR(dataRefTurno)}: Entrada <strong>${resumo.ent ? resumo.ent.horaLocal.slice(0,5) : '—'}</strong> · Saída <strong>${formatarHoraSaidaTurno(resumo)}</strong></div>
+      ${setorCp ? `<div class="acoes-linha mt-4"><button type="button" class="btn btn-acao-destaque btn-sm" id="btnBaixarCpDoCardGuarda">Baixar Cartão Programa (${esc(setorCp.posto.setor)})</button></div>` : ''}
     `;
+    const btnCpCard = $('btnBaixarCpDoCardGuarda');
+    if (btnCpCard) {
+      btnCpCard.addEventListener('click', () => gerarPdfCartaoProgramaDoGuarda(ag.id, dataRefTurno, $('inpPontoPosto').value));
+    }
     atualizarBoxJanelaHorario();
   }
 
@@ -1171,6 +1277,46 @@
 
   function renderResumoEscaladosHoje() {
     const hoje = hojeISO(), { ciclo, escalados } = obterEscaladosDaData(hoje);
+    const titEl = $('tituloResumoHoje');
+
+    // PRIVACIDADE: perfil AGENTE ve EXCLUSIVAMENTE o proprio ponto (nunca o dos colegas!)
+    if (!podeEditarEscala()) {
+      if (titEl) titEl.textContent = 'Meu Ponto Hoje (Privado)';
+      const meu = agenteLogadoAtual();
+      if (!meu) {
+        $('lblResumoEscaladosHoje').textContent = `${formatarDataBR(hoje)} · Conta sem vínculo nominal no efetivo`;
+        $('tbodyResumoHoje').innerHTML = '<tr><td colspan="6" class="subtexto" style="text-align:center;padding:14px;">Seu nome ainda não está vinculado à base oficial. Solicite ao Administrador.</td></tr>';
+        return;
+      }
+      const plantaoAb = encontrarPlantaoAberto(meu.id, new Date().toISOString());
+      const dtRef = (plantaoAb && plantaoAb.dataLocal !== hoje) ? plantaoAb.dataLocal : hoje;
+      const itemMeu = escalados.find(x => x.agente.id === meu.id);
+      const r = resumirDiaAgente(dtRef, meu.id, dtRef === hoje ? itemMeu?.permutaSaida : null);
+      const infSetor = descobrirSetorDoAgente(meu);
+      const postoLabel = itemMeu ? itemMeu.posto : (infSetor.nome || '—');
+      const estaEsc = !!(itemMeu && !itemMeu.permutaSaida) || !!(plantaoAb && plantaoAb.dataLocal !== hoje);
+      const st = estaEsc || r.ent || r.sai || r.status === 'JUSTIFICADO'
+        ? estiloStatusPonto(r, true)
+        : { cls: 'badge-ok', txt: 'Folga Hoje' };
+      const setorCp = obterSetorDoGuardaNaData(meu, dtRef, postoLabel);
+      $('lblResumoEscaladosHoje').textContent = `${formatarDataBR(dtRef)} · Visualização individual (somente o seu ponto)`;
+      $('tbodyResumoHoje').innerHTML = `
+        <tr>
+          <td><strong>${esc(meu.matricula)}</strong></td>
+          <td><strong>${esc(meu.nomeGuerra || meu.nome)}</strong></td>
+          <td>${esc(postoLabel)}</td>
+          <td>${r.ent ? r.ent.horaLocal.slice(0,5) : '—'}</td>
+          <td>${formatarHoraSaidaTurno(r)}</td>
+          <td><span class="badge ${st.cls}">${esc(st.txt)}</span></td>
+        </tr>
+        ${setorCp ? `<tr><td colspan="6" style="padding:10px;"><button type="button" class="btn btn-acao-destaque btn-sm btn-bloco" id="btnCpResumoMeuPonto">Baixar Cartão Programa do Meu Setor (${esc(setorCp.posto.prefixo)} — ${esc(setorCp.posto.setor)})</button></td></tr>` : ''}
+      `;
+      const bCp = $('btnCpResumoMeuPonto');
+      if (bCp) bCp.addEventListener('click', () => gerarPdfCartaoProgramaDoGuarda(meu.id, dtRef, postoLabel));
+      return;
+    }
+
+    if (titEl) titEl.textContent = 'Escalados Hoje — Resumo em Tempo Real';
     $('lblResumoEscaladosHoje').textContent = `${formatarDataBR(hoje)} · Equipe ${ciclo.equipeServico} (${escalados.length} escalados)`;
     $('tbodyResumoHoje').innerHTML = escalados.map(item => {
       const a = item.agente, r = resumirDiaAgente(hoje, a.id, item.permutaSaida), st = estiloStatusPonto(r, true);
@@ -1179,6 +1325,10 @@
   }
 
   function renderFrequenciaDia() {
+    if (!podeEditarEscala()) {
+      if ($('tbodyFrequenciaDia')) $('tbodyFrequenciaDia').innerHTML = '<tr><td colspan="7" class="subtexto" style="text-align:center;padding:16px;">Acesso restrito ao Escalante e Administrador.</td></tr>';
+      return;
+    }
     const data = $('inpFreqData').value || hojeISO(); $('inpFreqData').value = data;
     const busca = ($('fltFreqBusca').value || '').trim().toLowerCase(), fltSit = $('fltFreqSituacao').value || '';
     const { ciclo, diaUtil, escalados } = obterEscaladosDaData(data);
@@ -1705,15 +1855,34 @@
         </div>
         <div style="text-align:center;"><img src="${pt.foto}" style="max-height:170px;border-radius:6px;border:1px solid var(--border);"></div>
       `,
-      [
-        { texto: 'Copiar Recibo (WhatsApp)', classe: 'btn-sec', onClick: () => {
-          const txt = `*COMPROVANTE DE PONTO — GCM VALPARAÍSO*\nProtocolo: *${pt.protocolo}*\nGuarda: Nº ${pt.agenteMatricula} — ${pt.agenteNome}\nBatida: *${tipoTxt}*\nData/Hora: *${formatarDataBR(pt.dataLocal)} às ${pt.horaLocal}*\nLocal: ${loc.endereco || '—'}\nSHA-256: ${pt.hashIntegridade.slice(0,24)}...`;
-          if (navigator.clipboard?.writeText) navigator.clipboard.writeText(txt).then(() => toast('Recibo copiado!'));
-        }},
-        { texto: 'Baixar PDF do Turno (Entrada e Saída)', classe: 'btn-primario', onClick: () => gerarPdfMinhaFolhaPeriodoDireto(pt.agenteId, pt.dataTurno || pt.dataLocal, pt.dataTurno || pt.dataLocal, `Turno ${formatarDataBR(pt.dataTurno || pt.dataLocal)} (Entrada e Saída)`) },
-        { texto: 'Minha Folha (7 / 30 dias)', classe: 'btn-sec', onClick: () => { fecharModal(); abrirAba('secMinhaFolha'); } },
-        { texto: 'Fechar', classe: 'btn-sec', onClick: fecharModal }
-      ]
+      (() => {
+        const agPt = agentePorId(pt.agenteId);
+        const dtRefCp = pt.dataTurno || pt.dataLocal;
+        const setorCp = obterSetorDoGuardaNaData(agPt, dtRefCp, pt.posto);
+        const btns = [];
+        if (setorCp) {
+          btns.push({
+            texto: `Baixar Cartão Programa (${setorCp.posto.setor})`,
+            classe: 'btn-primario',
+            onClick: () => gerarPdfCartaoProgramaDoGuarda(pt.agenteId, dtRefCp, pt.posto)
+          });
+        }
+        btns.push({
+          texto: 'PDF do Turno (Entrada e Saída)',
+          classe: setorCp ? 'btn-acao-destaque' : 'btn-primario',
+          onClick: () => gerarPdfMinhaFolhaPeriodoDireto(pt.agenteId, dtRefCp, dtRefCp, `Turno ${formatarDataBR(dtRefCp)} (Entrada e Saída)`)
+        });
+        btns.push({
+          texto: 'Copiar Recibo',
+          classe: 'btn-sec',
+          onClick: () => {
+            const txt = `*COMPROVANTE DE PONTO — GCM VALPARAÍSO*\nProtocolo: *${pt.protocolo}*\nGuarda: Nº ${pt.agenteMatricula} — ${pt.agenteNome}\nBatida: *${tipoTxt}*\nData/Hora: *${formatarDataBR(pt.dataLocal)} às ${pt.horaLocal}*\nLocal: ${loc.endereco || '—'}\nSHA-256: ${pt.hashIntegridade.slice(0,24)}...`;
+            if (navigator.clipboard?.writeText) navigator.clipboard.writeText(txt).then(() => toast('Recibo copiado!'));
+          }
+        });
+        btns.push({ texto: 'Fechar', classe: 'btn-sec', onClick: fecharModal });
+        return btns;
+      })()
     );
   }
 
@@ -2177,7 +2346,7 @@
           <td><span class="insig eq-${c.equipeServico}">EQUIPE ${c.equipeServico}</span></td>
           <td>${cel('ALFA')}</td><td>${cel('BRAVO')}</td><td>${cel('CHARLIE')}</td><td>${cel('DELTA')}</td>
           <td>
-            <button type="button" class="btn btn-sec btn-sm" data-ir-freq="${iso}">Ponto</button>
+            <button type="button" class="btn btn-sec btn-sm so-gestao" data-ir-freq="${iso}">Ponto</button>
             <button type="button" class="btn btn-sec btn-sm" data-abrir-cp="${iso}">Cartão</button>
           </td>
         </tr>
@@ -2526,7 +2695,9 @@
     const vig = $('fltAfVigencia')?.value || 'ATIVOS';
     const hoje = hojeISO();
 
+    const meuAf = !podeEditarEscala() ? agenteLogadoAtual() : null;
     const lista = (ESTADO.afastamentos || []).filter(af => {
+      if (!podeEditarEscala() && (!meuAf || af.agenteId !== meuAf.id)) return false;
       const ag = agentePorId(af.agenteId);
       if (fltTp && af.tipo !== fltTp) return false;
       if (vig === 'ATIVOS' && af.dataFim < hoje) return false;
@@ -3045,8 +3216,12 @@
     const busca = ($('fltBhBusca').value || '').trim().toLowerCase();
     const fltEq = $('fltBhEquipe').value || '';
 
-    // Se perfil AGENTE, filtra automaticamente se tiver matricula vinculada (mas pode consultar a lista ou seu proprio)
-    const filtrados = ativos.filter(a => (!fltEq || a.equipe === fltEq) && (!busca || a.nome.toLowerCase().includes(busca) || a.matricula.toLowerCase().includes(busca)));
+    const meuBh = !podeEditarEscala() ? agenteLogadoAtual() : null;
+    const filtrados = ativos.filter(a =>
+      (!podeEditarEscala() ? (meuBh ? a.id === meuBh.id : false) : true) &&
+      (!fltEq || a.equipe === fltEq) &&
+      (!busca || a.nome.toLowerCase().includes(busca) || a.matricula.toLowerCase().includes(busca))
+    );
 
     $('tbodyBhSaldo').innerHTML = filtrados.map(a => {
       const r = calcularResumoBancoAgente(a.id, mes);
@@ -3068,7 +3243,7 @@
 
     $('tbodyBhSaldo').querySelectorAll('[data-pdf-bh-ag]').forEach(b => b.addEventListener('click', () => gerarPdfBancoHoras(b.getAttribute('data-pdf-bh-ag'))));
 
-    const movs = (ESTADO.bancoHorasMovs || []).filter(m => !mes || (m.data||'').startsWith(mes));
+    const movs = (ESTADO.bancoHorasMovs || []).filter(m => (!podeEditarEscala() ? (meuBh ? m.agenteId === meuBh.id : false) : true) && (!mes || (m.data||'').startsWith(mes)));
     $('badgeQtdMovBh').textContent = `${movs.length} lançamento(s)`;
     $('tbodyBhMovs').innerHTML = movs.map(m => {
       const ag = agentePorId(m.agenteId);
@@ -3158,8 +3333,17 @@
           <td>${esc(a.nomeGuerra || '—')}</td>
           <td>${esc(inf.nome)}</td>
           <td>${esc(inf.funcao)}</td>
-          <td class="${clsSaldo}">${formatarMinutosHM(bh.saldoMin, true)}</td>
-          <td>${(() => { const afH = obterAfastamentoNaData(a.id, hojeISO()); if (afH) return `<span class="badge ${afH.tipo==='FALTA'?'badge-erro':'badge-warn'}">${esc(TIPO_AFASTAMENTO_LABEL[afH.tipo]||afH.tipo)} (${afH.dias}d · Ret. ${formatarDataBR(afH.dataRetorno).slice(0,5)})</span>`; return `<span class="badge ${a.situacao==='ATIVO'?'badge-ok':'badge-warn'}">${esc(a.situacao)}</span>`; })()}</td>
+          <td class="${clsSaldo} so-gestao">${formatarMinutosHM(bh.saldoMin, true)}</td>
+          <td>${(() => {
+            const meuEq = agenteLogadoAtual();
+            const podeVerDet = podeEditarEscala() || (meuEq && meuEq.id === a.id);
+            const afH = obterAfastamentoNaData(a.id, hojeISO());
+            if (afH) {
+              if (!podeVerDet) return '<span class="badge badge-warn">Afastado</span>';
+              return `<span class="badge ${afH.tipo==='FALTA'?'badge-erro':'badge-warn'}">${esc(TIPO_AFASTAMENTO_LABEL[afH.tipo]||afH.tipo)} (${afH.dias}d · Ret. ${formatarDataBR(afH.dataRetorno).slice(0,5)})</span>`;
+            }
+            return `<span class="badge ${a.situacao==='ATIVO'?'badge-ok':'badge-warn'}">${esc(a.situacao)}</span>`;
+          })()}</td>
         </tr>
       `;
     }).join('') || '<tr><td colspan="7" class="subtexto" style="text-align:center;">Nenhum integrante nesta equipe.</td></tr>';
@@ -3580,7 +3764,7 @@
           <td>${!u.mestre ? `<select data-perfil-u="${esc(u.login)}"><option value="ADMIN" ${u.perfil==='ADMIN'?'selected':''}>Administrador</option><option value="ESCALANTE" ${u.perfil==='ESCALANTE'?'selected':''}>Escalante</option><option value="AGENTE" ${u.perfil==='AGENTE'?'selected':''}>Agente (Consulta e Ponto)</option></select>` : `<span class="badge badge-neutro">ADMIN</span>`}</td>
           <td><span class="badge ${u.aprovado?'badge-ok':'badge-pendente'}">${u.aprovado?'Ativo':'Bloqueado/Pend.'}</span>${badgeReset}</td>
           <td>
-            ${!u.mestre ? `<div class="acoes-linha"><button type="button" class="btn btn-sec btn-sm" data-aprovar-u="${esc(u.login)}">${u.aprovado?'Bloquear':'Aprovar'}</button><button type="button" class="btn btn-acao-destaque btn-sm" data-reset-u="${esc(u.login)}">Redefinir Senha</button></div>` : '<span class="subtexto">Gerencie em Configurações do Usuário</span>'}
+            ${!u.mestre ? `<div class="acoes-linha"><button type="button" class="btn btn-sec btn-sm" data-aprovar-u="${esc(u.login)}">${u.aprovado?'Bloquear':'Aprovar'}</button><button type="button" class="btn btn-acao-destaque btn-sm" data-reset-u="${esc(u.login)}">Redefinir Senha</button><button type="button" class="btn btn-perigo btn-sm" data-excluir-u="${esc(u.login)}">Excluir</button></div>` : '<span class="subtexto">Gerencie em Configurações do Usuário</span>'}
           </td>
         </tr>
       `;
@@ -3599,6 +3783,17 @@
     $('tbodyContas').querySelectorAll('[data-reset-u]').forEach(b => b.addEventListener('click', () => {
       const u = window.EscalaCloud.obterUsuarioPorLogin(b.getAttribute('data-reset-u'));
       if (u) abrirModalRedefinirSenhaAdmin(u);
+    }));
+    $('tbodyContas').querySelectorAll('[data-excluir-u]').forEach(b => b.addEventListener('click', () => {
+      if (!isAdmin()) return;
+      const loginAlvo = b.getAttribute('data-excluir-u');
+      const u = window.EscalaCloud.obterUsuarioPorLogin(loginAlvo);
+      if (!u) return;
+      if (!confirm(`CONFIRMAR EXCLUSÃO DE USUÁRIO\n\nDeseja realmente EXCLUIR a conta de acesso de:\n${u.nome} (login: ${u.login})?\n\n• Use esta opção quando o integrante sair da Guarda.\n• Os registros históricos de Folha de Ponto já assinados permanecem intactos na auditoria SHA-256.`)) return;
+      const r = window.EscalaCloud.removerUsuario(loginAlvo);
+      if (!r.ok) return toast(r.erro);
+      renderContas(); renderBannerCadastrosAdmin(); salvarTudo(true);
+      toast(`Conta de ${u.nome} excluída com sucesso.`);
     }));
   }
 
@@ -3701,6 +3896,7 @@
   }
 
   function gerarPdfFolhaDia() {
+    if (!podeEditarEscala()) return toast('Acesso restrito ao Escalante e Administrador.');
     const data = $('inpFreqData').value || hojeISO(), { ciclo, escalados } = obterEscaladosDaData(data);
     const rows = escalados.map(item => {
       const a = item.agente, r = resumirDiaAgente(data, a.id, item.permutaSaida), st = estiloStatusPonto(r, false);
@@ -3839,6 +4035,11 @@
 
   function gerarPdfBancoHoras(agenteIdOpcional) {
     const mes = $('fltBhMes')?.value || '';
+    if (!podeEditarEscala()) {
+      const meu = agenteLogadoAtual();
+      if (!meu) return toast('Seu nome ainda não está vinculado à base oficial.');
+      agenteIdOpcional = meu.id;
+    }
     if (agenteIdOpcional) {
       const ag = agentePorId(agenteIdOpcional); if (!ag) return;
       const r = calcularResumoBancoAgente(ag.id, mes);
@@ -4945,7 +5146,7 @@
     st.postos.forEach(p => {
       if (!p.poligono) p.poligono = POLIGONOS_PADRAO[p.id] || POLIGONOS_PADRAO['MUNICIPIO'];
     });
-    st.versao = 16;
+    st.versao = 18;
     return st;
   }
 

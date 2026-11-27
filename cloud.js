@@ -185,7 +185,7 @@
     desconectarFirebase();
     if (!inicializarFirebase(cfg) || !db) return { ok: false, erro: 'Configuração inválida ou sem internet.' };
     try {
-      await db.collection(COLECAO_BASE).doc('ping').set({ v: '15', em: new Date().toISOString() });
+      await db.collection(COLECAO_BASE).doc('ping').set({ v: '18', em: new Date().toISOString() });
       return { ok: true, projectId: cfg.projectId };
     } catch (e) { return { ok: false, erro: String(e && e.message ? e.message : e) }; }
   }
@@ -514,11 +514,21 @@
     return { ok: true, usuario: u };
   }
 
+  function removerUsuario(loginAlvo) {
+    const users = lerUsuariosLocal();
+    const u = users.find(x => normalizarLogin(x.login) === normalizarLogin(loginAlvo));
+    if (!u) return { ok: false, erro: 'Usuário não encontrado.' };
+    if (u.mestre) return { ok: false, erro: 'A conta Administrador Mestre não pode ser excluída.' };
+    const restantes = users.filter(x => normalizarLogin(x.login) !== normalizarLogin(loginAlvo));
+    salvarUsuariosLocal(restantes);
+    return { ok: true, usuarioRemovido: u };
+  }
+
   window.EscalaCloud = {
     sha256Hex, validarNovaSenha, obterUsuarioPorLogin, montarSessaoUsuario,
     lerConfigFirebase, salvarConfigFirebase, extrairObjetoFirebase, testarConexaoFirebase, desconectarFirebase,
     carregarEstadoLocal, salvarEstadoLocal, obterMotorStorage, enviarPontoIndividualNuvem, sincronizarEnviarNuvem, sincronizarBaixarNuvem, assinarNuvem,
-    lerSessao, salvarSessao, lerUsuariosLocal, salvarUsuariosLocal, tentarLogin, cadastrarUsuario, atualizarUsuario,
+    lerSessao, salvarSessao, lerUsuariosLocal, salvarUsuariosLocal, tentarLogin, cadastrarUsuario, atualizarUsuario, removerUsuario,
     alterarPropriaSenha, redefinirSenhaPorAdmin, solicitarResetSenha
   };
 })();

@@ -8,12 +8,12 @@
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-title" content="GCM Ponto/Escala">
-  <link rel="manifest" href="manifest.json?v=16">
-  <link rel="icon" type="image/png" href="icon-192.png">
-  <link rel="apple-touch-icon" href="icon-192.png">
+  <link rel="manifest" href="manifest.json?v=18">
+  <link rel="icon" type="image/png" href="icon-192.png?v=18">
+  <link rel="apple-touch-icon" href="icon-192.png?v=18">
   <title>GCM Valparaíso de Goiás — Folha de Ponto, Escala 24x72, Permutas, Banco de Horas e Cartão Programa</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
-  <link rel="stylesheet" href="styles.css?v=16">
+  <link rel="stylesheet" href="styles.css?v=18">
   <script>
     // Captura imediata do instalador nativo do celular ANTES de qualquer script externo carregar
     window.__pwaInstallEvent = null;
@@ -29,7 +29,7 @@
       window.dispatchEvent(new CustomEvent('gcm:pwa-instalado'));
     });
     if ('serviceWorker' in navigator && location.protocol.indexOf('http') === 0) {
-      navigator.serviceWorker.register('./sw.js?v=16', { scope: './' }).catch(function () {});
+      navigator.serviceWorker.register('./sw.js?v=18', { scope: './' }).catch(function () {});
     }
   </script>
 </head>
@@ -123,7 +123,7 @@
         <img src="logo.png" alt="GCM Valparaíso" class="sidebar-logo">
         <div class="sidebar-marca">
           <strong>GCM VALPARAÍSO</strong>
-          <span>Operacional · <strong>v16.0</strong></span>
+          <span>Operacional · <strong>v18.0</strong></span>
         </div>
         <button type="button" class="btn btn-sec btn-sm btn-fechar-side" id="btnFecharSidebar">X</button>
       </div>
@@ -133,6 +133,9 @@
         <button type="button" class="side-btn ativo" data-aba="secPonto">
           <span class="side-bar"></span><span>Folha de Ponto (Hoje)</span>
         </button>
+        <button type="button" class="side-btn" data-aba="secCartao">
+          <span class="side-bar"></span><span>Cartão Programa e Mapa</span>
+        </button>
         <button type="button" class="side-btn" data-aba="secMinhaFolha">
           <span class="side-bar"></span><span>Minha Folha de Ponto (PDF)</span>
         </button>
@@ -141,9 +144,6 @@
         </button>
         <button type="button" class="side-btn" data-aba="secAfastamentos">
           <span class="side-bar"></span><span>Atestados, Férias e Baixas</span>
-        </button>
-        <button type="button" class="side-btn" data-aba="secCartao">
-          <span class="side-bar"></span><span>Cartão Programa e Mapa</span>
         </button>
         <button type="button" class="side-btn" data-aba="secBancoHoras">
           <span class="side-bar"></span><span>Banco de Horas e Extras</span>
@@ -202,7 +202,7 @@
         </div>
         <div class="topbar-dir">
           <button type="button" class="btn btn-primario btn-sm" id="btnTopoRegistrarPonto">Registrar Folha de Ponto</button>
-          <button type="button" class="btn btn-sec btn-sm" id="btnAtualizarApp" title="Limpa cache antigo e recarrega a versão mais recente">Atualizar App (v16)</button>
+          <button type="button" class="btn btn-sec btn-sm" id="btnAtualizarApp" title="Limpa cache antigo e recarrega a versão mais recente">Atualizar App (v18)</button>
           <span id="badgeSync" class="badge badge-neutro" title="Mostra onde os dados estão salvos (no aparelho ou na nuvem)">Salvo Local</span>
           <button type="button" class="btn btn-sec btn-sm" id="btnTema">Modo Noturno</button>
         </div>
@@ -238,7 +238,7 @@
 
           <div class="subtabs mt-12">
             <button type="button" class="subtab ativo" data-sub="subPtRegistrar">Registrar Ponto (Entrada e Saída)</button>
-            <button type="button" class="subtab" data-sub="subPtFrequencia">Frequência dos Escalados do Dia e Justificativas</button>
+            <button type="button" class="subtab so-gestao" data-sub="subPtFrequencia">Frequência dos Escalados do Dia e Justificativas</button>
             <button type="button" class="subtab" data-sub="subPtHistorico">Histórico Completo de Batidas</button>
           </div>
 
@@ -338,10 +338,10 @@
               <div class="card">
                 <div class="card-cab">
                   <div>
-                    <h3>Escalados Hoje — Resumo em Tempo Real</h3>
+                    <h3 id="tituloResumoHoje">Escalados Hoje — Resumo em Tempo Real</h3>
                     <p class="subtexto" id="lblResumoEscaladosHoje">—</p>
                   </div>
-                  <button type="button" class="btn btn-sec btn-sm" id="btnVerFrequenciaCompleta">Abrir Frequência e Justificativas</button>
+                  <button type="button" class="btn btn-sec btn-sm so-gestao" id="btnVerFrequenciaCompleta">Abrir Frequência e Justificativas</button>
                 </div>
                 <div class="tabela-wrap mt-12">
                   <table class="tabela">
@@ -519,7 +519,7 @@
               <p class="subtexto">Escala autoalimentada todo dia + controle oficial de permutas de serviço integradas à Folha de Ponto.</p>
             </div>
             <div class="acoes-linha">
-              <button type="button" class="btn btn-sec" id="btnAbrirRelComandoEsc">Relatório p/ Comando (Faltas e Atestados)</button>
+              <button type="button" class="btn btn-sec so-gestao" id="btnAbrirRelComandoEsc">Relatório p/ Comando (Faltas e Atestados)</button>
               <button type="button" class="btn btn-primario" id="btnExportarPdfEscala">PDF Autenticado da Escala 24x72</button>
             </div>
           </div>
@@ -751,7 +751,7 @@
               <p class="subtexto">Cadastre quantos dias o guarda ficará fora, digitalize o atestado pela câmera ou anexe foto/PDF e emita o Relatório Oficial para o Comando.</p>
             </div>
             <div class="acoes-linha">
-              <button type="button" class="btn btn-primario" id="btnAbrirRelComandoAf">Relatório Oficial p/ Comando (PDF)</button>
+              <button type="button" class="btn btn-primario so-gestao" id="btnAbrirRelComandoAf">Relatório Oficial p/ Comando (PDF)</button>
             </div>
           </div>
 
@@ -1226,7 +1226,7 @@
             <div class="tabela-wrap mt-12">
               <table class="tabela">
                 <thead>
-                  <tr><th>Nº</th><th>Nome Completo</th><th>Nome de Guerra</th><th>Viatura / Setor</th><th>Função</th><th>Saldo Banco de Horas</th><th>Situação</th></tr>
+                  <tr><th>Nº</th><th>Nome Completo</th><th>Nome de Guerra</th><th>Viatura / Setor</th><th>Função</th><th class="so-gestao">Saldo Banco de Horas</th><th>Situação</th></tr>
                 </thead>
                 <tbody id="tbodyIntegrantesEquipe"></tbody>
               </table>
@@ -1645,13 +1645,13 @@
               <div class="card-cab">
                 <div>
                   <h3>Usuários e Níveis de Acesso</h3>
-                  <p class="subtexto"><strong>ADMIN:</strong> acesso total · <strong>ESCALANTE:</strong> escalas/permutas/cartões · <strong>AGENTE:</strong> consulta e ponto. O Administrador <strong>nunca vê</strong> a senha do usuário e <strong>não exclui</strong> cadastros — pode apenas Aprovar/Bloquear ou <strong>Redefinir Senha</strong> (gerando senha temporária).</p>
+                  <p class="subtexto"><strong>ADMIN:</strong> acesso total · <strong>ESCALANTE:</strong> escalas/permutas/cartões · <strong>AGENTE:</strong> consulta e próprio ponto. O Administrador <strong>nunca vê</strong> a senha do usuário, pode <strong>Aprovar/Bloquear</strong>, <strong>Redefinir Senha</strong> (temporária) ou <strong>Excluir</strong> contas de ex-integrantes (sem apagar o histórico SHA-256 de pontos passados).</p>
                 </div>
                 <button type="button" class="btn btn-primario btn-sm" id="btnCriarContaAdmin">+ Criar Conta</button>
               </div>
               <div class="tabela-wrap mt-12">
                 <table class="tabela">
-                  <thead><tr><th>Login</th><th>Nome e E-mail</th><th>Conferência Rol Oficial (PDF)</th><th>Matrícula (Fixa)</th><th>Perfil</th><th>Status</th><th>Ações (Sem Exclusão)</th></tr></thead>
+                  <thead><tr><th>Login</th><th>Nome e E-mail</th><th>Conferência Rol Oficial (PDF)</th><th>Matrícula (Fixa)</th><th>Perfil</th><th>Status</th><th>Ações</th></tr></thead>
                   <tbody id="tbodyContas"></tbody>
                 </table>
               </div>
@@ -1707,14 +1707,14 @@
       <button type="button" class="mob-nav-btn ativo" data-mob-aba="secPonto">
         <span class="mob-nav-ico">PONTO</span><span>Hoje</span>
       </button>
+      <button type="button" class="mob-nav-btn" data-mob-aba="secCartao">
+        <span class="mob-nav-ico">MAPA</span><span>Cartão</span>
+      </button>
       <button type="button" class="mob-nav-btn" data-mob-aba="secMinhaFolha">
         <span class="mob-nav-ico">PDF</span><span>Minha Folha</span>
       </button>
       <button type="button" class="mob-nav-btn" data-mob-aba="secEscalas">
         <span class="mob-nav-ico">24x72</span><span>Escala</span>
-      </button>
-      <button type="button" class="mob-nav-btn" data-mob-aba="secCartao">
-        <span class="mob-nav-ico">MAPA</span><span>Cartão</span>
       </button>
       <button type="button" class="mob-nav-btn" id="btnMobAbrirMenu">
         <span class="mob-nav-ico">&#9776;</span><span>Menu</span>
@@ -1735,7 +1735,7 @@
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
-  <script src="cloud.js?v=16"></script>
-  <script src="app.js?v=16"></script>
+  <script src="cloud.js?v=18"></script>
+  <script src="app.js?v=18"></script>
 </body>
 </html>

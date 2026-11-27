@@ -1,4 +1,4 @@
-const CACHE_NAME = 'gcm-valparaiso-escala-v16';
+const CACHE_NAME = 'gcm-valparaiso-escala-v18';
 const ARQUIVOS = [
   './',
   './index.html',
