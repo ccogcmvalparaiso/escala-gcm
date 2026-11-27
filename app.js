@@ -358,14 +358,14 @@
     postos.forEach(p => { cartoesModelo[p.id] = criarModeloCartaoPadrao(p); });
 
     return {
-      versao: 10,
+      versao: 13,
       config: {
         dataBaseAlfa: hojeISO(),
         horarioTroca: '07:00 às 07:00',
         baseNome: 'Base Operacional — GCM Valparaíso de Goiás',
         baseLat: -16.0658, baseLon: -47.9756, baseRaioMetros: 500,
         nuvemAtiva: false,
-        bancoHoras: { carga24: 24, cargaAdm: 8, valorHora: 0, mult50: 1.5, mult100: 2.0 },
+        bancoHoras: { horaInicio24: '07:00', horaInicioAdm: '08:00', antecedenciaMin: 30, toleranciaAtrasoMin: 10, carga24: 24, cargaAdm: 8, valorHora: 0, mult50: 1.5, mult100: 2.0 },
         responsaveis: {
           escalanteNome: 'Fulano de Tal (Escalante — Editar)', escalanteCargo: 'Encarregado de Escala GCM', escalanteMat: '—',
           comandoNome: 'Sicrano de Tal (Comando — Editar)', comandoCargo: 'Comandante da GCM Valparaíso', comandoMat: '—'
@@ -422,7 +422,7 @@
         return {
           precisaBater: true, urgente: true, tipo: 'SEM_VINCULO', batidaSugerida: 'ENTRADA',
           titulo: 'AVISO PRIORITÁRIO: Registre sua Folha de Ponto',
-          subtexto: 'Sua conta ainda não tem Nº provisório vinculado — digite seu Nº na Folha de Ponto ou peça ao Administrador para vincular.'
+          subtexto: 'Seu nome de cadastro não foi localizado automaticamente no efetivo oficial da GCM — verifique com o Administrador.'
         };
       }
       return { precisaBater: false, tipo: 'GESTAO_SEM_NUM' };
@@ -472,14 +472,13 @@
     }
 
     // 3. Caso Escala 24x72 (ALFA, BRAVO, CHARLIE, DELTA) ou 12x36
-    // 3a. Verifica se iniciou plantao ontem e ainda precisa bater SAIDA hoje (ex: trocando turno as 07h)
-    const rOntem = resumirDiaAgente(ontem, meu.id, null);
-    const bateuSaidaHoje = !!(rHoje.sai);
-    if (rOntem.ent && !rOntem.sai && !bateuSaidaHoje) {
+    // 3a. Verifica se existe plantao iniciado ontem ainda ABERTO nas ultimas 32h (virada de meia-noite!)
+    const plantaoAberto = encontrarPlantaoAberto(meu.id, new Date().toISOString());
+    if (plantaoAberto && plantaoAberto.dataLocal !== hoje) {
       return {
         precisaBater: true, urgente: true, tipo: 'ENCERRAR_ONTEM', batidaSugerida: 'SAIDA',
-        titulo: `ENCERRAMENTO DE PLANTÃO 24h — Nº ${meu.matricula} ${meu.nomeGuerra}`,
-        subtexto: `Você registrou ENTRADA ontem (${formatarDataBR(ontem)} às ${rOntem.ent.horaLocal.slice(0,5)}) e ainda não registrou a SAÍDA. Registre sua saída agora.`
+        titulo: `ENCERRAMENTO DE PLANTÃO 24h — ${meu.nomeGuerra}`,
+        subtexto: `Plantão aberto desde ${formatarDataBR(plantaoAberto.dataLocal)} às ${plantaoAberto.horaLocal.slice(0,5)}. Registre sua SAÍDA para fechar as 24h corretamente.`
       };
     }
 
@@ -522,7 +521,41 @@
     };
   }
 
+  function renderBannerCadastrosAdmin() {
+    const banner = $('bannerCadastrosAdmin');
+    if (!banner || !SESSAO || !ESTADO) return;
+    if (!isAdmin()) { banner.classList.add('oculto'); return; }
+    const pendentes = window.EscalaCloud.lerUsuariosLocal().filter(u => !u.mestre && !u.aprovado);
+    if (!pendentes.length) { banner.classList.add('oculto'); return; }
+
+    const foraDoRol = pendentes.filter(u => !verificarNomeNoRolOficial(u.nome).constaNoRol);
+    banner.classList.remove('oculto', 'urgente', 'auditoria');
+    if (foraDoRol.length) {
+      banner.classList.add('urgente');
+      const nomesFora = foraDoRol.map(u => `${u.nome} (${u.login})`).join(', ');
+      banner.innerHTML = `
+        <div class="banner-prioritario-texto">
+          <strong>ALERTA DE CADASTRO — NOME FORA DA LISTA OFICIAL DOS GUARDAS (PDF)</strong>
+          <span><strong>${foraDoRol.length}</strong> solicitação(ões) pendente(s) com nome que <strong>NÃO consta</strong> na relação oficial dos 64 guardas: <strong>${esc(nomesFora)}</strong>.${pendentes.length > foraDoRol.length ? ` (+${pendentes.length - foraDoRol.length} pendente(s) com nome válido).` : ''}</span>
+        </div>
+        <button type="button" class="btn btn-perigo btn-sm" id="btnAbrirContasAlerta">Verificar Contas Agora</button>
+      `;
+    } else {
+      banner.classList.add('auditoria');
+      banner.innerHTML = `
+        <div class="banner-prioritario-texto">
+          <strong>CADASTROS PENDENTES DE APROVAÇÃO (${pendentes.length})</strong>
+          <span>Todos os nomes pendentes constam na lista oficial dos 64 guardas (PDF). Clique para aprovar.</span>
+        </div>
+        <button type="button" class="btn btn-primario btn-sm" id="btnAbrirContasAlerta">Abrir Contas</button>
+      `;
+    }
+    const b = $('btnAbrirContasAlerta');
+    if (b) b.addEventListener('click', () => { abrirAba('secSistema'); ativarSubtab('secSistema', 'subSisContas'); });
+  }
+
   function renderBannerAuditoria30Admin() {
+    renderBannerCadastrosAdmin();
     const banner = $('bannerAuditoria30Admin');
     if (!banner || !SESSAO || !ESTADO) return;
     if (!isAdmin()) { banner.classList.add('oculto'); return; }
@@ -627,7 +660,8 @@
       toast('ATENÇÃO: Falha ao salvar localmente (' + (res.erro || 'verifique espaço') + ')');
       return false;
     }
-    atualizarBadgeSync('Salvo Local', 'badge-ok');
+    const motorLbl = window.EscalaCloud.obterMotorStorage ? window.EscalaCloud.obterMotorStorage() : 'Local';
+    atualizarBadgeSync(motorLbl === 'IndexedDB' ? 'IndexedDB OK' : (motorLbl.includes('Disco') ? 'Disco PC OK' : 'Salvo Local'), 'badge-ok');
     if (ESTADO.config?.nuvemAtiva && window.EscalaCloud.lerConfigFirebase()) {
       atualizarBadgeSync('Sincronizando...', 'badge-warn');
       const r = await window.EscalaCloud.sincronizarEnviarNuvem(ESTADO);
@@ -637,15 +671,47 @@
     return true;
   }
 
+  function normalizarNomeChave(txt) {
+    return String(txt || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9\s]/g, ' ').replace(/\s+/g, ' ').trim();
+  }
+
+  function buscarAgentePorNome(nomeInformado) {
+    const alvo = normalizarNomeChave(nomeInformado);
+    if (!alvo || alvo.length < 3) return null;
+    // Busca EXCLUSIVA pelo Nome Completo no efetivo (NUNCA por matricula ou numero!)
+    return (ESTADO?.efetivo || []).find(a => normalizarNomeChave(a.nome) === alvo) || null;
+  }
+
+  function verificarNomeNoRolOficial(nomeInformado) {
+    const alvo = normalizarNomeChave(nomeInformado);
+    if (!alvo || alvo.length < 3) return { constaNoRol: false, agente: null, nomeOficial: '' };
+    const noPdf = ROL_EFETIVO_64.find(item => normalizarNomeChave(item[1]) === alvo);
+    const noEfetivo = buscarAgentePorNome(nomeInformado);
+    if (noPdf || noEfetivo) {
+      return {
+        constaNoRol: true,
+        agente: noEfetivo || null,
+        nomeOficial: noEfetivo ? noEfetivo.nome : noPdf[1]
+      };
+    }
+    return { constaNoRol: false, agente: null, nomeOficial: '' };
+  }
+
   function agentePorId(id) { return (ESTADO.efetivo || []).find(x => x.id === id); }
+
   function agenteLogadoAtual() {
-    if (!SESSAO || !SESSAO.matricula) return null;
-    const numL = String(SESSAO.matricula).replace(/\D/g, '').replace(/^0+/, '');
-    const matNorm = String(SESSAO.matricula).trim().toUpperCase();
-    return (ESTADO.efetivo || []).find(a =>
-      String(a.matricula || '').trim().toUpperCase() === matNorm ||
-      (numL && String(a.matricula || '').replace(/\D/g, '').replace(/^0+/, '') === numL)
-    ) || null;
+    if (!SESSAO) return null;
+    // 1. Vinculo prioritario EXCLUSIVO pelo Nome Completo (ignora acentos/maiusculas)
+    if (SESSAO.nome) {
+      const porNome = buscarAgentePorNome(SESSAO.nome);
+      if (porNome) return porNome;
+    }
+    // 2. Fallback apenas se o Admin vinculou explicitamente um agenteVinculadoId
+    if (SESSAO.agenteVinculadoId) {
+      return agentePorId(SESSAO.agenteVinculadoId) || null;
+    }
+    // NUNCA vincula por matricula ou numero provisorio!
+    return null;
   }
   function nomeAgentePorId(id) { const a = agentePorId(id); return a ? `[${a.matricula}] ${a.nomeGuerra || a.nome}` : ''; }
 
@@ -718,8 +784,8 @@
       });
     });
 
-    // 5. Qualquer guarda que bateu ponto na data
-    (ESTADO.pontos || []).filter(p => p.dataLocal === dataISO).forEach(p => {
+    // 5. Qualquer guarda que iniciou/registrou turno efetivo nesta data (nao conta Saida de plantao de ontem!)
+    (ESTADO.pontos || []).filter(p => dataTurnoEfetivaPonto(p) === dataISO).forEach(p => {
       if (!ids.has(p.agenteId)) {
         const ag = agentePorId(p.agenteId);
         if (ag) { ids.add(ag.id); lista.push({ agente: ag, origem: 'EXTRA / APOIO', posto: p.posto || '—', funcao: 'Extra', permutaSaida: null }); }
@@ -732,7 +798,7 @@
   function aplicarTema(tema) {
     const t = tema === 'noturno' ? 'noturno' : 'claro';
     document.documentElement.setAttribute('data-tema', t);
-    localStorage.setItem('escala_gcm_tema_v10', t);
+    localStorage.setItem('gcm_valp_escala_tema', t);
     $('metaThemeColor')?.setAttribute('content', t === 'noturno' ? '#080808' : '#FFFFFF');
     if ($('btnTema')) $('btnTema').textContent = t === 'noturno' ? 'Modo Claro' : 'Modo Noturno';
     if ($('btnTemaAuth')) $('btnTemaAuth').textContent = t === 'noturno' ? 'Modo Claro (Branco)' : 'Modo Noturno (Preto)';
@@ -754,7 +820,7 @@
 
   function fecharSidebarMobile() { $('appShell').classList.remove('menu-aberto-mobile'); $('sidebarBackdrop').classList.add('oculto'); }
   function alternarSidebar() {
-    if (window.innerWidth <= 1024) {
+    if (window.innerWidth <= 1180) {
       const aberto = $('appShell').classList.toggle('menu-aberto-mobile');
       $('sidebarBackdrop').classList.toggle('oculto', !aberto);
     } else $('appShell').classList.toggle('menu-recolhido');
@@ -768,7 +834,7 @@
     const latStr = ponto.localizacao && typeof ponto.localizacao.lat === 'number' ? ponto.localizacao.lat.toFixed(6) : '0';
     const lonStr = ponto.localizacao && typeof ponto.localizacao.lon === 'number' ? ponto.localizacao.lon.toFixed(6) : '0';
     const payload = [
-      hashAnterior || 'GENESIS_GCM_V10',
+      hashAnterior || 'GENESIS_GCM_OFICIAL',
       ponto.protocolo || '',
       ponto.agenteMatricula || '',
       ponto.tipo || '',
@@ -786,7 +852,7 @@
     const dataCompacta = `${dt.getFullYear()}${p2(dt.getMonth()+1)}${p2(dt.getDate())}`;
     const emissor = SESSAO ? `${SESSAO.nome} (${SESSAO.login} · ${SESSAO.perfil})` : 'Sistema GCM';
     const textoLimpo = String(corpoHtml || '').replace(/\s+/g, ' ').trim();
-    const hashSha256 = window.EscalaCloud.sha256Hex(`GCM_VALP_DOC_V10|${tipoDoc}|${titulo}|${emitidoEm}|${emissor}|${qtdRegistros || 0}|${textoLimpo}`);
+    const hashSha256 = window.EscalaCloud.sha256Hex(`GCM_VALP_DOC_OFICIAL|${tipoDoc}|${titulo}|${emitidoEm}|${emissor}|${qtdRegistros || 0}|${textoLimpo}`);
     const codigo = `GCM-VALP-${dataCompacta}-${hashSha256.slice(0, 8).toUpperCase()}`;
 
     const cert = {
@@ -831,10 +897,115 @@
     return (ESTADO.afastamentos || []).find(af => af.agenteId === agenteId && dataISO >= af.dataInicio && dataISO <= af.dataFim) || null;
   }
 
+  // =========================================================================
+  // MOTOR DE VIRADA DE MEIA-NOITE DO PLANTAO 24x72 (EXATIDAO DE 24h REAIS)
+  // =========================================================================
+  const JANELA_PLANTAO_MS = 32 * 3600000; // ate 32h para fechar um plantao 24h com eventual prorrogacao
+
+  function encontrarPlantaoAberto(agenteId, refIso) {
+    if (!agenteId) return null;
+    const refMs = refIso ? new Date(refIso).getTime() : Date.now();
+    if (isNaN(refMs)) return null;
+    const ptsAg = (ESTADO.pontos || [])
+      .filter(p => p.agenteId === agenteId && p.timestampIso)
+      .slice()
+      .sort((a, b) => new Date(a.timestampIso) - new Date(b.timestampIso));
+
+    let entAberta = null;
+    for (const p of ptsAg) {
+      const tMs = new Date(p.timestampIso).getTime();
+      if (isNaN(tMs) || tMs > refMs + 60000) continue;
+      if (p.tipo === 'ENTRADA') {
+        entAberta = p;
+      } else if (p.tipo === 'SAIDA' && entAberta) {
+        const entMs = new Date(entAberta.timestampIso).getTime();
+        if (tMs >= entMs && (tMs - entMs) <= JANELA_PLANTAO_MS) {
+          entAberta = null; // plantao fechado!
+        }
+      }
+    }
+    if (!entAberta) return null;
+    const decorridoMs = refMs - new Date(entAberta.timestampIso).getTime();
+    if (decorridoMs >= 0 && decorridoMs <= JANELA_PLANTAO_MS) {
+      return entAberta;
+    }
+    return null;
+  }
+
+  function dataTurnoEfetivaPonto(ponto) {
+    if (!ponto) return '';
+    if (ponto.dataTurno) return ponto.dataTurno;
+    if (ponto.tipo === 'ENTRADA') return ponto.dataLocal;
+    // Para batidas antigas sem dataTurno (ex.: SAIDA as 07:00 de D+1), verifica se pertence a uma ENTRADA de D-1 dentro de 32h
+    const tMs = new Date(ponto.timestampIso).getTime();
+    if (!isNaN(tMs)) {
+      const dAnt = somarDiasISO(ponto.dataLocal, -1);
+      const ptsAg = (ESTADO.pontos || []).filter(x => x.agenteId === ponto.agenteId && x.timestampIso);
+      const entHojeAntes = ptsAg.find(x => x.tipo === 'ENTRADA' && x.dataLocal === ponto.dataLocal && new Date(x.timestampIso).getTime() <= tMs);
+      if (entHojeAntes) return ponto.dataLocal;
+      const entOntem = ptsAg.find(x => x.tipo === 'ENTRADA' && x.dataLocal === dAnt && (tMs - new Date(x.timestampIso).getTime()) > 0 && (tMs - new Date(x.timestampIso).getTime()) <= JANELA_PLANTAO_MS);
+      if (entOntem) return dAnt;
+    }
+    return ponto.dataLocal;
+  }
+
+  function duracaoRealTurnoMin(ent, sai, sAlm, rAlm) {
+    if (!ent || !sai) return 0;
+    let diff = (new Date(sai.timestampIso) - new Date(ent.timestampIso)) / 60000;
+    if (isNaN(diff) || diff <= 0 || diff > 2160) return 0; // max 36h
+    if (sAlm && rAlm) {
+      const alm = (new Date(rAlm.timestampIso) - new Date(sAlm.timestampIso)) / 60000;
+      if (!isNaN(alm) && alm > 0 && alm < 240) diff -= alm;
+    }
+    return Math.max(0, Math.round(diff));
+  }
+
+  function obterBatidasDoTurno(dataISO, agenteId) {
+    const dSeg = somarDiasISO(dataISO, 1);
+    const ptsAg = (ESTADO.pontos || [])
+      .filter(p => p.agenteId === agenteId)
+      .slice()
+      .sort((a, b) => new Date(a.timestampIso) - new Date(b.timestampIso));
+
+    const ptsTurno = ptsAg.filter(p => dataTurnoEfetivaPonto(p) === dataISO);
+    let ent = ptsTurno.find(x => x.tipo === 'ENTRADA') || null;
+    let sAlm = ptsTurno.find(x => x.tipo === 'SAIDA_ALMOCO') || null;
+    let rAlm = ptsTurno.find(x => x.tipo === 'RETORNO_ALMOCO') || null;
+    let sai = [...ptsTurno].reverse().find(x => x.tipo === 'SAIDA') || null;
+
+    // Garante pareamento de SAIDA em D+1 mesmo se gravada em formato legado sem dataTurno
+    if (ent && !sai) {
+      const entMs = new Date(ent.timestampIso).getTime();
+      const proxEnt = ptsAg.find(x => x.tipo === 'ENTRADA' && new Date(x.timestampIso).getTime() > entMs);
+      const limiteMs = proxEnt ? new Date(proxEnt.timestampIso).getTime() : (entMs + JANELA_PLANTAO_MS);
+      const saiSeg = ptsAg.find(x =>
+        x.tipo === 'SAIDA' &&
+        (x.dataLocal === dataISO || x.dataLocal === dSeg) &&
+        (!x.dataTurno || x.dataTurno === dataISO) &&
+        new Date(x.timestampIso).getTime() > entMs &&
+        new Date(x.timestampIso).getTime() < limiteMs &&
+        (new Date(x.timestampIso).getTime() - entMs) <= JANELA_PLANTAO_MS
+      );
+      if (saiSeg) {
+        sai = saiSeg;
+        if (!ptsTurno.some(x => x.id === saiSeg.id)) ptsTurno.push(saiSeg);
+      }
+    }
+
+    const virouDia = !!(ent && sai && sai.dataLocal !== ent.dataLocal);
+    const duracaoMin = duracaoRealTurnoMin(ent, sai, sAlm, rAlm);
+    return { ent, sAlm, rAlm, sai, pts: ptsTurno, virouDia, duracaoMin };
+  }
+
+  function formatarHoraSaidaTurno(r) {
+    if (!r || !r.sai) return '—';
+    const h = r.sai.horaLocal.slice(0, 5);
+    return r.virouDia ? `${h} (+1d)` : h;
+  }
+
   function resumirDiaAgente(dataISO, agenteId, permutaSaida) {
-    const pts = (ESTADO.pontos || []).filter(p => p.dataLocal === dataISO && p.agenteId === agenteId).slice().reverse();
-    const pegar = (tipo) => pts.find(x => x.tipo === tipo);
-    const ent = pegar('ENTRADA'), sAlm = pegar('SAIDA_ALMOCO'), rAlm = pegar('RETORNO_ALMOCO'), sai = pegar('SAIDA');
+    const turno = obterBatidasDoTurno(dataISO, agenteId);
+    const { ent, sAlm, rAlm, sai, pts, virouDia, duracaoMin } = turno;
     const just = (ESTADO.justificativas || {})[`${dataISO}|${agenteId}`] || null;
     const afast = obterAfastamentoNaData(agenteId, dataISO);
     let status = 'PENDENTE';
@@ -863,7 +1034,7 @@
     } else if (dataISO < hojeISO()) {
       status = 'FALTOU';
     }
-    return { ent, sAlm, rAlm, sai, just, afast, motivoAuto, status, pts };
+    return { ent, sAlm, rAlm, sai, just, afast, motivoAuto, status, pts, virouDia, duracaoMin };
   }
 
   function estiloStatusPonto(r, compacto) {
@@ -916,48 +1087,73 @@
     guardaSelecionadoPonto = ag;
     $('listaSugestoesGuarda').classList.add('oculto');
     if (!ag) { $('cardGuardaIdentificado').classList.add('oculto'); return; }
-    $('inpIdentificaGuarda').value = `${ag.matricula} — ${ag.nome}`;
+    $('inpIdentificaGuarda').value = ag.nome;
     const hoje = hojeISO();
+    const plantaoAberto = encontrarPlantaoAberto(ag.id, new Date().toISOString());
+    const dataRefTurno = (plantaoAberto && plantaoAberto.dataLocal !== hoje) ? plantaoAberto.dataLocal : hoje;
+    const viradaAberta = !!(plantaoAberto && plantaoAberto.dataLocal !== hoje);
+
     const { escalados } = obterEscaladosDaData(hoje);
     const escHoje = escalados.find(x => x.agente.id === ag.id);
-    const resumo = resumirDiaAgente(hoje, ag.id, escHoje?.permutaSaida);
+    const resumo = resumirDiaAgente(dataRefTurno, ag.id, dataRefTurno === hoje ? escHoje?.permutaSaida : null);
 
-    if (!resumo.ent) $('selPontoTipo').value = 'ENTRADA';
-    else if (!resumo.sAlm) $('selPontoTipo').value = 'SAIDA_ALMOCO';
-    else if (!resumo.rAlm) $('selPontoTipo').value = 'RETORNO_ALMOCO';
-    else $('selPontoTipo').value = 'SAIDA';
+    if (viradaAberta) {
+      $('selPontoTipo').value = 'SAIDA';
+    } else if (!resumo.ent) {
+      $('selPontoTipo').value = 'ENTRADA';
+    } else if (!resumo.sAlm) {
+      $('selPontoTipo').value = 'SAIDA_ALMOCO';
+    } else if (!resumo.rAlm) {
+      $('selPontoTipo').value = 'RETORNO_ALMOCO';
+    } else {
+      $('selPontoTipo').value = 'SAIDA';
+    }
 
     const infSetor = descobrirSetorDoAgente(ag);
-    $('inpPontoPosto').value = escHoje ? escHoje.posto : infSetor.nome;
+    $('inpPontoPosto').value = viradaAberta ? (plantaoAberto.posto || infSetor.nome) : (escHoje ? escHoje.posto : infSetor.nome);
 
     const card = $('cardGuardaIdentificado');
     card.classList.remove('oculto');
+    const linhaStatusEsc = viradaAberta
+      ? `<span class="badge badge-pendente">PLANTÃO 24h ABERTO DESDE ${formatarDataBR(plantaoAberto.dataLocal)} às ${esc(plantaoAberto.horaLocal.slice(0,5))}</span> · Saída fecha o turno automaticamente`
+      : (escHoje ? `<span class="badge badge-ok">ESCALADO HOJE</span> · ${esc(escHoje.posto)} (${esc(escHoje.funcao)})` : `<span class="badge badge-warn">FORA DA ESCALA DE HOJE</span> · Registro de permuta/extra`);
     card.innerHTML = `
       <div class="card-cab">
-        <strong>Nº ${esc(ag.matricula)} — ${esc(ag.nome)}</strong>
+        <strong>${esc(ag.nome)}</strong>
         <span class="insig eq-${esc(ag.equipe)}">${esc(ag.equipe)}</span>
       </div>
-      <div>${escHoje ? `<span class="badge badge-ok">ESCALADO HOJE</span> · ${esc(escHoje.posto)} (${esc(escHoje.funcao)})` : `<span class="badge badge-warn">FORA DA ESCALA DE HOJE</span> · Registro de permuta/extra`}</div>
-      <div class="subtexto">Batidas hoje: Ent. <strong>${resumo.ent ? resumo.ent.horaLocal.slice(0,5) : '—'}</strong> · Almoço <strong>${resumo.sAlm ? resumo.sAlm.horaLocal.slice(0,5) : '—'}/${resumo.rAlm ? resumo.rAlm.horaLocal.slice(0,5) : '—'}</strong> · Saída <strong>${resumo.sai ? resumo.sai.horaLocal.slice(0,5) : '—'}</strong></div>
+      <div>${linhaStatusEsc}</div>
+      <div class="subtexto">Turno ${formatarDataBR(dataRefTurno)}: Ent. <strong>${resumo.ent ? resumo.ent.horaLocal.slice(0,5) : '—'}</strong> · Almoço <strong>${resumo.sAlm ? resumo.sAlm.horaLocal.slice(0,5) : '—'}/${resumo.rAlm ? resumo.rAlm.horaLocal.slice(0,5) : '—'}</strong> · Saída <strong>${formatarHoraSaidaTurno(resumo)}</strong></div>
     `;
+    atualizarBoxJanelaHorario();
   }
 
   function buscarGuardaDigitado() {
     const raw = ($('inpIdentificaGuarda').value || '').trim();
     const box = $('listaSugestoesGuarda');
     if (!raw) { guardaSelecionadoPonto = null; $('cardGuardaIdentificado').classList.add('oculto'); box.classList.add('oculto'); return; }
-    const q = raw.toLowerCase(), numLimpo = raw.replace(/\D/g, '').replace(/^0+/, '');
+    // Se digitar apenas numeros (ex: 050), avisa para digitar o NOME (nunca vincula por numero!)
+    if (/^[0-9\s.-]+$/.test(raw)) {
+      guardaSelecionadoPonto = null; $('cardGuardaIdentificado').classList.add('oculto');
+      box.innerHTML = '<div class="sug-item"><span class="subtexto">O vínculo é feito exclusivamente pelo <strong>Nome Completo</strong> (não digite número/matrícula).</span></div>';
+      box.classList.remove('oculto');
+      return;
+    }
+    const qNorm = normalizarNomeChave(raw);
     const ativos = ESTADO.efetivo.filter(a => a.situacao === 'ATIVO');
-    const exatoNum = numLimpo ? ativos.find(a => a.matricula.replace(/\D/g,'').replace(/^0+/, '') === numLimpo && /^\d+$/.test(raw.replace(/^gcm-?/i, ''))) : null;
-    if (exatoNum) { selecionarGuardaParaPonto(exatoNum); return; }
+    const exatoNome = ativos.find(a => normalizarNomeChave(a.nome) === qNorm);
+    if (exatoNome) { selecionarGuardaParaPonto(exatoNome); return; }
 
-    const matches = ativos.filter(a => a.nome.toLowerCase().includes(q) || (a.nomeGuerra||'').toLowerCase().includes(q) || a.matricula.toLowerCase().includes(q) || (numLimpo && a.matricula.replace(/\D/g,'').replace(/^0+/,'') === numLimpo)).slice(0, 6);
+    const matches = ativos.filter(a =>
+      normalizarNomeChave(a.nome).includes(qNorm) ||
+      normalizarNomeChave(a.nomeGuerra || '').includes(qNorm)
+    ).slice(0, 6);
+
     if (!matches.length) {
       guardaSelecionadoPonto = null; $('cardGuardaIdentificado').classList.add('oculto');
-      box.innerHTML = '<div class="sug-item"><span class="subtexto">Nenhum guarda encontrado.</span></div>'; box.classList.remove('oculto'); return;
+      box.innerHTML = '<div class="sug-item"><span class="subtexto">Nenhum guarda encontrado com este nome na base oficial.</span></div>'; box.classList.remove('oculto'); return;
     }
-    if (matches.length === 1 && matches[0].nome.toLowerCase() === q) { selecionarGuardaParaPonto(matches[0]); return; }
-    box.innerHTML = matches.map(a => `<div class="sug-item" data-pick-ag="${esc(a.id)}"><span><strong>Nº ${esc(a.matricula)}</strong> — ${esc(a.nome)}</span><span class="insig eq-${esc(a.equipe)}">${esc(a.equipe)}</span></div>`).join('');
+    box.innerHTML = matches.map(a => `<div class="sug-item" data-pick-ag="${esc(a.id)}"><span><strong>${esc(a.nome)}</strong></span><span class="insig eq-${esc(a.equipe)}">${esc(a.equipe)}</span></div>`).join('');
     box.classList.remove('oculto');
     box.querySelectorAll('[data-pick-ag]').forEach(el => el.addEventListener('click', () => selecionarGuardaParaPonto(agentePorId(el.getAttribute('data-pick-ag')))));
   }
@@ -967,7 +1163,7 @@
     $('lblResumoEscaladosHoje').textContent = `${formatarDataBR(hoje)} · Equipe ${ciclo.equipeServico} (${escalados.length} escalados)`;
     $('tbodyResumoHoje').innerHTML = escalados.map(item => {
       const a = item.agente, r = resumirDiaAgente(hoje, a.id, item.permutaSaida), st = estiloStatusPonto(r, true);
-      return `<tr><td><strong>${esc(a.matricula)}</strong></td><td><strong>${esc(a.nomeGuerra || a.nome)}</strong></td><td>${esc(item.posto)}</td><td>${r.ent ? r.ent.horaLocal.slice(0,5) : '—'}</td><td>${r.sAlm ? r.sAlm.horaLocal.slice(0,5) : '—'}${r.rAlm ? '–' + r.rAlm.horaLocal.slice(0,5) : ''}</td><td>${r.sai ? r.sai.horaLocal.slice(0,5) : '—'}</td><td><span class="badge ${st.cls}">${esc(st.txt)}</span></td></tr>`;
+      return `<tr><td><strong>${esc(a.matricula)}</strong></td><td><strong>${esc(a.nomeGuerra || a.nome)}</strong></td><td>${esc(item.posto)}</td><td>${r.ent ? r.ent.horaLocal.slice(0,5) : '—'}</td><td>${r.sAlm ? r.sAlm.horaLocal.slice(0,5) : '—'}${r.rAlm ? '–' + r.rAlm.horaLocal.slice(0,5) : ''}</td><td>${formatarHoraSaidaTurno(r)}</td><td><span class="badge ${st.cls}">${esc(st.txt)}</span></td></tr>`;
     }).join('') || '<tr><td colspan="7" class="subtexto" style="text-align:center;">Nenhum escalado hoje.</td></tr>';
   }
 
@@ -986,13 +1182,13 @@
 
     $('tbodyFrequenciaDia').innerHTML = filtrados.map(item => {
       const a = item.agente, r = resumirDiaAgente(data, a.id, item.permutaSaida), st = estiloStatusPonto(r, false);
-      const celH = (pt) => pt ? `<strong>${pt.horaLocal.slice(0,5)}</strong>${pt.foto ? ` <img src="${pt.foto}" class="foto-thumb" style="width:24px;height:24px;vertical-align:middle;" data-ver-ponto="${esc(pt.id)}">` : ''}` : '<span class="subtexto">—</span>';
+      const celH = (pt, extraTag) => pt ? `<strong>${pt.horaLocal.slice(0,5)}${extraTag ? ' <small>'+extraTag+'</small>' : ''}</strong>${pt.foto ? ` <img src="${pt.foto}" class="foto-thumb" style="width:24px;height:24px;vertical-align:middle;" data-ver-ponto="${esc(pt.id)}">` : ''}` : '<span class="subtexto">—</span>';
       return `
         <tr>
           <td><strong>${esc(a.matricula)}</strong></td>
           <td><strong>${esc(a.nome)}</strong></td>
           <td><span class="insig eq-${esc(a.equipe)}">${esc(a.equipe)}</span> <span class="subtexto">${esc(item.posto)}</span></td>
-          <td>${celH(r.ent)}</td><td>${celH(r.sAlm)}</td><td>${celH(r.rAlm)}</td><td>${celH(r.sai)}</td>
+          <td>${celH(r.ent)}</td><td>${celH(r.sAlm)}</td><td>${celH(r.rAlm)}</td><td>${celH(r.sai, r.virouDia ? '(+1d)' : '')}</td>
           <td><span class="badge ${st.cls}">${esc(st.txt)}</span></td>
           <td class="so-gestao">${podeEditarEscala() ? `<button type="button" class="btn btn-sec btn-sm" data-just-ag="${esc(a.id)}">${r.just ? 'Alterar' : 'Falta / Justificar'}</button>` : '—'}</td>
         </tr>
@@ -1145,6 +1341,89 @@
     return null;
   }
 
+  function setorValparaisoPorCoord(lat, lon) {
+    const la = Number(lat), lo = Number(lon);
+    if (!isFinite(la) || !isFinite(lo)) return '';
+    for (const p of (ESTADO?.postos || [])) {
+      const poly = p.poligono;
+      if (Array.isArray(poly) && poly.length >= 3 && pontoNoPoligono(la, lo, poly)) {
+        return p.setor || p.prefixo || '';
+      }
+    }
+    return '';
+  }
+
+  function hhmmParaMin(hhmm, fallbackMin) {
+    const m = String(hhmm || '').match(/^(\d{1,2}):(\d{2})/);
+    if (!m) return fallbackMin;
+    return Number(m[1]) * 60 + Number(m[2]);
+  }
+
+  function minParaHHMM(min) {
+    const norm = ((Math.round(min) % 1440) + 1440) % 1440;
+    return `${String(Math.floor(norm / 60)).padStart(2, '0')}:${String(norm % 60).padStart(2, '0')}`;
+  }
+
+  function avaliarHorarioEntrada(ag, horaHHMM) {
+    const regras = ESTADO?.config?.bancoHoras || {};
+    const ehAdm = ag && ag.equipe === 'ADM';
+    const previstoStr = ehAdm ? (regras.horaInicioAdm || '08:00') : (regras.horaInicio24 || '07:00');
+    const prevMin = hhmmParaMin(previstoStr, ehAdm ? 480 : 420);
+    const antMin = Math.max(0, Number(regras.antecedenciaMin ?? 30));
+    const tolMin = Math.max(0, Number(regras.toleranciaAtrasoMin ?? 10));
+    const janIni = prevMin - antMin;
+    const janFim = prevMin + tolMin;
+
+    const agora = new Date();
+    const realMin = horaHHMM ? hhmmParaMin(horaHHMM, agora.getHours() * 60 + agora.getMinutes()) : (agora.getHours() * 60 + agora.getMinutes());
+    const diff = realMin - prevMin;
+
+    let status = 'NO_HORARIO', badgeCls = 'badge-ok', resumo = 'Dentro do horário estipulado';
+    let atrasoMin = 0, antecipadoMin = 0;
+
+    if (realMin >= janIni && realMin <= janFim) {
+      status = 'NO_HORARIO';
+      badgeCls = 'badge-ok';
+      resumo = diff < 0 ? `No horário (${Math.abs(diff)} min antes · liberado desde ${minParaHHMM(janIni)})` : (diff === 0 ? 'Pontual (no horário exato)' : `No horário (dentro da tolerância até ${minParaHHMM(janFim)})`);
+    } else if (realMin < janIni) {
+      antecipadoMin = prevMin - realMin;
+      status = 'ANTECIPADO';
+      badgeCls = 'badge-pendente';
+      resumo = `Antecipado (${antecipadoMin} min antes do previsto ${previstoStr} · janela inicia às ${minParaHHMM(janIni)})`;
+    } else {
+      atrasoMin = realMin - prevMin;
+      status = 'ATRASADO';
+      badgeCls = 'badge-erro';
+      resumo = `Atraso de +${atrasoMin} min (previsto ${previstoStr}, tolerância até ${minParaHHMM(janFim)} · reflete no Banco de Horas)`;
+    }
+
+    return {
+      status, badgeCls, resumo, previsto: previstoStr,
+      janelaIni: minParaHHMM(janIni), janelaFim: minParaHHMM(janFim),
+      antMin, tolMin, diferencaMin: diff, atrasoMin, antecipadoMin
+    };
+  }
+
+  function atualizarBoxJanelaHorario() {
+    const box = $('boxJanelaHorarioPonto');
+    if (!box) return;
+    const tipo = $('selPontoTipo')?.value || 'ENTRADA';
+    const ag = guardaSelecionadoPonto;
+    if (!ag || tipo !== 'ENTRADA') {
+      box.classList.add('oculto');
+      return;
+    }
+    const av = avaliarHorarioEntrada(ag, null);
+    box.classList.remove('oculto');
+    box.innerHTML = `
+      <div>
+        <strong>Horário previsto (${ag.equipe === 'ADM' ? 'Administrativo' : '24x72'}): ${esc(av.previsto)}</strong>
+        <div class="subtexto">Janela regular: <strong>${esc(av.janelaIni)} às ${esc(av.janelaFim)}</strong> (até ${av.antMin} min antes / ${av.tolMin} min de tolerância)</div>
+      </div>
+      <span class="badge ${av.badgeCls}">${av.status === 'NO_HORARIO' ? 'No Horário' : (av.status === 'ATRASADO' ? `Atraso +${av.atrasoMin}m` : 'Antecipado')}</span>
+    `;
+  }
+
   function pontoDentroDeValparaiso(lat, lon, geoObj) {
     const la = Number(lat), lo = Number(lon);
     if (!isFinite(la) || !isFinite(lo)) return true;
@@ -1262,25 +1541,29 @@
       const geoObj = await consultarEnderecoReal(ult.lat, ult.lon);
       const endereco = geoObj.texto;
       const dentroValparaiso = pontoDentroDeValparaiso(ult.lat, ult.lon, geoObj);
+      const setorDetectado = dentroValparaiso ? setorValparaisoPorCoord(ult.lat, ult.lon) : '';
       const status = irregular ? 'IRREGULAR' : (dentroValparaiso ? 'OK' : 'FORA_VALPARAISO');
       locAtualPonto = {
         lat: ult.lat, lon: ult.lon, accuracy: Math.round(ult.accuracy),
         distBase, resumoDist, endereco, regiaoResumo: geoObj.regiaoResumo || endereco,
-        dentroValparaiso, status, modo: ult.modo || 'GPS'
+        setorDetectado, dentroValparaiso, status, modo: ult.modo || 'GPS'
       };
       locAtualTs = Date.now();
 
-      const stLabel = status === 'OK' ? 'Valparaíso-GO OK' : (status === 'FORA_VALPARAISO' ? 'Fora de Valparaíso' : 'Sinal Irregular');
-      const stCls = status === 'OK' ? 'badge-ok' : (status === 'FORA_VALPARAISO' ? 'badge-erro' : 'badge-erro');
+      const stLabel = status === 'OK' ? (setorDetectado ? `Valparaíso · ${setorDetectado}` : 'Valparaíso-GO OK') : (status === 'FORA_VALPARAISO' ? 'Fora de Valparaíso' : 'Sinal Irregular');
+      const stCls = status === 'OK' ? 'badge-ok' : (status === 'FORA_VALPARAISO' ? 'badge-pendente' : 'badge-erro');
       if ($('statusGpsBadge')) { $('statusGpsBadge').textContent = stLabel; $('statusGpsBadge').className = 'badge ' + stCls; }
       if ($('painelResultadoGps')) {
-        $('painelResultadoGps').innerHTML = `<div><strong>Endereço:</strong> ${esc(endereco)}</div><div class="subtexto">Perímetro: <strong>${dentroValparaiso ? 'Dentro de Valparaíso de Goiás' : 'FORA de Valparaíso de Goiás'}</strong> · ${esc(resumoDist)} (±${Math.round(ult.accuracy)}m)</div>`;
+        const perTxt = dentroValparaiso
+          ? `Dentro de Valparaíso de Goiás${setorDetectado ? ' (' + setorDetectado + ')' : ''}`
+          : 'FORA do perímetro de Valparaíso de Goiás (aviso será registrado para o Comando)';
+        $('painelResultadoGps').innerHTML = `<div><strong>Endereço:</strong> ${esc(endereco)}</div><div class="subtexto">Perímetro: <strong>${esc(perTxt)}</strong> · ±${Math.round(ult.accuracy)}m</div>`;
       }
       const boxFora = $('boxJustificativaForaValparaiso');
       if (boxFora) {
         if (!dentroValparaiso) {
           boxFora.classList.remove('oculto');
-          if ($('lblLocalForaValp')) $('lblLocalForaValp').innerHTML = `Localização detectada fora de Valparaíso de Goiás: <strong>${esc(geoObj.regiaoResumo || endereco)}</strong>. Informe o motivo abaixo — será encaminhado automaticamente ao Comando.`;
+          if ($('lblLocalForaValp')) $('lblLocalForaValp').innerHTML = `Localização fora de Valparaíso de Goiás: <strong>${esc(geoObj.regiaoResumo || endereco)}</strong>. Você pode registrar o ponto normalmente — o aviso de perímetro vai para o Comando (explicação abaixo é opcional).`;
         } else {
           boxFora.classList.add('oculto');
         }
@@ -1292,7 +1575,7 @@
 
   async function confirmarRegistroPonto() {
     const err = $('msgPontoErro'); err.classList.add('oculto');
-    if (!guardaSelecionadoPonto) { err.textContent = 'Digite seu nº provisório (ex.: 03) ou nome completo e selecione sua identificação.'; err.classList.remove('oculto'); return; }
+    if (!guardaSelecionadoPonto) { err.textContent = 'Digite seu Nome Completo e selecione seu nome na lista antes de confirmar.'; err.classList.remove('oculto'); return; }
     if (!fotoCapturadaDataUrl) { err.textContent = 'Foto ao vivo pela câmera é obrigatória.'; err.classList.remove('oculto'); return; }
 
     const btnConf = $('btnConfirmarPonto');
@@ -1307,19 +1590,18 @@
       err.classList.remove('oculto'); return;
     }
 
+    // Fora de Valparaiso NAO bloqueia nem exige explicacao na hora — apenas registra aviso + motivo opcional!
     let justificativaForaValp = null;
     if (locAtualPonto.dentroValparaiso === false) {
       const catFora = ($('selMotivoForaValp')?.value || '').trim();
       const detFora = ($('inpDetalheForaValp')?.value || '').trim();
-      if (!catFora || detFora.length < 5) {
-        btnConf.disabled = false; btnConf.textContent = 'Confirmar e Emitir Comprovante de Ponto';
-        err.textContent = 'Você está FORA da região de Valparaíso de Goiás. Selecione o motivo e explique o porquê para encaminhamento ao Comando.';
-        err.classList.remove('oculto');
-        $('boxJustificativaForaValparaiso')?.classList.remove('oculto');
-        $('selMotivoForaValp')?.focus();
-        return;
+      if (catFora || detFora) {
+        justificativaForaValp = {
+          categoria: catFora || 'Informado pelo guarda',
+          detalhe: detFora || '—',
+          regiao: locAtualPonto.regiaoResumo || locAtualPonto.endereco
+        };
       }
-      justificativaForaValp = { categoria: catFora, detalhe: detFora, regiao: locAtualPonto.regiaoResumo || locAtualPonto.endereco };
     }
 
     btnConf.textContent = 'Gravando e autenticando ponto...';
@@ -1329,7 +1611,9 @@
     const dataLocal = `${dt.getFullYear()}-${p2(dt.getMonth()+1)}-${p2(dt.getDate())}`;
     const horaLocal = `${p2(dt.getHours())}:${p2(dt.getMinutes())}:${p2(dt.getSeconds())}`;
     const tipo = $('selPontoTipo').value;
-    const hashAnterior = ESTADO.pontos[0]?.hashIntegridade || 'GENESIS_GCM_V10';
+    const plantaoAbertoAgora = tipo !== 'ENTRADA' ? encontrarPlantaoAberto(ag.id, agoraIso) : null;
+    const dataTurno = plantaoAbertoAgora ? plantaoAbertoAgora.dataLocal : dataLocal;
+    const hashAnterior = ESTADO.pontos[0]?.hashIntegridade || 'GENESIS_GCM_OFICIAL';
     const randHex = window.EscalaCloud.sha256Hex(agoraIso + ag.matricula + Math.random()).slice(0, 6).toUpperCase();
     const protocolo = `PT-${dataLocal.replace(/-/g,'')}-${ag.matricula}-${randHex}`;
 
@@ -1343,15 +1627,18 @@
       indiceVisual: simVisual
     };
 
+    const avaliacaoHorario = tipo === 'ENTRADA' ? avaliarHorarioEntrada(ag, horaLocal.slice(0, 5)) : null;
+
     const reg = {
       id: 'pt_' + Date.now().toString(36),
       protocolo,
       agenteId: ag.id, agenteNome: ag.nome, agenteMatricula: ag.matricula, equipe: ag.equipe,
       tipo, posto: $('inpPontoPosto').value.trim() || 'Base GCM', obs: $('inpPontoObs').value.trim(),
-      timestampIso: agoraIso, dataLocal, horaLocal,
+      timestampIso: agoraIso, dataLocal, dataTurno, horaLocal,
       foto: fotoCapturadaDataUrl, localizacao: locAtualPonto,
       foraValparaiso: locAtualPonto.dentroValparaiso === false,
       justificativaForaValp,
+      avaliacaoHorario,
       conferenciaVisual,
       hashAnterior, hashIntegridade: ''
     };
@@ -1401,7 +1688,8 @@
           <div><strong>Guarda:</strong> Nº ${esc(pt.agenteMatricula)} — ${esc(pt.agenteNome)} (${esc(pt.equipe)})</div>
           <div><strong>Batida:</strong> ${esc(tipoTxt)} · <strong>${formatarDataBR(pt.dataLocal)} às ${esc(pt.horaLocal)}</strong></div>
           <div><strong>Posto / Viatura:</strong> ${esc(pt.posto)}</div>
-          <div><strong>Localização:</strong> ${esc(loc.endereco || '—')} (${esc(loc.resumoDist || '')})</div>
+          <div><strong>Localização:</strong> ${esc(loc.endereco || '—')} (${loc.dentroValparaiso === false ? '<strong style="color:var(--pend);">AVISO: Fora de Valparaíso-GO</strong>' : (loc.setorDetectado ? 'Valparaíso-GO · ' + esc(loc.setorDetectado) : 'Valparaíso-GO')})</div>
+          ${pt.avaliacaoHorario ? `<div><strong>Horário Estipulado:</strong> <span class="badge ${pt.avaliacaoHorario.badgeCls}">${esc(pt.avaliacaoHorario.resumo)}</span></div>` : ''}
           <div><strong>Assinatura Digital SHA-256:</strong><div class="hash-mono mt-4">${esc(pt.hashIntegridade)}</div></div>
         </div>
         <div style="text-align:center;"><img src="${pt.foto}" style="max-height:170px;border-radius:6px;border:1px solid var(--border);"></div>
@@ -1411,7 +1699,7 @@
           const txt = `*COMPROVANTE DE PONTO — GCM VALPARAÍSO*\nProtocolo: *${pt.protocolo}*\nGuarda: Nº ${pt.agenteMatricula} — ${pt.agenteNome}\nBatida: *${tipoTxt}*\nData/Hora: *${formatarDataBR(pt.dataLocal)} às ${pt.horaLocal}*\nLocal: ${loc.endereco || '—'}\nSHA-256: ${pt.hashIntegridade.slice(0,24)}...`;
           if (navigator.clipboard?.writeText) navigator.clipboard.writeText(txt).then(() => toast('Recibo copiado!'));
         }},
-        { texto: 'Baixar PDF do Turno (Entrada e Saída)', classe: 'btn-primario', onClick: () => gerarPdfMinhaFolhaPeriodoDireto(pt.agenteId, pt.dataLocal, pt.dataLocal, `Turno ${formatarDataBR(pt.dataLocal)} (Entrada e Saída)`) },
+        { texto: 'Baixar PDF do Turno (Entrada e Saída)', classe: 'btn-primario', onClick: () => gerarPdfMinhaFolhaPeriodoDireto(pt.agenteId, pt.dataTurno || pt.dataLocal, pt.dataTurno || pt.dataLocal, `Turno ${formatarDataBR(pt.dataTurno || pt.dataLocal)} (Entrada e Saída)`) },
         { texto: 'Minha Folha (7 / 30 dias)', classe: 'btn-sec', onClick: () => { fecharModal(); abrirAba('secMinhaFolha'); } },
         { texto: 'Fechar', classe: 'btn-sec', onClick: fecharModal }
       ]
@@ -1509,20 +1797,15 @@
   }
 
   function calcularMinutosNoIntervalo(agenteId, ini, fim) {
-    const pts = (ESTADO.pontos || []).filter(p => p.agenteId === agenteId && p.dataLocal >= ini && p.dataLocal <= fim);
-    const porDia = {};
-    pts.forEach(p => { porDia[p.dataLocal] = porDia[p.dataLocal] || []; porDia[p.dataLocal].push(p); });
+    const datasTurnos = new Set();
+    (ESTADO.pontos || []).forEach(p => {
+      if (p.agenteId !== agenteId) return;
+      const dtT = dataTurnoEfetivaPonto(p);
+      if (dtT >= ini && dtT <= fim) datasTurnos.add(dtT);
+    });
     let totalMin = 0;
-    Object.values(porDia).forEach(arr => {
-      const ord = arr.slice().reverse();
-      const ent = ord.find(x => x.tipo === 'ENTRADA'), sai = ord.find(x => x.tipo === 'SAIDA');
-      if (ent && sai) {
-        let diff = (new Date(sai.timestampIso) - new Date(ent.timestampIso)) / 60000;
-        if (diff < 0) diff += 1440;
-        const sA = ord.find(x => x.tipo === 'SAIDA_ALMOCO'), rA = ord.find(x => x.tipo === 'RETORNO_ALMOCO');
-        if (sA && rA) { const alm = (new Date(rA.timestampIso) - new Date(sA.timestampIso)) / 60000; if (alm > 0 && alm < 240) diff -= alm; }
-        if (diff > 0 && diff < 2880) totalMin += diff;
-      }
+    datasTurnos.forEach(dtT => {
+      totalMin += obterBatidasDoTurno(dtT, agenteId).duracaoMin;
     });
     return Math.round(totalMin);
   }
@@ -1542,7 +1825,11 @@
     if (!ag) return { ag: null, interv, batidas: [], ocorrencias: [], totalMin: 0, fotoPerfil: '' };
 
     const batidas = (ESTADO.pontos || [])
-      .filter(p => p.agenteId === ag.id && p.dataLocal >= interv.ini && p.dataLocal <= interv.fim)
+      .filter(p => {
+        if (p.agenteId !== ag.id) return false;
+        const dtT = dataTurnoEfetivaPonto(p);
+        return (dtT >= interv.ini && dtT <= interv.fim) || (p.dataLocal >= interv.ini && p.dataLocal <= interv.fim);
+      })
       .slice()
       .sort((a, b) => (a.timestampIso || '').localeCompare(b.timestampIso || ''));
 
@@ -1609,7 +1896,7 @@
       } else {
         sel.innerHTML = '<option value="">Conta sem Nº / Matrícula vinculada</option>';
         sel.disabled = true;
-        aviso.textContent = 'Sua conta de Agente ainda não está vinculada a um Nº do efetivo (ex.: 03). Solicite ao Administrador em Contas, Base e Banco para vincular seu Nº.';
+        aviso.textContent = 'O Nome Completo da sua conta não coincide com a base oficial dos guardas. Solicite ao Administrador em Contas, Base e Banco para conferir seu nome.';
         aviso.classList.remove('oculto');
       }
     }
@@ -1742,7 +2029,11 @@
     const ag = agentePorId(agenteId);
     if (!ag) return toast('Guarda não encontrado.');
     const batidas = (ESTADO.pontos || [])
-      .filter(p => p.agenteId === ag.id && p.dataLocal >= ini && p.dataLocal <= fim)
+      .filter(p => {
+        if (p.agenteId !== ag.id) return false;
+        const dtT = dataTurnoEfetivaPonto(p);
+        return (dtT >= ini && dtT <= fim) || (p.dataLocal >= ini && p.dataLocal <= fim);
+      })
       .slice()
       .sort((a, b) => (a.timestampIso || '').localeCompare(b.timestampIso || ''));
     const ocorrencias = [];
@@ -1814,17 +2105,14 @@
       </div>
     `;
 
-    // Agrupamento consolidado por Turno/Dia (Entrada + Almoco + Saida em uma unica linha)
-    const datasTurnos = Array.from(new Set(batidas.map(b => b.dataLocal))).sort();
+    // Agrupamento consolidado por Turno real (inclui virada de meia-noite 24x72!)
+    const datasTurnos = Array.from(new Set(batidas.map(b => dataTurnoEfetivaPonto(b)))).sort();
     const rowsTurnos = datasTurnos.map(dt => {
-      const doDia = batidas.filter(b => b.dataLocal === dt);
-      const ent = doDia.find(x => x.tipo === 'ENTRADA');
-      const sA = doDia.find(x => x.tipo === 'SAIDA_ALMOCO');
-      const rA = doDia.find(x => x.tipo === 'RETORNO_ALMOCO');
-      const sai = doDia.find(x => x.tipo === 'SAIDA');
-      const minDia = calcularMinutosNoIntervalo(ag.id, dt, dt);
-      const situ = ent && sai ? 'Turno Completo (Entrada e Saída)' : (ent ? 'Entrada Registrada (Aguardando Saída)' : 'Registro Parcial');
-      return `<tr><td style="width:12%;"><strong>${formatarDataBR(dt)}</strong></td><td style="width:12%;">${ent ? '<strong>'+ent.horaLocal.slice(0,5)+'</strong>' : '—'}</td><td style="width:12%;">${sA ? sA.horaLocal.slice(0,5) : '—'}</td><td style="width:12%;">${rA ? rA.horaLocal.slice(0,5) : '—'}</td><td style="width:12%;">${sai ? '<strong>'+sai.horaLocal.slice(0,5)+'</strong>' : '—'}</td><td style="width:12%;"><strong>${formatarMinutosHM(minDia, false)}</strong></td><td style="width:28%;">${esc(situ)}</td></tr>`;
+      const t = obterBatidasDoTurno(dt, ag.id);
+      const situ = t.ent && t.sai
+        ? (t.virouDia ? 'Plantão 24h Completo (Virou Dia)' : 'Turno Completo (Entrada e Saída)')
+        : (t.ent ? 'Entrada Registrada (Aguardando Saída)' : 'Registro Parcial');
+      return `<tr><td style="width:12%;"><strong>${formatarDataBR(dt)}</strong></td><td style="width:12%;">${t.ent ? '<strong>'+t.ent.horaLocal.slice(0,5)+'</strong>' : '—'}</td><td style="width:12%;">${t.sAlm ? t.sAlm.horaLocal.slice(0,5) : '—'}</td><td style="width:12%;">${t.rAlm ? t.rAlm.horaLocal.slice(0,5) : '—'}</td><td style="width:12%;">${t.sai ? '<strong>'+formatarHoraSaidaTurno(t)+'</strong>' : '—'}</td><td style="width:12%;"><strong>${formatarMinutosHM(t.duracaoMin, false)}</strong></td><td style="width:28%;">${esc(situ)}</td></tr>`;
     }).join('') || '<tr><td colspan="7" style="text-align:center;">Nenhum turno registrado neste período.</td></tr>';
 
     const corpo = `
@@ -2639,23 +2927,15 @@
   // 4. BANCO DE HORAS E HORAS EXTRAS (CALCULO AUTOMATICO + LANCAMENTOS)
   // =========================================================================
   function calcularMinutosTrabalhadosPonto(agenteId, mesFiltro) {
-    const pts = (ESTADO.pontos || []).filter(p => p.agenteId === agenteId && (!mesFiltro || (p.dataLocal||'').startsWith(mesFiltro)));
-    const porDia = {};
-    pts.forEach(p => { porDia[p.dataLocal] = porDia[p.dataLocal] || []; porDia[p.dataLocal].push(p); });
+    const datasTurnos = new Set();
+    (ESTADO.pontos || []).forEach(p => {
+      if (p.agenteId !== agenteId) return;
+      const dtT = dataTurnoEfetivaPonto(p);
+      if (!mesFiltro || dtT.startsWith(mesFiltro)) datasTurnos.add(dtT);
+    });
     let totalMin = 0;
-    Object.values(porDia).forEach(arr => {
-      const ord = arr.slice().reverse();
-      const ent = ord.find(x => x.tipo === 'ENTRADA'), sai = ord.find(x => x.tipo === 'SAIDA');
-      if (ent && sai) {
-        let diff = (new Date(sai.timestampIso) - new Date(ent.timestampIso)) / 60000;
-        if (diff < 0) diff += 1440; // virou meia-noite
-        const sA = ord.find(x => x.tipo === 'SAIDA_ALMOCO'), rA = ord.find(x => x.tipo === 'RETORNO_ALMOCO');
-        if (sA && rA) {
-          const alm = (new Date(rA.timestampIso) - new Date(sA.timestampIso)) / 60000;
-          if (alm > 0 && alm < 240) diff -= alm;
-        }
-        if (diff > 0 && diff < 2880) totalMin += diff;
-      }
+    datasTurnos.forEach(dtT => {
+      totalMin += obterBatidasDoTurno(dtT, agenteId).duracaoMin;
     });
     return Math.round(totalMin);
   }
@@ -2676,48 +2956,70 @@
 
   function apurarHorasExtrasPeloPonto() {
     if (!podeEditarEscala()) return toast('Sem permissão.');
-    const regras = ESTADO.config.bancoHoras || { carga24: 24, cargaAdm: 8, mult50: 1.5, mult100: 2.0 };
+    const regras = ESTADO.config.bancoHoras || { horaInicio24: '07:00', horaInicioAdm: '08:00', antecedenciaMin: 30, toleranciaAtrasoMin: 10, carga24: 24, cargaAdm: 8, mult50: 1.5, mult100: 2.0 };
     const chavesExistentes = new Set((ESTADO.bancoHorasMovs || []).filter(m => m.chaveAuto).map(m => m.chaveAuto));
-    const porAgenteDia = {};
+    const chavesTurnos = new Set();
     (ESTADO.pontos || []).forEach(p => {
-      const k = `${p.agenteId}|${p.dataLocal}`;
-      porAgenteDia[k] = porAgenteDia[k] || [];
-      porAgenteDia[k].push(p);
+      chavesTurnos.add(`${p.agenteId}|${dataTurnoEfetivaPonto(p)}`);
     });
-    let novos = 0;
-    Object.entries(porAgenteDia).forEach(([k, arr]) => {
-      if (chavesExistentes.has(k)) return;
-      const ord = arr.slice().reverse();
-      const ent = ord.find(x => x.tipo === 'ENTRADA'), sai = ord.find(x => x.tipo === 'SAIDA');
-      if (!ent || !sai) return;
-      const ag = agentePorId(ent.agenteId); if (!ag) return;
-      let diffMin = (new Date(sai.timestampIso) - new Date(ent.timestampIso)) / 60000;
-      if (diffMin < 0) diffMin += 1440;
-      const sA = ord.find(x => x.tipo === 'SAIDA_ALMOCO'), rA = ord.find(x => x.tipo === 'RETORNO_ALMOCO');
-      if (sA && rA) { const alm = (new Date(rA.timestampIso) - new Date(sA.timestampIso)) / 60000; if (alm > 0 && alm < 240) diffMin -= alm; }
+    let novosExtras = 0, novosAtrasos = 0;
+    chavesTurnos.forEach((k) => {
+      const [agId, dtTurno] = k.split('|');
+      const ag = agentePorId(agId); if (!ag) return;
+      const turno = obterBatidasDoTurno(dtTurno, agId);
+      const { ent, sai, duracaoMin, virouDia } = turno;
+      if (!ent) return;
+
+      // 1. Apuracao de Atraso acima da tolerancia estipulada -> Debito no Banco de Horas
+      const chaveAtr = k + '|ATRASO';
+      if (!chavesExistentes.has(chaveAtr)) {
+        const av = ent.avaliacaoHorario || avaliarHorarioEntrada(ag, ent.horaLocal.slice(0, 5));
+        if (av.status === 'ATRASADO' && av.atrasoMin > 0 && av.atrasoMin < 360) {
+          ESTADO.bancoHorasMovs.unshift({
+            id: 'bh_atr_' + Date.now().toString(36) + '_' + novosAtrasos,
+            chaveAuto: chaveAtr,
+            agenteId: ag.id, data: dtTurno,
+            tipo: 'DEBITO_ATRASO', duracaoMin: av.atrasoMin, fator: 1, computadoMin: -av.atrasoMin,
+            motivo: `Atraso na Entrada (${ent.horaLocal.slice(0,5)} · previsto ${av.previsto}, tolerância até ${av.janelaFim})`,
+            por: SESSAO?.nome || 'Sistema', em: new Date().toISOString()
+          });
+          novosAtrasos++;
+        }
+      }
+
+      // 2. Apuracao de Excedente de Jornada (Entrada + Saida fechados, inclusive virando meia-noite!)
+      if (!sai || duracaoMin <= 0 || chavesExistentes.has(k)) return;
       const cargaEsperadaMin = (ag.equipe === 'ADM' ? Number(regras.cargaAdm || 8) : (ag.equipe === '12X36' ? 12 : Number(regras.carga24 || 24))) * 60;
-      const excedenteMin = Math.round(diffMin - cargaEsperadaMin);
+      const excedenteMin = Math.round(duracaoMin - cargaEsperadaMin);
       if (excedenteMin >= 15) {
-        const dow = diaSemanaISO(ent.dataLocal);
+        const dow = diaSemanaISO(dtTurno);
         const fator = dow === 0 ? Number(regras.mult100 || 2.0) : Number(regras.mult50 || 1.5);
         const compMin = Math.round(excedenteMin * fator);
         ESTADO.bancoHorasMovs.unshift({
-          id: 'bh_' + Date.now().toString(36) + '_' + novos,
+          id: 'bh_' + Date.now().toString(36) + '_' + novosExtras,
           chaveAuto: k,
-          agenteId: ag.id, data: ent.dataLocal,
+          agenteId: ag.id, data: dtTurno,
           tipo: 'PONTO_AUTO', duracaoMin: excedenteMin, fator, computadoMin: compMin,
-          motivo: `Excedente apurado automaticamente na Folha de Ponto (${ent.horaLocal.slice(0,5)} às ${sai.horaLocal.slice(0,5)})`,
+          motivo: `Excedente apurado automaticamente na Folha de Ponto (${ent.horaLocal.slice(0,5)} às ${sai.horaLocal.slice(0,5)}${virouDia ? ' +1d' : ''} = ${formatarMinutosHM(duracaoMin, false)})`,
           por: SESSAO?.nome || 'Sistema', em: new Date().toISOString()
         });
-        novos++;
+        novosExtras++;
       }
     });
-    if (novos > 0) { salvarTudo(true); renderBancoHoras(); toast(`${novos} registro(s) de hora extra apurado(s) pela Folha de Ponto!`); }
-    else toast('Nenhum novo excedente acima da carga padrão encontrado nos pontos fechados (Entrada + Saída).');
+    if (novosExtras > 0 || novosAtrasos > 0) {
+      salvarTudo(true); renderBancoHoras();
+      toast(`Apurado: ${novosExtras} hora(s) extra(s) e ${novosAtrasos} débito(s) de atraso pela Folha de Ponto.`);
+    } else {
+      toast('Nenhum novo excedente ou atraso acima da tolerância encontrado nos pontos.');
+    }
   }
 
   function renderBancoHoras() {
-    const regras = ESTADO.config.bancoHoras || { carga24: 24, cargaAdm: 8, valorHora: 0, mult50: 1.5, mult100: 2.0 };
+    const regras = ESTADO.config.bancoHoras || { horaInicio24: '07:00', horaInicioAdm: '08:00', antecedenciaMin: 30, toleranciaAtrasoMin: 10, carga24: 24, cargaAdm: 8, valorHora: 0, mult50: 1.5, mult100: 2.0 };
+    if ($('inpBhHoraIni24')) $('inpBhHoraIni24').value = regras.horaInicio24 || '07:00';
+    if ($('inpBhHoraIniAdm')) $('inpBhHoraIniAdm').value = regras.horaInicioAdm || '08:00';
+    if ($('inpBhAntecedencia')) $('inpBhAntecedencia').value = regras.antecedenciaMin ?? 30;
+    if ($('inpBhTolerancia')) $('inpBhTolerancia').value = regras.toleranciaAtrasoMin ?? 10;
     $('inpBhCarga24').value = regras.carga24 ?? 24;
     $('inpBhCargaAdm').value = regras.cargaAdm ?? 8;
     $('inpBhValorHora').value = regras.valorHora ?? 0;
@@ -2862,12 +3164,13 @@
     const grupos = new Map();
 
     (ESTADO.pontos || []).forEach(p => {
-      if (mes && !(p.dataLocal || '').startsWith(mes)) return;
+      const dtT = dataTurnoEfetivaPonto(p);
+      if (mes && !dtT.startsWith(mes)) return;
       const ag = agentePorId(p.agenteId);
       if (busca && !(p.agenteNome.toLowerCase().includes(busca) || String(p.agenteMatricula).toLowerCase().includes(busca))) return;
-      const chave = `${p.dataLocal}|${p.agenteId}`;
+      const chave = `${dtT}|${p.agenteId}`;
       if (!grupos.has(chave)) {
-        grupos.set(chave, { chave, dataLocal: p.dataLocal, agenteId: p.agenteId, ag, nome: p.agenteNome, matricula: p.agenteMatricula, equipe: p.equipe, ent: null, sai: null, outros: [] });
+        grupos.set(chave, { chave, dataLocal: dtT, agenteId: p.agenteId, ag, nome: p.agenteNome, matricula: p.agenteMatricula, equipe: p.equipe, ent: null, sai: null, outros: [] });
       }
       const g = grupos.get(chave);
       if (p.tipo === 'ENTRADA' && !g.ent) g.ent = p;
@@ -3068,7 +3371,7 @@
       box.innerHTML = '<div class="selo-card"><div><span class="badge badge-ok">CADEIA LIMPA</span></div><div>Nenhuma batida de ponto registrada ainda.</div></div>';
       return;
     }
-    let prev = 'GENESIS_GCM_V10';
+    let prev = 'GENESIS_GCM_OFICIAL';
     const violacoes = [];
     pts.forEach((pt, idx) => {
       const esperado = calcularHashPonto(pt, prev);
@@ -3193,10 +3496,42 @@
   function renderContas() {
     if (!isAdmin()) return;
     const users = window.EscalaCloud.lerUsuariosLocal();
-    $('tbodyContas').innerHTML = users.map(u => `<tr><td><strong>${esc(u.login)}</strong> ${u.mestre?'<span class="badge badge-invertido">Mestre</span>':''}</td><td>${esc(u.nome)}</td><td>${esc(u.matricula||'—')}</td><td>${!u.mestre ? `<select data-perfil-u="${esc(u.login)}"><option value="ADMIN" ${u.perfil==='ADMIN'?'selected':''}>Administrador</option><option value="ESCALANTE" ${u.perfil==='ESCALANTE'?'selected':''}>Escalante</option><option value="AGENTE" ${u.perfil==='AGENTE'?'selected':''}>Agente (Consulta e Ponto)</option></select>` : `<span class="badge badge-neutro">ADMIN</span>`}</td><td><span class="badge ${u.aprovado?'badge-ok':'badge-warn'}">${u.aprovado?'Aprovado':'Pendente'}</span></td><td>${!u.mestre ? `<button type="button" class="btn btn-sec btn-sm" data-aprovar-u="${esc(u.login)}">${u.aprovado?'Bloquear':'Aprovar'}</button> <button type="button" class="btn btn-sec btn-sm" data-del-u="${esc(u.login)}">X</button>` : '—'}</td></tr>`).join('');
+    $('tbodyContas').innerHTML = users.map(u => {
+      const conf = u.mestre ? { constaNoRol: true, agente: null } : verificarNomeNoRolOficial(u.nome);
+      const badgeConf = u.mestre
+        ? '<span class="badge badge-neutro">Conta Sistema</span>'
+        : (conf.constaNoRol
+            ? `<span class="badge badge-ok">Consta no Rol (PDF)</span>${conf.agente ? `<div class="subtexto" style="font-size:11px;">Vinculado pelo nome · Equipe ${esc(conf.agente.equipe)}</div>` : ''}`
+            : `<span class="badge badge-erro">NÃO CONSTA NA LISTA (PDF)</span><div style="font-size:11px;color:var(--danger);font-weight:700;margin-top:2px;">ALERTA: Nome não encontrado nos 64 guardas!</div>`);
+      const rowCls = (!u.mestre && !conf.constaNoRol) ? 'row-alerta-nome' : '';
+      return `
+        <tr class="${rowCls}">
+          <td><strong>${esc(u.login)}</strong> ${u.mestre?'<span class="badge badge-invertido">Mestre</span>':''}</td>
+          <td><strong>${esc(u.nome)}</strong></td>
+          <td>${badgeConf}</td>
+          <td>${esc(u.matricula||'—')}</td>
+          <td>${!u.mestre ? `<select data-perfil-u="${esc(u.login)}"><option value="ADMIN" ${u.perfil==='ADMIN'?'selected':''}>Administrador</option><option value="ESCALANTE" ${u.perfil==='ESCALANTE'?'selected':''}>Escalante</option><option value="AGENTE" ${u.perfil==='AGENTE'?'selected':''}>Agente (Consulta e Ponto)</option></select>` : `<span class="badge badge-neutro">ADMIN</span>`}</td>
+          <td><span class="badge ${u.aprovado?'badge-ok':'badge-pendente'}">${u.aprovado?'Aprovado':'Pendente'}</span></td>
+          <td>${!u.mestre ? `<button type="button" class="btn btn-sec btn-sm" data-aprovar-u="${esc(u.login)}">${u.aprovado?'Bloquear':'Aprovar'}</button> <button type="button" class="btn btn-sec btn-sm" data-del-u="${esc(u.login)}">X</button>` : '—'}</td>
+        </tr>
+      `;
+    }).join('');
     $('tbodyContas').querySelectorAll('[data-perfil-u]').forEach(s => s.addEventListener('change', () => { window.EscalaCloud.atualizarUsuario(s.getAttribute('data-perfil-u'), { perfil: s.value }); salvarTudo(true); toast('Nível de acesso atualizado.'); }));
-    $('tbodyContas').querySelectorAll('[data-aprovar-u]').forEach(b => b.addEventListener('click', () => { const l = b.getAttribute('data-aprovar-u'), u = window.EscalaCloud.lerUsuariosLocal().find(x => x.login === l); if (u) { window.EscalaCloud.atualizarUsuario(l, { aprovado: !u.aprovado }); renderContas(); salvarTudo(true); } }));
-    $('tbodyContas').querySelectorAll('[data-del-u]').forEach(b => b.addEventListener('click', () => { if (!confirm('Excluir conta?')) return; window.EscalaCloud.removerUsuario(b.getAttribute('data-del-u')); renderContas(); salvarTudo(true); }));
+    $('tbodyContas').querySelectorAll('[data-aprovar-u]').forEach(b => b.addEventListener('click', () => {
+      const l = b.getAttribute('data-aprovar-u'), u = window.EscalaCloud.lerUsuariosLocal().find(x => x.login === l);
+      if (!u) return;
+      const conf = verificarNomeNoRolOficial(u.nome);
+      if (!u.aprovado && !conf.constaNoRol) {
+        if (!confirm(`ATENÇÃO ADMINISTRADOR:\n\nO nome "${u.nome}" NÃO consta na lista oficial dos 64 guardas (PDF).\n\nTem certeza que deseja APROVAR esta conta mesmo assim?`)) return;
+      }
+      window.EscalaCloud.atualizarUsuario(l, { aprovado: !u.aprovado, constaNoRolOficial: conf.constaNoRol, agenteVinculadoId: conf.agente ? conf.agente.id : '' });
+      renderContas(); renderBannerCadastrosAdmin(); salvarTudo(true);
+    }));
+    $('tbodyContas').querySelectorAll('[data-del-u]').forEach(b => b.addEventListener('click', () => {
+      if (!confirm('Excluir conta?')) return;
+      window.EscalaCloud.removerUsuario(b.getAttribute('data-del-u'));
+      renderContas(); renderBannerCadastrosAdmin(); salvarTudo(true);
+    }));
   }
 
   function renderConfigBase() {
@@ -3301,7 +3636,7 @@
     const rows = escalados.map(item => {
       const a = item.agente, r = resumirDiaAgente(data, a.id, item.permutaSaida), st = estiloStatusPonto(r, false);
       const corPdf = r.status==='EM_SERVICO'||r.status==='PRESENTE' ? 'background:#E7F4EC;color:#166534;border:1px solid #166534;' : (r.status==='PENDENTE' ? 'background:#FFEDD5;color:#C2410C;border:1px solid #EA580C;' : (r.status==='FALTOU' ? 'background:#F9E6E6;color:#991B1B;border:1px solid #991B1B;' : 'background:#F6EFE0;color:#854D0E;border:1px solid #854D0E;'));
-      return `<tr><td style="width:5%;"><strong>${esc(a.matricula)}</strong></td><td style="width:23%;"><strong>${esc(a.nome)}</strong></td><td style="width:18%;">${esc(a.equipe)} · ${esc(item.posto)}</td><td style="width:8%;">${r.ent?r.ent.horaLocal.slice(0,5):'—'}</td><td style="width:8%;">${r.sAlm?r.sAlm.horaLocal.slice(0,5):'—'}</td><td style="width:8%;">${r.rAlm?r.rAlm.horaLocal.slice(0,5):'—'}</td><td style="width:8%;">${r.sai?r.sai.horaLocal.slice(0,5):'—'}</td><td style="width:22%;"><span style="display:inline-block;padding:1.5px 5px;border-radius:3px;font-weight:700;font-size:8px;${corPdf}">${esc(st.txt)}</span></td></tr>`;
+      return `<tr><td style="width:5%;"><strong>${esc(a.matricula)}</strong></td><td style="width:23%;"><strong>${esc(a.nome)}</strong></td><td style="width:18%;">${esc(a.equipe)} · ${esc(item.posto)}</td><td style="width:8%;">${r.ent?r.ent.horaLocal.slice(0,5):'—'}</td><td style="width:8%;">${r.sAlm?r.sAlm.horaLocal.slice(0,5):'—'}</td><td style="width:8%;">${r.rAlm?r.rAlm.horaLocal.slice(0,5):'—'}</td><td style="width:8%;">${formatarHoraSaidaTurno(r)}</td><td style="width:22%;"><span style="display:inline-block;padding:1.5px 5px;border-radius:3px;font-weight:700;font-size:8px;${corPdf}">${esc(st.txt)}</span></td></tr>`;
     }).join('');
     const corpo = `<table><thead><tr><th style="width:5%;">Nº</th><th style="width:23%;">Guarda GCM</th><th style="width:18%;">Equipe / Setor</th><th style="width:8%;">Entr.</th><th style="width:8%;">S.Alm.</th><th style="width:8%;">R.Alm.</th><th style="width:8%;">Saída</th><th style="width:22%;">Situação / Justificativa</th></tr></thead><tbody>${rows}</tbody></table>`;
     emitirPdfAutenticado({ tipoDoc:'FOLHA_PONTO_DIARIA', titulo:`FOLHA DE PONTO DIÁRIA — ${formatarDataBR(data)}`, subtitulo:`Equipe 24x72: ${ciclo.equipeServico} · Total de Escalados: ${escalados.length}`, corpoHtml:corpo, nomeArquivo:`folha-ponto-diaria-${data}.pdf`, paisagem:true, qtdRegistros:escalados.length });
@@ -3512,25 +3847,29 @@
         }
         // Checa atraso na Entrada (previsto 08:00 no ADM, 07:00 na 24x72)
         if (r.ent) {
+          const regrasBh = ESTADO.config?.bancoHoras || {};
+          const prevStr = ag.equipe === 'ADM' ? (regrasBh.horaInicioAdm || '08:00') : (regrasBh.horaInicio24 || '07:00');
           const [hh, mm] = r.ent.horaLocal.split(':').map(Number);
           const minReal = hh * 60 + mm;
-          const minPrev = ag.equipe === 'ADM' ? (8 * 60) : (7 * 60);
+          const minPrev = hhmmParaMin(prevStr, ag.equipe === 'ADM' ? 480 : 420);
           const atraso = minReal - minPrev;
           if (atraso > tolMin && atraso < 360) {
             totalAtrasos++;
             ocorrenciasFA.push({
               data: d, ag, tipo: 'ATRASO', badge: 'badge-pendente',
-              detalhe: `Previsto ${ag.equipe === 'ADM' ? '08:00' : '07:00'} · Bateu às ${r.ent.horaLocal.slice(0,5)} (+${atraso} min de atraso)`
+              detalhe: `Previsto ${prevStr} (tolerância ${tolMin} min) · Bateu às ${r.ent.horaLocal.slice(0,5)} (+${atraso} min)`
             });
           }
         }
-        // Checa erro / esquecimento de batida em dias ja encerrados (d < hoje)
+        // Checa erro / esquecimento de batida respeitando plantoes 24x72 (so acusa apos 32h da Entrada sem Saida!)
         if (d < hoje) {
-          const rProx = resumirDiaAgente(somarDiasISO(d, 1), ag.id, null);
-          const temSaida = !!(r.sai || (ag.equipe !== 'ADM' && rProx.sai));
-          if (r.ent && !temSaida) {
-            addErroAg(ag.id, `${formatarDataBR(d)}: bateu Entrada (${r.ent.horaLocal.slice(0,5)}) e esqueceu de bater Saída`);
-          } else if (!r.ent && r.sai && ag.equipe === 'ADM') {
+          if (r.ent && !r.sai) {
+            const horasDesdeEnt = (Date.now() - new Date(r.ent.timestampIso).getTime()) / 3600000;
+            const limiteHoras = ag.equipe === 'ADM' ? 14 : 32;
+            if (horasDesdeEnt >= limiteHoras) {
+              addErroAg(ag.id, `${formatarDataBR(d)}: bateu Entrada (${r.ent.horaLocal.slice(0,5)}) e não registrou Saída`);
+            }
+          } else if (!r.ent && r.sai) {
             addErroAg(ag.id, `${formatarDataBR(d)}: bateu Saída (${r.sai.horaLocal.slice(0,5)}) sem Entrada registrada`);
           }
         }
@@ -3795,6 +4134,8 @@
   function registrarEventos() {
     $('btnTema').addEventListener('click', alternarTema);
     $('btnTemaAuth').addEventListener('click', alternarTema);
+    $('btnInstalarAppAuth').addEventListener('click', abrirModalInstalarApp);
+    $('btnInstalarAppSide').addEventListener('click', () => { fecharSidebarMobile(); abrirModalInstalarApp(); });
     $('btnToggleMenu').addEventListener('click', alternarSidebar);
     $('btnFecharSidebar').addEventListener('click', fecharSidebarMobile);
     $('sidebarBackdrop').addEventListener('click', fecharSidebarMobile);
@@ -3915,9 +4256,28 @@
     });
     $('formCadastro').addEventListener('submit', (e) => {
       e.preventDefault(); const b = $('msgCadInfo'); b.classList.remove('oculto','erro','ok');
-      const r = window.EscalaCloud.cadastrarUsuario({ nome:$('inpCadNome').value, login:$('inpCadUser').value, matricula:$('inpCadMat').value, senha:$('inpCadPass').value, perfil:'AGENTE', aprovado:false });
-      b.classList.add(r.ok ? 'ok' : 'erro'); b.textContent = r.ok ? 'Solicitação enviada! Aguarde aprovação do Administrador.' : r.erro;
-      if (r.ok) $('formCadastro').reset();
+      const nomeInf = $('inpCadNome').value.trim();
+      const conf = verificarNomeNoRolOficial(nomeInf);
+      const r = window.EscalaCloud.cadastrarUsuario({
+        nome: nomeInf,
+        login: $('inpCadUser').value,
+        matricula: $('inpCadMat').value,
+        senha: $('inpCadPass').value,
+        perfil: 'AGENTE',
+        aprovado: false,
+        constaNoRolOficial: conf.constaNoRol,
+        agenteVinculadoId: conf.agente ? conf.agente.id : '',
+        alertaCadastro: conf.constaNoRol ? '' : 'ALERTA: Nome não consta na relação oficial dos 64 guardas (PDF).'
+      });
+      if (!r.ok) {
+        b.classList.add('erro'); b.textContent = r.erro; return;
+      }
+      b.classList.add('ok');
+      b.textContent = conf.constaNoRol
+        ? 'Solicitação enviada! Seu nome foi localizado no efetivo oficial da GCM — aguarde aprovação do Administrador.'
+        : 'Solicitação enviada ao Administrador. Aviso: este nome não foi encontrado automaticamente na lista oficial dos 64 guardas (o Administrador será alertado na análise).';
+      $('formCadastro').reset();
+      salvarTudo(true);
     });
     $('btnSair').addEventListener('click', () => { pararCamera(); window.EscalaCloud.salvarSessao(null); SESSAO = null; $('appShell').classList.add('oculto'); $('telaAuth').classList.remove('oculto'); });
     $('btnFecharModal').addEventListener('click', fecharModal);
@@ -3932,6 +4292,7 @@
 
     // Folha de Ponto
     $('inpIdentificaGuarda').addEventListener('input', buscarGuardaDigitado);
+    $('selPontoTipo').addEventListener('change', atualizarBoxJanelaHorario);
     $('btnAbrirCamera').addEventListener('click', abrirCameraAoVivo);
     $('btnCapturarFoto').addEventListener('click', capturarFotoComCarimbo);
     $('btnRefazerFoto').addEventListener('click', () => { fotoCapturadaDataUrl = null; abrirCameraAoVivo(); });
@@ -4055,8 +4416,19 @@
     });
     $('btnSalvarRegrasBh').addEventListener('click', async () => {
       if (!podeEditarEscala()) return toast('Sem permissão.');
-      ESTADO.config.bancoHoras = { carga24:Number($('inpBhCarga24').value)||24, cargaAdm:Number($('inpBhCargaAdm').value)||8, valorHora:Number($('inpBhValorHora').value)||0, mult50:Number($('inpBhMult50').value)||1.5, mult100:Number($('inpBhMult100').value)||2.0 };
-      await salvarTudo(); renderBancoHoras();
+      ESTADO.config.bancoHoras = {
+        horaInicio24: $('inpBhHoraIni24')?.value || '07:00',
+        horaInicioAdm: $('inpBhHoraIniAdm')?.value || '08:00',
+        antecedenciaMin: Math.max(0, Number($('inpBhAntecedencia')?.value ?? 30)),
+        toleranciaAtrasoMin: Math.max(0, Number($('inpBhTolerancia')?.value ?? 10)),
+        carga24: Number($('inpBhCarga24').value) || 24,
+        cargaAdm: Number($('inpBhCargaAdm').value) || 8,
+        valorHora: Number($('inpBhValorHora').value) || 0,
+        mult50: Number($('inpBhMult50').value) || 1.5,
+        mult100: Number($('inpBhMult100').value) || 2.0
+      };
+      if ($('inpAud30Tol')) $('inpAud30Tol').value = ESTADO.config.bancoHoras.toleranciaAtrasoMin;
+      await salvarTudo(); renderBancoHoras(); atualizarBoxJanelaHorario();
     });
 
     // Eventos
@@ -4088,9 +4460,24 @@
 
     $('btnCriarContaAdmin').addEventListener('click', () => {
       if (!isAdmin()) return toast('Acesso exclusivo do Administrador.');
-      abrirModal('Criar Conta (Código 4+ dígitos)', `<div class="campo"><label>Nome</label><input type="text" id="mUsNome"></div><div class="grid-2"><div class="campo"><label>Login</label><input type="text" id="mUsLogin"></div><div class="campo"><label>Nº Provisório / Matrícula</label><input type="text" id="mUsMat" placeholder="Ex.: 03"></div></div><div class="grid-2"><div class="campo"><label>Código de Acesso (mín. 4 dígitos)</label><input type="password" id="mUsPass" minlength="4"></div><div class="campo"><label>Perfil</label><select id="mUsPerfil"><option value="AGENTE">Agente (Consulta e Ponto)</option><option value="ESCALANTE">Escalante (Escala/Cartão/Banco)</option><option value="ADMIN">Administrador (Acesso Total)</option></select></div></div>`, [
+      const dlNomes = `<datalist id="dlNomesOficiaisConta">${ESTADO.efetivo.map(a => `<option value="${esc(a.nome)}">`).join('')}</datalist>`;
+      abrirModal('Criar Conta (Vínculo pelo Nome Completo)', `${dlNomes}<div class="campo"><label>Nome Completo (selecione da lista oficial ou digite)</label><input type="text" id="mUsNome" list="dlNomesOficiaisConta" placeholder="Ex.: Anderson Pereira Costa"></div><div class="grid-2"><div class="campo"><label>Login</label><input type="text" id="mUsLogin" placeholder="Ex.: anderson"></div><div class="campo"><label>Matrícula (Opcional — informativo)</label><input type="text" id="mUsMat" placeholder="Opcional"></div></div><div class="grid-2"><div class="campo"><label>Código de Acesso (mín. 4 dígitos)</label><input type="password" id="mUsPass" minlength="4"></div><div class="campo"><label>Perfil</label><select id="mUsPerfil"><option value="AGENTE">Agente (Consulta e Ponto)</option><option value="ESCALANTE">Escalante (Escala/Cartão/Banco)</option><option value="ADMIN">Administrador (Acesso Total)</option></select></div></div>`, [
         { texto:'Cancelar', classe:'btn-sec', onClick:fecharModal },
-        { texto:'Criar', classe:'btn-primario', onClick: () => { const r = window.EscalaCloud.cadastrarUsuario({ nome:$('mUsNome').value, login:$('mUsLogin').value, matricula:$('mUsMat').value, senha:$('mUsPass').value, perfil:$('mUsPerfil').value, aprovado:true }); if (!r.ok) return toast(r.erro); fecharModal(); renderContas(); salvarTudo(true); toast('Conta criada!'); }}
+        { texto:'Criar', classe:'btn-primario', onClick: () => {
+          const nomeInf = $('mUsNome').value.trim();
+          const conf = verificarNomeNoRolOficial(nomeInf);
+          if (!conf.constaNoRol && $('mUsPerfil').value === 'AGENTE') {
+            if (!confirm(`AVISO: O nome "${nomeInf}" não consta na lista oficial dos 64 guardas (PDF). Deseja criar mesmo assim?`)) return;
+          }
+          const r = window.EscalaCloud.cadastrarUsuario({
+            nome: nomeInf, login: $('mUsLogin').value, matricula: $('mUsMat').value, senha: $('mUsPass').value,
+            perfil: $('mUsPerfil').value, aprovado: true,
+            constaNoRolOficial: conf.constaNoRol, agenteVinculadoId: conf.agente ? conf.agente.id : '',
+            alertaCadastro: conf.constaNoRol ? '' : 'Criado fora do rol oficial (PDF).'
+          });
+          if (!r.ok) return toast(r.erro);
+          fecharModal(); renderContas(); renderBannerCadastrosAdmin(); salvarTudo(true); toast('Conta criada!');
+        }}
       ]);
     });
     $('btnCapturarBaseGps').addEventListener('click', () => {
@@ -4116,7 +4503,7 @@
     $('btnAlterarMinhaSenha').addEventListener('click', abrirModalAlterarMeuCodigo);
     $('btnExportarBackup').addEventListener('click', async () => {
       if (!isAdmin()) return toast('Exclusivo Administrador.');
-      const pac = { sistema:'GCM_VALP_ESCALA_V10', exportadoEm:new Date().toISOString(), estado:ESTADO, usuarios:window.EscalaCloud.lerUsuariosLocal() };
+      const pac = { sistema:'GCM_VALP_ESCALA_OFICIAL', exportadoEm:new Date().toISOString(), estado:ESTADO, usuarios:window.EscalaCloud.lerUsuariosLocal() };
       if (window.escalaAPI?.exportarBackup) { const r = await window.escalaAPI.exportarBackup(pac); if (r?.ok) toast('Backup salvo em: '+r.caminho); return; }
       const b = new Blob([JSON.stringify(pac,null,2)], { type:'application/json' }), u = URL.createObjectURL(b), a = document.createElement('a'); a.href = u; a.download = `backup-gcm-escala-${hojeISO()}.json`; a.click(); URL.revokeObjectURL(u); toast('Backup baixado!');
     });
@@ -4132,21 +4519,109 @@
     });
   }
 
+
+  // =========================================================================
+  // INSTALAR APP NO CELULAR / GERAR APK ANDROID (IGUAL CCO VIATURAS)
+  // =========================================================================
+  let eventoInstallPwa = null;
+  window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    eventoInstallPwa = e;
+  });
+  window.addEventListener('appinstalled', () => {
+    eventoInstallPwa = null;
+    toast('Aplicativo Escala GCM instalado com sucesso na tela inicial!');
+  });
+
+  function estaEmModoAppInstalado() {
+    return (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || window.navigator.standalone === true || !!window.escalaAPI;
+  }
+
+  function abrirModalInstalarApp() {
+    const urlAtual = window.location.href.split('#')[0].split('?')[0];
+    const ehLocalFile = window.location.protocol === 'file:';
+    const urlReferencia = ehLocalFile ? 'https://ccogcmvalparaiso.github.io/escala-gcm/' : urlAtual;
+    const jaInstalado = estaEmModoAppInstalado();
+
+    const corpo = `
+      ${jaInstalado ? '<div class="alerta-inline ok">Este sistema já está aberto como aplicativo instalado / desktop.</div>' : ''}
+      ${ehLocalFile ? '<div class="alerta-inline erro">Você abriu o arquivo local do computador (file://). Para instalar no celular, abra o link HTTPS publicado no GitHub Pages: <code>https://ccogcmvalparaiso.github.io/escala-gcm/</code></div>' : ''}
+      <div class="install-secao">
+        <h4>1. Instalar Direto no Celular como App (Em 5 segundos — Sem Play Store)</h4>
+        <p class="subtexto">Salva o ícone com o brasão da GCM na tela inicial do celular e abre em tela cheia igual aplicativo nativo, separado do CCO Viaturas.</p>
+        ${eventoInstallPwa ? '<div class="mt-4"><button type="button" class="btn btn-primario btn-bloco" id="btnDispararInstallPwa">INSTALAR APLICATIVO AGORA NESTE CELULAR</button></div>' : ''}
+        <div class="install-passo"><strong>No Android (Google Chrome):</strong> abra o link <code>${esc(urlReferencia)}</code> no Chrome, toque nos <strong>3 pontinhos (⋮)</strong> no canto superior direito e toque em <strong>Instalar aplicativo</strong> (ou <em>Adicionar à tela inicial</em>).</div>
+        <div class="install-passo"><strong>No iPhone / iPad (Safari):</strong> abra o link no Safari, toque em <strong>Compartilhar</strong> (quadrado com seta para cima) e toque em <strong>Adicionar à Tela de Início</strong>.</div>
+      </div>
+
+      <div class="install-secao">
+        <h4>2. Gerar Arquivo .APK Real (Para baixar e enviar no grupo do WhatsApp)</h4>
+        <p class="subtexto">Se quiser um arquivo <strong>.apk</strong> instalável direto no Android (igual ao CCO Viaturas), você gera grátis em 1 minuto:</p>
+        <div class="install-passo"><strong>Passo 1:</strong> No computador, abra <strong>pwabuilder.com</strong>.</div>
+        <div class="install-passo"><strong>Passo 2:</strong> Cole o endereço oficial: <code>${esc(urlReferencia)}</code> e clique em <strong>Start</strong>.</div>
+        <div class="install-passo"><strong>Passo 3:</strong> Clique em <strong>Package for stores</strong> → <strong>Android</strong> → <strong>Generate Package</strong> → baixe o arquivo <strong>app-release-signed.apk</strong> e envie no WhatsApp da GCM.</div>
+        <div class="mt-4"><button type="button" class="btn btn-acao-destaque btn-sm btn-bloco" id="btnCopiarLinkInstall">Copiar Link Oficial (${esc(urlReferencia)})</button></div>
+      </div>
+    `;
+
+    abrirModal('Instalar App no Celular / Gerar APK', corpo, [{ texto: 'Fechar', classe: 'btn-sec', onClick: fecharModal }]);
+
+    const btnInst = $('btnDispararInstallPwa');
+    if (btnInst && eventoInstallPwa) {
+      btnInst.addEventListener('click', async () => {
+        try {
+          eventoInstallPwa.prompt();
+          const res = await eventoInstallPwa.userChoice;
+          if (res && res.outcome === 'accepted') toast('Instalando aplicativo Escala GCM...');
+          eventoInstallPwa = null;
+          fecharModal();
+        } catch (_) {}
+      });
+    }
+    const btnCop = $('btnCopiarLinkInstall');
+    if (btnCop) {
+      btnCop.addEventListener('click', () => {
+        if (navigator.clipboard?.writeText) navigator.clipboard.writeText(urlReferencia).then(() => toast('Link copiado!'));
+      });
+    }
+  }
+
+  function normalizarEMigrarEstado(carregado) {
+    const padrao = criarEstadoInicial();
+    if (!carregado || !Array.isArray(carregado.efetivo) || !Array.isArray(carregado.postos)) {
+      return padrao;
+    }
+    // Preserva 100% dos dados existentes de qualquer versao anterior (v2..v12+) sem nunca resetar!
+    const st = Object.assign({}, padrao, carregado);
+    st.config = Object.assign({}, padrao.config, carregado.config || {});
+    st.config.responsaveis = Object.assign({}, padrao.config.responsaveis, (carregado.config && carregado.config.responsaveis) || {});
+    st.config.bancoHoras = Object.assign({}, padrao.config.bancoHoras, (carregado.config && carregado.config.bancoHoras) || {});
+    if (!st.justificativas) st.justificativas = {};
+    if (!st.auditoriasIdentidade) st.auditoriasIdentidade = {};
+    if (!Array.isArray(st.afastamentos)) st.afastamentos = [];
+    if (!Array.isArray(st.auditorias30Dias)) st.auditorias30Dias = [];
+    if (!Array.isArray(st.eventos)) st.eventos = [];
+    if (!Array.isArray(st.permutas)) st.permutas = [];
+    if (!Array.isArray(st.bancoHorasMovs)) st.bancoHorasMovs = [];
+    if (!Array.isArray(st.documentosAutenticados)) st.documentosAutenticados = [];
+    if (!Array.isArray(st.pontos)) st.pontos = [];
+    if (!st.cartoesDia) st.cartoesDia = {};
+    if (!st.cartoesModelo) st.cartoesModelo = padrao.cartoesModelo;
+    if (!st.equipesMontagem) st.equipesMontagem = padrao.equipesMontagem;
+    // Garante poligono nos postos antigos que ainda nao tinham poligono salvo
+    st.postos.forEach(p => {
+      if (!p.poligono) p.poligono = POLIGONOS_PADRAO[p.id] || POLIGONOS_PADRAO['MUNICIPIO'];
+    });
+    st.versao = 13;
+    return st;
+  }
+
   async function init() {
-    aplicarTema(localStorage.getItem('escala_gcm_tema_v10') || 'claro');
+    const temaSalvo = localStorage.getItem('gcm_valp_escala_tema') || localStorage.getItem('escala_gcm_tema_v12') || localStorage.getItem('escala_gcm_tema_v11') || 'claro';
+    aplicarTema(temaSalvo);
     if ('serviceWorker' in navigator && location.protocol.startsWith('http')) navigator.serviceWorker.register('./sw.js').catch(() => {});
     const carregado = await window.EscalaCloud.carregarEstadoLocal();
-    ESTADO = (carregado && carregado.efetivo && carregado.postos && carregado.versao >= 10) ? carregado : criarEstadoInicial();
-    if (!ESTADO.justificativas) ESTADO.justificativas = {};
-    if (!ESTADO.auditoriasIdentidade) ESTADO.auditoriasIdentidade = {};
-    if (!Array.isArray(ESTADO.afastamentos)) ESTADO.afastamentos = [];
-    if (!Array.isArray(ESTADO.auditorias30Dias)) ESTADO.auditorias30Dias = [];
-    if (!ESTADO.config.ultimaAuditoria30Iso) ESTADO.config.ultimaAuditoria30Iso = '';
-    if (!Array.isArray(ESTADO.eventos)) ESTADO.eventos = [];
-    if (!Array.isArray(ESTADO.permutas)) ESTADO.permutas = [];
-    if (!Array.isArray(ESTADO.bancoHorasMovs)) ESTADO.bancoHorasMovs = [];
-    if (!Array.isArray(ESTADO.documentosAutenticados)) ESTADO.documentosAutenticados = [];
-    if (!ESTADO.config.bancoHoras) ESTADO.config.bancoHoras = { carga24: 24, cargaAdm: 8, valorHora: 0, mult50: 1.5, mult100: 2.0 };
+    ESTADO = normalizarEMigrarEstado(carregado);
     await window.EscalaCloud.salvarEstadoLocal(ESTADO);
     registrarEventos();
     const s = window.EscalaCloud.lerSessao();

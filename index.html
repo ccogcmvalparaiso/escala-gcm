@@ -35,8 +35,8 @@
 
       <form id="formLogin" class="auth-form">
         <div class="campo">
-          <label for="inpLoginUser">Usuário ou Nº Provisório / Matrícula</label>
-          <input type="text" id="inpLoginUser" autocomplete="username" placeholder="Ex.: admin ou 03" required>
+          <label for="inpLoginUser">Login ou Nome Completo</label>
+          <input type="text" id="inpLoginUser" autocomplete="username" placeholder="Ex.: admin ou Anderson Pereira Costa" required>
         </div>
         <div class="campo">
           <label for="inpLoginPass">Código de Acesso / Senha (mín. 4 dígitos)</label>
@@ -48,19 +48,25 @@
       </form>
 
       <form id="formCadastro" class="auth-form oculto">
-        <div class="campo"><label for="inpCadNome">Nome Completo</label><input type="text" id="inpCadNome" placeholder="Seu nome completo" required></div>
+        <div class="campo">
+          <label for="inpCadNome">Nome Completo (conferido com a lista oficial da GCM)</label>
+          <input type="text" id="inpCadNome" placeholder="Digite seu nome completo exatamente como na lista" required>
+        </div>
         <div class="grid-2">
-          <div class="campo"><label for="inpCadUser">Login</label><input type="text" id="inpCadUser" placeholder="Ex.: anderson" required></div>
-          <div class="campo"><label for="inpCadMat">Nº Provisório / Matrícula</label><input type="text" id="inpCadMat" placeholder="Ex.: 03" required></div>
+          <div class="campo"><label for="inpCadUser">Login de Acesso</label><input type="text" id="inpCadUser" placeholder="Ex.: anderson" required></div>
+          <div class="campo"><label for="inpCadMat">Matrícula / Nº Curso (Opcional)</label><input type="text" id="inpCadMat" placeholder="Opcional (vínculo pelo nome)"></div>
         </div>
         <div class="campo"><label for="inpCadPass">Código de Acesso (mín. 4 dígitos)</label><input type="password" id="inpCadPass" minlength="4" placeholder="Mínimo 4 dígitos" required></div>
         <div id="msgCadInfo" class="alerta-inline oculto"></div>
-        <button type="submit" class="btn btn-primario btn-bloco">Enviar Solicitação</button>
-        <p class="auth-dica">Novas contas entram como <strong>Agente (Consulta e Ponto)</strong> após aprovação do Administrador.</p>
+        <button type="submit" class="btn btn-primario btn-bloco">Enviar Solicitação ao Administrador</button>
+        <p class="auth-dica">O sistema cruza seu <strong>Nome Completo</strong> com a base oficial dos 64 guardas e envia para aprovação do Administrador.</p>
       </form>
 
       <div class="auth-rodape">
-        <button type="button" class="btn btn-sec btn-sm" id="btnTemaAuth">Modo Noturno (Preto)</button>
+        <div class="acoes-linha" style="justify-content:center;">
+          <button type="button" class="btn btn-acao-destaque btn-sm" id="btnInstalarAppAuth">Instalar App / APK no Celular</button>
+          <button type="button" class="btn btn-sec btn-sm" id="btnTemaAuth">Modo Noturno (Preto)</button>
+        </div>
       </div>
     </div>
   </div>
@@ -75,7 +81,7 @@
         <img src="logo.png" alt="GCM Valparaíso" class="sidebar-logo">
         <div class="sidebar-marca">
           <strong>GCM VALPARAÍSO</strong>
-          <span>Operacional · <strong>v10.0</strong></span>
+          <span>Operacional · <strong>v13 Estável</strong></span>
         </div>
         <button type="button" class="btn btn-sec btn-sm btn-fechar-side" id="btnFecharSidebar">X</button>
       </div>
@@ -133,7 +139,8 @@
           <strong id="lblUsuarioTopo">—</strong>
           <span id="lblPerfilTopo" class="badge badge-invertido">—</span>
         </div>
-        <button type="button" class="btn btn-sec btn-sm btn-bloco mt-8" id="btnAlterarMeuCodigoTopo">Alterar Meu Código</button>
+        <button type="button" class="btn btn-acao-destaque btn-sm btn-bloco mt-8" id="btnInstalarAppSide">Instalar App / APK Celular</button>
+        <button type="button" class="btn btn-sec btn-sm btn-bloco mt-4" id="btnAlterarMeuCodigoTopo">Alterar Meu Código</button>
         <button type="button" class="btn btn-sec btn-sm btn-bloco mt-4" id="btnSair">Sair</button>
       </div>
     </aside>
@@ -150,13 +157,16 @@
         </div>
         <div class="topbar-dir">
           <button type="button" class="btn btn-primario btn-sm" id="btnTopoRegistrarPonto">Registrar Folha de Ponto</button>
-          <button type="button" class="btn btn-sec btn-sm" id="btnAtualizarApp" title="Limpa cache antigo e recarrega a versão mais recente">Atualizar App (v10)</button>
+          <button type="button" class="btn btn-sec btn-sm" id="btnAtualizarApp" title="Limpa cache antigo e recarrega a versão mais recente">Atualizar App (v13)</button>
           <span id="badgeSync" class="badge badge-neutro">Local</span>
           <button type="button" class="btn btn-sec btn-sm" id="btnTema">Modo Noturno</button>
         </div>
       </header>
 
       <main class="conteudo">
+        <!-- ALERTA DE CADASTROS PENDENTES / FORA DA LISTA OFICIAL DO PDF (EXCLUSIVO ADMIN) -->
+        <div id="bannerCadastrosAdmin" class="banner-prioritario urgente oculto so-admin"></div>
+
         <!-- AVISO DE AUDITORIA DE 30 DIAS PRONTA (EXCLUSIVO ADMIN) -->
         <div id="bannerAuditoria30Admin" class="banner-prioritario auditoria oculto so-admin"></div>
 
@@ -185,8 +195,8 @@
                 </div>
 
                 <div class="campo mt-12">
-                  <label for="inpIdentificaGuarda">Digite seu Nº Provisório (ex.: 03) ou Nome Completo</label>
-                  <input type="text" id="inpIdentificaGuarda" autocomplete="off" placeholder="Digite o nº (ex.: 03) ou seu nome...">
+                  <label for="inpIdentificaGuarda">Digite seu Nome Completo (vínculo exclusivo pelo nome)</label>
+                  <input type="text" id="inpIdentificaGuarda" autocomplete="off" placeholder="Digite seu nome completo (ex.: Anderson Pereira Costa)...">
                   <div id="listaSugestoesGuarda" class="sugestoes-box oculto"></div>
                 </div>
 
@@ -207,6 +217,9 @@
                     <input type="text" id="inpPontoPosto" placeholder="Preenchido pela escala ou edite">
                   </div>
                 </div>
+
+                <!-- JANELA DE HORARIO ESTIPULADO (EX.: 06:30 AS 07:10 P/ TURNO 07:00) -->
+                <div id="boxJanelaHorarioPonto" class="horario-janela-box oculto"></div>
 
                 <!-- FOTO AO VIVO -->
                 <div class="box-borda mt-12">
@@ -236,23 +249,23 @@
                   <div id="painelResultadoGps" class="gps-resultado mt-8">
                     <span class="subtexto">O GPS verifica automaticamente se o registro está na região de Valparaíso de Goiás.</span>
                   </div>
-                  <div id="boxJustificativaForaValparaiso" class="box-fora-valp oculto mt-8">
-                    <h4>REGISTRO FORA DA REGIÃO DE VALPARAÍSO DE GOIÁS</h4>
-                    <p class="subtexto" id="lblLocalForaValp" style="color:var(--text);">Você está fora do perímetro de Valparaíso de Goiás. Informe o motivo abaixo — será encaminhado automaticamente ao Comando.</p>
+                  <div id="boxJustificativaForaValparaiso" class="box-fora-valp aviso-suave oculto mt-8">
+                    <h4>AVISO: VOCÊ ESTÁ FORA DO PERÍMETRO DE VALPARAÍSO DE GOIÁS</h4>
+                    <p class="subtexto" id="lblLocalForaValp" style="color:var(--text);">Você pode registrar o ponto normalmente. O sistema emitirá um aviso para ciência do Comando.</p>
                     <div class="campo">
-                      <label for="selMotivoForaValp">Motivo do Registro Fora de Valparaíso (Obrigatório)</label>
+                      <label for="selMotivoForaValp">Motivo (Opcional — se quiser informar agora ao Comando)</label>
                       <select id="selMotivoForaValp">
-                        <option value="">Selecione o motivo...</option>
+                        <option value="">Não informar agora (registrar direto)</option>
                         <option value="Apoio em ocorrência externa / Delegacia / IML">Apoio em ocorrência externa / Delegacia / IML</option>
                         <option value="Manutenção ou abastecimento de viatura">Manutenção ou abastecimento de viatura</option>
                         <option value="Curso, instrução ou missão externa autorizada">Curso, instrução ou missão externa autorizada</option>
                         <option value="Serviço administrativo / Reunião em outro órgão">Serviço administrativo / Reunião em outro órgão</option>
-                        <option value="Outro motivo (especificar abaixo)">Outro motivo (especificar abaixo)</option>
+                        <option value="Outro motivo">Outro motivo</option>
                       </select>
                     </div>
                     <div class="campo">
-                      <label for="inpDetalheForaValp">Explique detalhadamente o motivo para o Comando (Obrigatório)</label>
-                      <textarea id="inpDetalheForaValp" rows="2" placeholder="Ex.: Em deslocamento na 1ª DP / IML de Luziânia apresentando ocorrência..."></textarea>
+                      <label for="inpDetalheForaValp">Explicação para o Comando (Opcional)</label>
+                      <textarea id="inpDetalheForaValp" rows="2" placeholder="Opcional: se desejar, escreva o motivo ou informe depois ao Comando..."></textarea>
                     </div>
                   </div>
                 </div>
@@ -1048,6 +1061,14 @@
               <h3>Parâmetros de Cálculo de Banco de Horas e Extras</h3>
               <p class="subtexto mt-4">Usados para apurar automaticamente excedentes pela Folha de Ponto e estimar valores financeiros (opcional).</p>
               <div class="grid-2 mt-12">
+                <div class="campo"><label for="inpBhHoraIni24">Início Previsto Turno 24x72</label><input type="time" id="inpBhHoraIni24" value="07:00"></div>
+                <div class="campo"><label for="inpBhHoraIniAdm">Início Previsto Administrativo</label><input type="time" id="inpBhHoraIniAdm" value="08:00"></div>
+              </div>
+              <div class="grid-2 mt-8">
+                <div class="campo"><label for="inpBhAntecedencia">Antecedência Liberada (min antes — ex.: 30 = 06:30)</label><input type="number" id="inpBhAntecedencia" value="30" min="0" max="120"></div>
+                <div class="campo"><label for="inpBhTolerancia">Tolerância de Atraso (min depois — ex.: 10 = 07:10)</label><input type="number" id="inpBhTolerancia" value="10" min="0" max="60"></div>
+              </div>
+              <div class="grid-2 mt-8">
                 <div class="campo"><label for="inpBhCarga24">Carga Padrão Turno 24x72 (horas)</label><input type="number" id="inpBhCarga24" value="24" min="1" max="48"></div>
                 <div class="campo"><label for="inpBhCargaAdm">Carga Padrão Administrativo (horas/dia)</label><input type="number" id="inpBhCargaAdm" value="8" min="1" max="16"></div>
               </div>
@@ -1324,7 +1345,7 @@
               </div>
               <div class="campo">
                 <label for="inpAud30Tol">Tolerância de Atraso (min)</label>
-                <input type="number" id="inpAud30Tol" min="0" max="60" value="15">
+                <input type="number" id="inpAud30Tol" min="0" max="60" value="10">
               </div>
               <div class="campo campo-btn">
                 <button type="button" class="btn btn-primario" id="btnRodarAuditoria30">Atualizar Diagnóstico</button>
@@ -1449,7 +1470,7 @@
               </div>
               <div class="tabela-wrap mt-12">
                 <table class="tabela">
-                  <thead><tr><th>Login</th><th>Nome</th><th>Nº / Matrícula</th><th>Perfil</th><th>Status</th><th>Ações</th></tr></thead>
+                  <thead><tr><th>Login</th><th>Nome Informado</th><th>Conferência Rol Oficial (PDF)</th><th>Matrícula (Opcional)</th><th>Perfil</th><th>Status</th><th>Ações</th></tr></thead>
                   <tbody id="tbodyContas"></tbody>
                 </table>
               </div>
@@ -1457,7 +1478,7 @@
           </div>
           <div id="subSisBase" class="subpainel">
             <div class="card" style="max-width:660px;">
-              <h3>Base Operacional da GCM</h3>
+              <h3>Base Operacional da GCM (Referência — Perímetro do Ponto = Toda a Região de Valparaíso de Goiás)</h3>
               <div class="campo mt-12"><label for="inpBaseNome">Nome da Base</label><input type="text" id="inpBaseNome"></div>
               <div class="grid-2">
                 <div class="campo"><label for="inpBaseLat">Latitude</label><input type="number" step="0.000001" id="inpBaseLat"></div>

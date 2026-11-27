@@ -1,14 +1,20 @@
 (function () {
   'use strict';
 
-  const COLECAO_BASE = 'escala_gcm_valparaiso_v10';
-  const COLECAO_PONTOS = 'escala_gcm_pontos_v10';
-  const CHAVE_LOCAL_DADOS = 'escala_gcm_valp_dados_v10';
-  const CHAVE_LOCAL_USERS = 'escala_gcm_valp_users_v10';
-  const CHAVE_LOCAL_SESSAO = 'escala_gcm_valp_sessao_v10';
-  const CHAVE_LOCAL_FB = 'escala_gcm_valp_firebase_cfg_v10';
+  // Chaves permanentes (nao mudam mais em atualizacoes futuras — zero perda de dados!)
+  const COLECAO_BASE = 'escala_gcm_valparaiso_oficial';
+  const COLECAO_PONTOS = 'escala_gcm_pontos_oficial';
+  const IDB_NOME = 'GCM_Valparaiso_Escala_DB';
+  const IDB_STORE = 'kv';
+  const CHAVE_LOCAL_DADOS = 'gcm_valp_escala_dados';
+  const CHAVE_LOCAL_USERS = 'gcm_valp_escala_users';
+  const CHAVE_LOCAL_SESSAO = 'gcm_valp_escala_sessao';
+  const CHAVE_LOCAL_FB = 'gcm_valp_escala_fb';
+  const VERSOES_LEGADAS = [12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2];
 
   let fbApp = null, db = null, unsubNuvem = null;
+  let idbInstancia = null;
+  let motorStorageAtivo = 'IndexedDB';
 
   function normalizarLogin(txt) { return String(txt || '').trim().toLowerCase().replace(/\s+/g, ''); }
 
@@ -49,9 +55,100 @@
     }
     return H.map(v => v.toString(16).padStart(8, '0')).join('');
   }
-  function hashSenha(login, senha) { return sha256Hex('GCM_VALP_V10::' + normalizarLogin(login) + '::' + String(senha)); }
 
-  function lerConfigFirebase() { try { const r = localStorage.getItem(CHAVE_LOCAL_FB); return r ? JSON.parse(r) : null; } catch (e) { return null; } }
+  function hashSenha(login, senha, prefixoOpcional) {
+    const pref = prefixoOpcional || 'GCM_VALP_PERMANENTE::';
+    return sha256Hex(pref + normalizarLogin(login) + '::' + String(senha));
+  }
+
+  function conferirSenhaComMigracao(user, senhaDigitada) {
+    if (!user || !user.senhaHash) return false;
+    if (hashSenha(user.login, senhaDigitada) === user.senhaHash) return true;
+    // Compatibilidade retroativa com contas migradas de versoes antigas (v2..v12)
+    const prefixosLegados = [
+      'GCM_VALP_V12::', 'GCM_VALP_V11::', 'GCM_VALP_V10::', 'GCM_VALP_V9::',
+      'GCM_VALP_V8::', 'GCM_VALP_V7::', 'GCM_VALP_V6::', 'GCM_VALP_V5::',
+      'GCM_VALP_V4::', 'GCM_VALP_V3::', 'GCM_VALP_ESCALA_V2::', 'GCM_VALPARAISO_ESCALA::'
+    ];
+    for (const pref of prefixosLegados) {
+      if (hashSenha(user.login, senhaDigitada, pref) === user.senhaHash) {
+        // Re-grava com o hash permanente sem pedir nova senha ao guarda
+        user.senhaHash = hashSenha(user.login, senhaDigitada);
+        return true;
+      }
+    }
+    return false;
+  }
+
+  // =========================================================================
+  // INDEXEDDB NATIVO (CENTENAS DE MB PARA FOTOS DE PONTO E ATESTADOS!)
+  // =========================================================================
+  function abrirIDB() {
+    if (idbInstancia) return Promise.resolve(idbInstancia);
+    if (typeof indexedDB === 'undefined') return Promise.resolve(null);
+    return new Promise((resolve) => {
+      try {
+        const req = indexedDB.open(IDB_NOME, 1);
+        req.onupgradeneeded = (ev) => {
+          const dbi = ev.target.result;
+          if (!dbi.objectStoreNames.contains(IDB_STORE)) {
+            dbi.createObjectStore(IDB_STORE);
+          }
+        };
+        req.onsuccess = (ev) => { idbInstancia = ev.target.result; resolve(idbInstancia); };
+        req.onerror = () => resolve(null);
+      } catch (_) { resolve(null); }
+    });
+  }
+
+  async function idbLer(chave) {
+    const dbi = await abrirIDB();
+    if (!dbi) return null;
+    return new Promise((resolve) => {
+      try {
+        const tx = dbi.transaction(IDB_STORE, 'readonly');
+        const req = tx.objectStore(IDB_STORE).get(chave);
+        req.onsuccess = () => resolve(req.result !== undefined ? req.result : null);
+        req.onerror = () => resolve(null);
+      } catch (_) { resolve(null); }
+    });
+  }
+
+  async function idbGravar(chave, valor) {
+    const dbi = await abrirIDB();
+    if (!dbi) return { ok: false, erro: 'IndexedDB indisponível' };
+    return new Promise((resolve) => {
+      try {
+        const tx = dbi.transaction(IDB_STORE, 'readwrite');
+        tx.objectStore(IDB_STORE).put(valor, chave);
+        tx.oncomplete = () => resolve({ ok: true });
+        tx.onerror = (ev) => resolve({ ok: false, erro: String(ev?.target?.error?.message || 'Erro ao gravar IndexedDB') });
+        tx.onabort = (ev) => resolve({ ok: false, erro: String(ev?.target?.error?.message || 'Transação IndexedDB abortada') });
+      } catch (e) { resolve({ ok: false, erro: String(e && e.message ? e.message : e) }); }
+    });
+  }
+
+  // Migracao automatica de localStorage legado (v12..v2) para chaves permanentes
+  function lerLocalComMigracao(chaveNova, padraoLegadoFn) {
+    try {
+      const atual = localStorage.getItem(chaveNova);
+      if (atual) return JSON.parse(atual);
+      for (const v of VERSOES_LEGADAS) {
+        const raw = localStorage.getItem(padraoLegadoFn(v));
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          try { localStorage.setItem(chaveNova, raw); } catch (_) {}
+          return parsed;
+        }
+      }
+    } catch (_) {}
+    return null;
+  }
+
+  // ---------- FIREBASE OPCIONAL ----------
+  function lerConfigFirebase() {
+    return lerLocalComMigracao(CHAVE_LOCAL_FB, (v) => `escala_gcm_valp_firebase_cfg_v${v}`);
+  }
   function desconectarFirebase() {
     if (unsubNuvem) { try { unsubNuvem(); } catch (e) {} unsubNuvem = null; }
     if (fbApp) { try { fbApp.delete(); } catch (e) {} fbApp = null; }
@@ -76,7 +173,7 @@
     if (db) return true;
     try {
       if (typeof firebase !== 'undefined' && firebase.initializeApp) {
-        const nm = 'escala_gcm_v10_' + cfg.projectId;
+        const nm = 'escala_gcm_oficial_' + cfg.projectId;
         fbApp = firebase.apps.find(a => a.name === nm) || firebase.initializeApp(cfg, nm);
         db = fbApp.firestore();
         return true;
@@ -88,7 +185,7 @@
     desconectarFirebase();
     if (!inicializarFirebase(cfg) || !db) return { ok: false, erro: 'Configuração inválida ou sem internet.' };
     try {
-      await db.collection(COLECAO_BASE).doc('ping').set({ v: 10, em: new Date().toISOString() });
+      await db.collection(COLECAO_BASE).doc('ping').set({ v: 'estavel', em: new Date().toISOString() });
       return { ok: true, projectId: cfg.projectId };
     } catch (e) { return { ok: false, erro: String(e && e.message ? e.message : e) }; }
   }
@@ -147,34 +244,92 @@
     } catch (e) {}
   }
 
-  // Admin inicial com codigo de 4 digitos: 0153
+  // ---------- USUARIOS (COM MIGRACAO AUTOMATICA) ----------
   function criarAdminPadrao() {
     return { login: 'admin', nome: 'Administrador GCM', matricula: '00', perfil: 'ADMIN', mestre: true, aprovado: true, senhaHash: hashSenha('admin', '0153'), criadoEm: new Date().toISOString() };
   }
   function lerUsuariosLocal() {
-    try {
-      const arr = JSON.parse(localStorage.getItem(CHAVE_LOCAL_USERS) || '[]');
-      if (Array.isArray(arr) && arr.length) { if (!arr.some(u => normalizarLogin(u.login) === 'admin')) arr.unshift(criarAdminPadrao()); return arr; }
-    } catch (e) {}
-    const init = [criarAdminPadrao()]; salvarUsuariosLocal(init); return init;
+    const arr = lerLocalComMigracao(CHAVE_LOCAL_USERS, (v) => `escala_gcm_valp_users_v${v}`);
+    if (Array.isArray(arr) && arr.length) {
+      if (!arr.some(u => normalizarLogin(u.login) === 'admin')) arr.unshift(criarAdminPadrao());
+      return arr;
+    }
+    const init = [criarAdminPadrao()];
+    salvarUsuariosLocal(init);
+    return init;
   }
-  function salvarUsuariosLocal(l) { try { localStorage.setItem(CHAVE_LOCAL_USERS, JSON.stringify(l)); } catch (e) {} }
+  function salvarUsuariosLocal(l) {
+    try { localStorage.setItem(CHAVE_LOCAL_USERS, JSON.stringify(l)); } catch (_) {}
+    idbGravar('usuarios_sistema', l).catch(() => {});
+  }
 
+  // ---------- CARREGAMENTO E GRAVACAO EM INDEXEDDB + DISCO (.exe) ----------
   async function carregarEstadoLocal() {
-    if (window.escalaAPI?.carregarDados) { try { const d = await window.escalaAPI.carregarDados(); if (d) return d; } catch (e) {} }
-    try { const r = localStorage.getItem(CHAVE_LOCAL_DADOS); return r ? JSON.parse(r) : null; } catch (e) { return null; }
+    // 1. No Electron (.exe), prioridade ao arquivo permanente no disco (dados-escala-gcm.json)
+    if (window.escalaAPI?.carregarDados) {
+      try {
+        const d = await window.escalaAPI.carregarDados();
+        if (d) {
+          motorStorageAtivo = 'Disco PC (.exe)';
+          idbGravar('estado_principal', d).catch(() => {});
+          return d;
+        }
+      } catch (_) {}
+    }
+
+    // 2. IndexedDB (suporta centenas de MB de fotos e atestados digitalizados!)
+    const doIdb = await idbLer('estado_principal');
+    if (doIdb && typeof doIdb === 'object') {
+      motorStorageAtivo = 'IndexedDB';
+      return doIdb;
+    }
+
+    // 3. Migracao automatica do localStorage (chave nova ou chaves legadas v12..v2) para IndexedDB!
+    const doLocal = lerLocalComMigracao(CHAVE_LOCAL_DADOS, (v) => `escala_gcm_valp_dados_v${v}`);
+    if (doLocal && typeof doLocal === 'object') {
+      const grav = await idbGravar('estado_principal', doLocal);
+      if (grav.ok) {
+        motorStorageAtivo = 'IndexedDB';
+        // Libera espaco do localStorage apos migrar com seguranca para o IndexedDB
+        try {
+          localStorage.removeItem(CHAVE_LOCAL_DADOS);
+          VERSOES_LEGADAS.forEach(v => localStorage.removeItem(`escala_gcm_valp_dados_v${v}`));
+        } catch (_) {}
+      } else {
+        motorStorageAtivo = 'LocalStorage';
+      }
+      return doLocal;
+    }
+
+    return null;
   }
+
   async function salvarEstadoLocal(estado) {
     let okLocal = false;
     let erroMsg = '';
-    const serializado = JSON.stringify(estado);
-    try {
-      localStorage.setItem(CHAVE_LOCAL_DADOS, serializado);
-      const check = localStorage.getItem(CHAVE_LOCAL_DADOS);
-      okLocal = !!(check && check.length > 20);
-    } catch (e) {
-      erroMsg = 'Armazenamento do navegador cheio: ' + String(e && e.message ? e.message : e);
+
+    // 1. Grava no IndexedDB (capacidade de centenas de MB — sem travar nos 5 MB do localStorage!)
+    const resIdb = await idbGravar('estado_principal', estado);
+    if (resIdb.ok) {
+      okLocal = true;
+      motorStorageAtivo = window.escalaAPI?.salvarDados ? 'Disco PC + IndexedDB' : 'IndexedDB';
+    } else {
+      erroMsg = resIdb.erro || '';
+      // Fallback para localStorage somente se IndexedDB nao estiver disponivel
+      try {
+        const serializado = JSON.stringify(estado);
+        localStorage.setItem(CHAVE_LOCAL_DADOS, serializado);
+        const check = localStorage.getItem(CHAVE_LOCAL_DADOS);
+        if (check && check.length > 20) {
+          okLocal = true;
+          motorStorageAtivo = 'LocalStorage';
+        }
+      } catch (e) {
+        erroMsg = 'Armazenamento do navegador cheio: ' + String(e && e.message ? e.message : e);
+      }
     }
+
+    // 2. No executavel Windows (.exe), grava tambem no disco (dados-escala-gcm.json)
     if (window.escalaAPI?.salvarDados) {
       try {
         const res = await window.escalaAPI.salvarDados(estado);
@@ -184,47 +339,93 @@
         erroMsg = String(e && e.message ? e.message : e);
       }
     }
-    return { ok: okLocal, erro: erroMsg };
+
+    return { ok: okLocal, erro: erroMsg, motor: motorStorageAtivo };
   }
 
-  function lerSessao() { try { const r = localStorage.getItem(CHAVE_LOCAL_SESSAO); return r ? JSON.parse(r) : null; } catch (e) { return null; } }
-  function salvarSessao(s) { if (!s) localStorage.removeItem(CHAVE_LOCAL_SESSAO); else localStorage.setItem(CHAVE_LOCAL_SESSAO, JSON.stringify(s)); }
+  function obterMotorStorage() { return motorStorageAtivo; }
+
+  // ---------- SESSAO E AUTENTICACAO ----------
+  function lerSessao() {
+    return lerLocalComMigracao(CHAVE_LOCAL_SESSAO, (v) => `escala_gcm_valp_sessao_v${v}`);
+  }
+  function salvarSessao(s) {
+    if (!s) localStorage.removeItem(CHAVE_LOCAL_SESSAO);
+    else localStorage.setItem(CHAVE_LOCAL_SESSAO, JSON.stringify(s));
+  }
+
+  function normalizarNomeAuth(txt) {
+    return String(txt || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/\s+/g, ' ').trim();
+  }
 
   async function tentarLogin(id, senha) {
     const n = normalizarLogin(id);
-    if (!n || !senha) return { ok: false, erro: 'Informe usuário/nº e código de acesso.' };
+    const nomeNorm = normalizarNomeAuth(id);
+    if (!n || !senha) return { ok: false, erro: 'Informe seu login (ou nome completo) e código de acesso.' };
     if (String(senha).length < 4) return { ok: false, erro: 'O código de acesso deve ter no mínimo 4 dígitos.' };
     let users = lerUsuariosLocal();
-    let u = users.find(x => normalizarLogin(x.login) === n || normalizarLogin(x.matricula) === n || normalizarLogin(x.matricula).replace(/^0+/, '') === n.replace(/^0+/, ''));
-    if (!u && lerConfigFirebase()) { await sincronizarBaixarNuvem(); users = lerUsuariosLocal(); u = users.find(x => normalizarLogin(x.login) === n || normalizarLogin(x.matricula) === n); }
-    if (!u) return { ok: false, erro: 'Usuário ou nº não encontrados.' };
+    let u = users.find(x => normalizarLogin(x.login) === n || (nomeNorm && normalizarNomeAuth(x.nome) === nomeNorm));
+    if (!u && lerConfigFirebase()) {
+      await sincronizarBaixarNuvem();
+      users = lerUsuariosLocal();
+      u = users.find(x => normalizarLogin(x.login) === n || (nomeNorm && normalizarNomeAuth(x.nome) === nomeNorm));
+    }
+    if (!u) return { ok: false, erro: 'Login ou nome não encontrados.' };
     if (!u.aprovado) return { ok: false, erro: 'Conta aguardando aprovação do Administrador.' };
-    if (hashSenha(u.login, senha) !== u.senhaHash) return { ok: false, erro: 'Código de acesso incorreto.' };
-    const sessao = { login: u.login, nome: u.nome, matricula: u.matricula || '', perfil: u.perfil || 'AGENTE', mestre: !!u.mestre };
+    const hashAntes = u.senhaHash;
+    if (!conferirSenhaComMigracao(u, senha)) return { ok: false, erro: 'Código de acesso incorreto.' };
+    if (u.senhaHash !== hashAntes) salvarUsuariosLocal(users);
+    const sessao = {
+      login: u.login,
+      nome: u.nome,
+      matricula: u.matricula || '',
+      agenteVinculadoId: u.agenteVinculadoId || '',
+      constaNoRolOficial: u.constaNoRolOficial !== false,
+      perfil: u.perfil || 'AGENTE',
+      mestre: !!u.mestre
+    };
     salvarSessao(sessao);
     return { ok: true, sessao };
   }
-  function cadastrarUsuario({ nome, login, matricula, senha, perfil, aprovado }) {
+
+  function cadastrarUsuario({ nome, login, matricula, senha, perfil, aprovado, constaNoRolOficial, agenteVinculadoId, alertaCadastro }) {
     const l = normalizarLogin(login);
-    if (!nome || !l || !senha || String(senha).length < 4) return { ok: false, erro: 'Preencha todos os campos (código mínimo de 4 dígitos).' };
+    if (!nome || !l || !senha || String(senha).length < 4) return { ok: false, erro: 'Preencha nome completo, login e código (mínimo 4 dígitos).' };
     const users = lerUsuariosLocal();
     if (users.some(x => normalizarLogin(x.login) === l)) return { ok: false, erro: 'Login já cadastrado.' };
-    const novo = { login: l, nome: String(nome).trim(), matricula: String(matricula || '').trim().toUpperCase(), perfil: perfil || 'AGENTE', mestre: false, aprovado: !!aprovado, senhaHash: hashSenha(l, senha), criadoEm: new Date().toISOString() };
+    const novo = {
+      login: l,
+      nome: String(nome).trim(),
+      matricula: String(matricula || '').trim().toUpperCase(),
+      perfil: perfil || 'AGENTE',
+      mestre: false,
+      aprovado: !!aprovado,
+      constaNoRolOficial: constaNoRolOficial === true,
+      agenteVinculadoId: agenteVinculadoId || '',
+      alertaCadastro: alertaCadastro || '',
+      senhaHash: hashSenha(l, senha),
+      criadoEm: new Date().toISOString()
+    };
     users.push(novo); salvarUsuariosLocal(users);
     return { ok: true, usuario: novo };
   }
+
   function atualizarUsuario(loginAlvo, alt) {
     const users = lerUsuariosLocal();
     const u = users.find(x => normalizarLogin(x.login) === normalizarLogin(loginAlvo));
     if (!u) return { ok: false, erro: 'Não encontrado.' };
     if (alt.nome !== undefined) u.nome = String(alt.nome).trim();
     if (alt.matricula !== undefined) u.matricula = String(alt.matricula).trim().toUpperCase();
+    if (alt.constaNoRolOficial !== undefined) u.constaNoRolOficial = !!alt.constaNoRolOficial;
+    if (alt.agenteVinculadoId !== undefined) u.agenteVinculadoId = alt.agenteVinculadoId || '';
+    if (alt.alertaCadastro !== undefined) u.alertaCadastro = alt.alertaCadastro || '';
     if (alt.perfil !== undefined && !u.mestre) u.perfil = alt.perfil;
     if (alt.aprovado !== undefined && !u.mestre) u.aprovado = !!alt.aprovado;
     if (alt.novaSenha && String(alt.novaSenha).length >= 4) u.senhaHash = hashSenha(u.login, alt.novaSenha);
     salvarUsuariosLocal(users);
     return { ok: true, usuario: u };
   }
+
   function removerUsuario(loginAlvo) {
     const users = lerUsuariosLocal();
     const u = users.find(x => normalizarLogin(x.login) === normalizarLogin(loginAlvo));
@@ -236,7 +437,7 @@
 
   window.EscalaCloud = {
     sha256Hex, lerConfigFirebase, salvarConfigFirebase, extrairObjetoFirebase, testarConexaoFirebase, desconectarFirebase,
-    carregarEstadoLocal, salvarEstadoLocal, enviarPontoIndividualNuvem, sincronizarEnviarNuvem, sincronizarBaixarNuvem, assinarNuvem,
+    carregarEstadoLocal, salvarEstadoLocal, obterMotorStorage, enviarPontoIndividualNuvem, sincronizarEnviarNuvem, sincronizarBaixarNuvem, assinarNuvem,
     lerSessao, salvarSessao, lerUsuariosLocal, salvarUsuariosLocal, tentarLogin, cadastrarUsuario, atualizarUsuario, removerUsuario
   };
 })();

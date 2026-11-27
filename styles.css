@@ -1,5 +1,5 @@
 /* =========================================================================
-   GCM VALPARAÍSO DE GOIÁS — v10.0
+   GCM VALPARAÍSO DE GOIÁS — v13.0 Estável
    Identidade Policial Tática Sóbria: Branco (Claro) e Preto (Noturno)
    ZERO AZUL · ZERO CORES CHAMATIVAS
    Insígnias Táticas: ALFA (Grafite), BRAVO (Oliva), CHARLIE (Caqui), DELTA (Bordô)
@@ -122,7 +122,7 @@ code { background: var(--surface-2); padding: 2px 6px; border-radius: 4px; font-
 .auth-topo { display: flex; align-items: center; gap: 14px; margin-bottom: 18px; }
 .auth-logo { width: 54px; height: 54px; object-fit: contain; }
 .auth-titulo { font-size: 18px; } .auth-sub { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
-.auth-tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 16px; background: var(--surface-2); padding: 4px; border-radius: 7px; }
+.auth-tabs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; margin-bottom: 16px; background: var(--surface-2); padding: 4px; border-radius: 7px; }
 .auth-tab { border: none; background: transparent; color: var(--text-muted); padding: 7px; font-weight: 600; border-radius: 5px; cursor: pointer; }
 .auth-tab.ativo { background: var(--surface); color: var(--text); }
 .auth-form { display: flex; flex-direction: column; gap: 12px; }
@@ -157,7 +157,7 @@ code { background: var(--surface-2); padding: 2px 6px; border-radius: 4px; font-
 .side-btn.ativo .side-bar { opacity: 1; }
 
 .sidebar-rodape { margin-top: auto; padding-top: 12px; border-top: 1px solid var(--border); }
-.side-legenda-tatica { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; margin-bottom: 10px; }
+.side-legenda-tatica { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 5px; margin-bottom: 10px; }
 .side-user { display: flex; align-items: center; justify-content: space-between; gap: 6px; font-size: 12px; }
 .sidebar-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 50; }
 
@@ -214,7 +214,7 @@ code { background: var(--surface-2); padding: 2px 6px; border-radius: 4px; font-
 .grid-2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
 .grid-3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
 .grid-4 { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
-.grid-2-assimetrico { display: grid; grid-template-columns: minmax(330px, 440px) minmax(0, 1fr); gap: 16px; align-items: start; }
+.grid-2-assimetrico { display: grid; grid-template-columns: minmax(320px, 430px) minmax(0, 1fr); gap: 16px; align-items: start; width: 100%; max-width: 100%; }
 
 .subtabs { display: flex; gap: 6px; margin-bottom: 14px; flex-wrap: wrap; }
 .subtab { padding: 7px 12px; border-radius: 6px; border: 1px solid var(--border); background: var(--surface); color: var(--text-muted); font-size: 12.5px; font-weight: 600; cursor: pointer; }
@@ -231,7 +231,7 @@ code { background: var(--surface-2); padding: 2px 6px; border-radius: 4px; font-
 .filtros-linha .campo-btn { flex: 0 0 auto; }
 .check-linha { display: inline-flex; align-items: center; gap: 7px; cursor: pointer; font-size: 12.5px; font-weight: 600; }
 
-.tabela-wrap { width: 100%; overflow-x: auto; }
+.tabela-wrap { display: block; width: 100%; max-width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
 .tabela { width: 100%; border-collapse: collapse; font-size: 12.5px; }
 .tabela th, .tabela td { padding: 8px 9px; border-bottom: 1px solid var(--border); text-align: left; vertical-align: middle; }
 .tabela th { background: var(--surface-2); font-size: 10.5px; font-weight: 800; text-transform: uppercase; color: var(--text-muted); white-space: nowrap; }
@@ -248,7 +248,7 @@ code { background: var(--surface-2); padding: 2px 6px; border-radius: 4px; font-
 .item-compacto.selecionado { border-color: var(--border-strong); background: var(--surface); }
 .posto-card { border: 1px solid var(--border); border-left: 4px solid var(--border-strong); border-radius: 7px; padding: 12px; background: var(--surface-2); display: flex; flex-direction: column; gap: 8px; }
 .lista-editavel { display: flex; flex-direction: column; gap: 10px; }
-.linha-editavel { padding: 10px; border: 1px solid var(--border); border-radius: 7px; background: var(--surface-2); display: grid; grid-template-columns: 1fr 1fr auto; gap: 8px; align-items: end; }
+.linha-editavel { padding: 10px; border: 1px solid var(--border); border-radius: 7px; background: var(--surface-2); display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto; gap: 8px; align-items: end; max-width: 100%; }
 
 /* MAPA INTERATIVO DOS SETORES */
 .mapa-setor-box { width: 100%; height: 360px; border-radius: 7px; border: 1px solid var(--border-strong); overflow: hidden; background: var(--surface-2); z-index: 1; }
@@ -274,18 +274,7 @@ code { background: var(--surface-2); padding: 2px 6px; border-radius: 4px; font-
 .toast-area { position: fixed; right: 16px; bottom: 16px; z-index: 250; display: flex; flex-direction: column; gap: 8px; max-width: 340px; }
 .toast { background: var(--accent); color: var(--accent-text); padding: 10px 14px; border-radius: 7px; font-size: 13px; font-weight: 600; border: 1px solid var(--border-strong); }
 
-@media (max-width: 1024px) {
-  .sidebar { position: fixed; left: 0; top: 0; bottom: 0; transform: translateX(-100%); margin-left: 0 !important; }
-  .app-shell.menu-aberto-mobile .sidebar { transform: translateX(0); }
-  .btn-fechar-side { display: inline-flex; }
-  .grid-2-assimetrico { grid-template-columns: 1fr; }
-}
-@media (max-width: 720px) {
-  .conteudo { padding: 12px; }
-  .grid-2, .grid-3, .grid-4 { grid-template-columns: 1fr; }
-  .linha-editavel { grid-template-columns: 1fr; }
-  .topbar-sub { display: none; }
-}
+
 
 
 /* BOTOES CLICAVEIS ALFA / BRAVO / CHARLIE / DELTA NA SIDEBAR */
@@ -322,7 +311,7 @@ body[data-perfil="ESCALANTE"] .so-admin {
 
 /* CHECKLIST CARTAO PROGRAMA */
 .checklist-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
-@media (max-width: 720px) { .checklist-grid { grid-template-columns: 1fr; } }
+@media (max-width: 720px) { .checklist-grid { grid-template-columns: minmax(0, 1fr); } }
 
 /* SALDO BANCO DE HORAS */
 .saldo-pos { color: var(--ok); font-weight: 800; }
@@ -517,69 +506,137 @@ body[data-perfil="ESCALANTE"] .so-admin {
   display: none;
 }
 
-/* RESPONSIVIDADE MOBILE COMPLETA (MESMA ERGONOMIA DO CCO VIATURAS) */
-@media (max-width: 960px) {
-  html, body {
-    max-width: 100vw;
-    overflow-x: hidden;
+/* BLINDAGEM GLOBAL CONTRA CORTE HORIZONTAL (PC, TABLET E CELULAR) */
+html, body {
+  width: 100%;
+  max-width: 100vw;
+  overflow-x: hidden;
+}
+.app-shell,
+.main-area,
+.conteudo,
+.secao-aba,
+.subpainel,
+.card,
+.box-borda,
+.box-fora-valp,
+.posto-card,
+.guarda-id-box,
+.faixa-plantao,
+.banner-prioritario,
+.gps-resultado,
+.selo-card,
+.sugestao-aud-item,
+.item-compacto,
+.grid-2,
+.grid-3,
+.grid-4,
+.grid-2-assimetrico,
+.campo,
+.campo input,
+.campo select,
+.campo textarea {
+  min-width: 0;
+  max-width: 100%;
+}
+.card, .box-borda, .box-fora-valp, .posto-card, .guarda-id-box, .gps-resultado, .banner-prioritario {
+  overflow-wrap: break-word;
+  word-wrap: break-word;
+}
+.card-cab > *,
+.banner-prioritario > * {
+  min-width: 0;
+  max-width: 100%;
+}
+.badge, .insig {
+  max-width: 100%;
+  white-space: normal;
+  text-align: center;
+  line-height: 1.25;
+}
+.campo select {
+  text-overflow: ellipsis;
+  overflow: hidden;
+}
+.horario-janela-box {
+  margin-top: 8px;
+  padding: 8px 10px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--border-strong);
+  background: var(--surface-2);
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.box-fora-valp.aviso-suave {
+  border: 1.5px solid var(--pend);
+  border-left: 5px solid var(--pend);
+  background: var(--pend-bg);
+}
+.box-fora-valp.aviso-suave h4 {
+  color: var(--pend);
+}
+
+/* =========================================================================
+   LAYOUT DEDICADO PARA TABLET E CELULAR (<= 1180px: ZERO CORTE EM TODAS AS TELAS)
+   ========================================================================= */
+
+/* TABLET PAISAGEM E MENORES (<= 1180px): Menu lateral vira gaveta retratil */
+@media (max-width: 1180px) {
+  .sidebar {
+    position: fixed;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: min(290px, 84vw);
+    transform: translateX(-100%);
+    margin-left: 0 !important;
+    box-shadow: 4px 0 24px rgba(0, 0, 0, 0.35);
   }
-  .app-shell {
-    width: 100%;
-    max-width: 100vw;
-    overflow-x: hidden;
+  .app-shell.menu-aberto-mobile .sidebar {
+    transform: translateX(0);
   }
+  .btn-fechar-side {
+    display: inline-flex;
+  }
+  .conteudo {
+    padding: 14px;
+  }
+  .grid-2-assimetrico {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 14px;
+  }
+  .grid-4 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .grid-3 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* TABLET RETRATO E CELULAR (<= 1024px): Barra fixa inferior + abas rolaveis limpas */
+@media (max-width: 1024px) {
   .main-area {
     width: 100%;
     max-width: 100vw;
-    padding-bottom: calc(70px + env(safe-area-inset-bottom, 0px));
+    padding-bottom: calc(74px + env(safe-area-inset-bottom, 0px));
   }
   .topbar {
-    flex-direction: column;
-    align-items: stretch;
+    padding: 8px 12px;
     gap: 8px;
-    padding: 8px 10px;
+    flex-wrap: wrap;
   }
   .topbar-esq {
-    width: 100%;
-    justify-content: flex-start;
+    flex: 1 1 auto;
+    min-width: 0;
   }
   .topbar-dir {
-    width: 100%;
-    display: grid;
-    grid-template-columns: 1fr auto auto;
+    flex: 0 1 auto;
     gap: 6px;
-    align-items: center;
-  }
-  #btnTopoRegistrarPonto {
-    grid-column: 1 / -1;
-    width: 100%;
-    padding: 10px 12px;
-    font-size: 13.5px;
-  }
-  #btnAtualizarApp {
-    font-size: 11.5px;
-    padding: 6px 8px;
-  }
-  .conteudo {
-    padding: 10px;
-    max-width: 100vw;
-  }
-  .card {
-    padding: 12px;
-  }
-  .cab-secao {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 10px;
-  }
-  .cab-secao .acoes-linha {
-    width: 100%;
-    display: grid;
-    grid-template-columns: 1fr;
-    gap: 6px;
-  }
-  .cab-secao .acoes-linha .btn {
-    width: 100%;
   }
   .subtabs {
     flex-wrap: nowrap;
@@ -587,6 +644,7 @@ body[data-perfil="ESCALANTE"] .so-admin {
     -webkit-overflow-scrolling: touch;
     padding-bottom: 6px;
     gap: 6px;
+    max-width: 100%;
   }
   .subtab {
     flex: 0 0 auto;
@@ -596,84 +654,29 @@ body[data-perfil="ESCALANTE"] .so-admin {
   .faixa-plantao {
     flex-direction: column;
     align-items: stretch;
-    padding: 12px;
   }
   .faixa-kpis {
     display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(92px, 1fr));
     gap: 6px;
     width: 100%;
   }
   .faixa-kpi {
     min-width: 0;
-    padding: 6px 4px;
-  }
-  .faixa-kpi strong { font-size: 15px; }
-  .faixa-kpi span { font-size: 9.5px; }
-  .campo input, .campo select, .campo textarea {
-    font-size: 16px;
-    padding: 10px 10px;
-  }
-  .btn {
-    min-height: 40px;
-    white-space: normal;
-    text-align: center;
-  }
-  .btn-sm {
-    min-height: 34px;
-  }
-  .filtros-linha {
-    flex-direction: column;
-    align-items: stretch;
-  }
-  .filtros-linha .campo, .filtros-linha .campo-btn {
-    width: 100%;
-    flex: 1 1 auto;
-  }
-  .filtros-linha .campo-btn .btn {
-    width: 100%;
-  }
-  .grid-2, .grid-3, .grid-4, .grid-2-assimetrico {
-    grid-template-columns: 1fr;
-    gap: 10px;
+    padding: 7px 6px;
   }
   .mapa-setor-box {
-    height: 270px;
-  }
-  .tabela-wrap {
-    margin: 0 -4px;
-    padding: 0 4px;
-    -webkit-overflow-scrolling: touch;
-  }
-  .tabela th, .tabela td {
-    padding: 7px 6px;
-    font-size: 12px;
-  }
-  .modal-box {
-    max-width: 100%;
-    padding: 14px;
-    max-height: 92vh;
-  }
-  .modal-rodape {
-    flex-direction: column-reverse;
-  }
-  .modal-rodape .btn {
-    width: 100%;
-  }
-  .banner-prioritario .btn {
-    width: 100%;
+    height: 310px;
   }
   .toast-area {
-    left: 10px;
-    right: 10px;
-    bottom: calc(68px + env(safe-area-inset-bottom, 0px));
+    left: 12px;
+    right: 12px;
+    bottom: calc(72px + env(safe-area-inset-bottom, 0px));
     max-width: none;
   }
-
-  /* Barra fixa inferior no celular */
   .mobile-bottom-nav {
     display: grid;
-    grid-template-columns: repeat(5, 1fr);
+    grid-template-columns: repeat(5, minmax(0, 1fr));
     position: fixed;
     left: 0;
     right: 0;
@@ -699,14 +702,160 @@ body[data-perfil="ESCALANTE"] .so-admin {
     font-weight: 700;
     cursor: pointer;
     line-height: 1.15;
+    min-width: 0;
   }
   .mob-nav-btn.ativo {
     background: var(--accent);
     color: var(--accent-text);
   }
   .mob-nav-ico {
-    font-size: 13px;
+    font-size: 12.5px;
     font-weight: 800;
     letter-spacing: 0.02em;
   }
+}
+
+/* CELULAR (<= 640px): 1 coluna rigorosa minmax(0,1fr), zero corte lateral */
+@media (max-width: 640px) {
+  .topbar {
+    flex-direction: column;
+    align-items: stretch;
+    padding: 8px 10px;
+    gap: 7px;
+  }
+  .topbar-sub {
+    display: none;
+  }
+  .topbar-dir {
+    width: 100%;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    gap: 6px;
+    align-items: center;
+  }
+  #btnTopoRegistrarPonto {
+    grid-column: 1 / -1;
+    width: 100%;
+    padding: 10px 10px;
+    font-size: 13.5px;
+  }
+  #btnAtualizarApp {
+    font-size: 11px;
+    padding: 6px 8px;
+  }
+  .conteudo {
+    padding: 8px;
+  }
+  .card {
+    padding: 11px 10px;
+  }
+  .box-borda, .box-fora-valp, .posto-card {
+    padding: 10px 9px;
+  }
+  .cab-secao {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+  .cab-secao .acoes-linha {
+    width: 100%;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 6px;
+  }
+  .cab-secao .acoes-linha .btn {
+    width: 100%;
+  }
+  .grid-2, .grid-3, .grid-4, .grid-2-assimetrico, .linha-editavel, .checklist-grid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 10px;
+  }
+  .filtros-linha {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+  .filtros-linha .campo,
+  .filtros-linha .campo-btn {
+    width: 100%;
+    flex: 1 1 auto;
+  }
+  .filtros-linha .campo-btn .btn {
+    width: 100%;
+  }
+  .faixa-kpis {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .faixa-kpi strong { font-size: 15px; }
+  .faixa-kpi span { font-size: 9.5px; }
+  .card-cab {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+  }
+  .card-cab .acoes-linha {
+    width: 100%;
+  }
+  .campo input, .campo select, .campo textarea {
+    font-size: 16px;
+    padding: 9px 10px;
+  }
+  .btn {
+    min-height: 40px;
+    white-space: normal;
+    text-align: center;
+    line-height: 1.25;
+  }
+  .btn-sm {
+    min-height: 36px;
+    padding: 6px 9px;
+  }
+  .acoes-linha .btn {
+    flex: 1 1 auto;
+  }
+  .banner-prioritario {
+    padding: 10px;
+  }
+  .banner-prioritario .btn {
+    width: 100%;
+  }
+  .mapa-setor-box {
+    height: 250px;
+  }
+  .tabela th, .tabela td {
+    padding: 6px 5px;
+    font-size: 11.5px;
+  }
+  .modal-box {
+    max-width: 100%;
+    padding: 12px;
+    max-height: 92vh;
+  }
+  .modal-rodape {
+    flex-direction: column-reverse;
+  }
+  .modal-rodape .btn {
+    width: 100%;
+  }
+}
+
+/* MODAL INSTALAR APP / APK CELULAR & ALERTA CADASTRO FORA DO ROL */
+.install-secao {
+  border: 1px solid var(--border-strong);
+  border-radius: 7px;
+  padding: 12px;
+  background: var(--surface-2);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.install-passo {
+  font-size: 12.5px;
+  padding: 6px 8px;
+  border-left: 3px solid var(--border-strong);
+  background: var(--surface);
+  border-radius: 4px;
+}
+.row-alerta-nome {
+  background: var(--danger-bg) !important;
 }
