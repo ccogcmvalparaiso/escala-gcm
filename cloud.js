@@ -1,12 +1,12 @@
 (function () {
   'use strict';
 
-  const COLECAO_BASE = 'escala_gcm_valparaiso_v6';
-  const COLECAO_PONTOS = 'escala_gcm_pontos_v6';
-  const CHAVE_LOCAL_DADOS = 'escala_gcm_valp_dados_v6';
-  const CHAVE_LOCAL_USERS = 'escala_gcm_valp_users_v6';
-  const CHAVE_LOCAL_SESSAO = 'escala_gcm_valp_sessao_v6';
-  const CHAVE_LOCAL_FB = 'escala_gcm_valp_firebase_cfg_v6';
+  const COLECAO_BASE = 'escala_gcm_valparaiso_v9';
+  const COLECAO_PONTOS = 'escala_gcm_pontos_v9';
+  const CHAVE_LOCAL_DADOS = 'escala_gcm_valp_dados_v9';
+  const CHAVE_LOCAL_USERS = 'escala_gcm_valp_users_v9';
+  const CHAVE_LOCAL_SESSAO = 'escala_gcm_valp_sessao_v9';
+  const CHAVE_LOCAL_FB = 'escala_gcm_valp_firebase_cfg_v9';
 
   let fbApp = null, db = null, unsubNuvem = null;
 
@@ -49,7 +49,7 @@
     }
     return H.map(v => v.toString(16).padStart(8, '0')).join('');
   }
-  function hashSenha(login, senha) { return sha256Hex('GCM_VALP_V6::' + normalizarLogin(login) + '::' + String(senha)); }
+  function hashSenha(login, senha) { return sha256Hex('GCM_VALP_V9::' + normalizarLogin(login) + '::' + String(senha)); }
 
   function lerConfigFirebase() { try { const r = localStorage.getItem(CHAVE_LOCAL_FB); return r ? JSON.parse(r) : null; } catch (e) { return null; } }
   function desconectarFirebase() {
@@ -76,7 +76,7 @@
     if (db) return true;
     try {
       if (typeof firebase !== 'undefined' && firebase.initializeApp) {
-        const nm = 'escala_gcm_v6_' + cfg.projectId;
+        const nm = 'escala_gcm_v9_' + cfg.projectId;
         fbApp = firebase.apps.find(a => a.name === nm) || firebase.initializeApp(cfg, nm);
         db = fbApp.firestore();
         return true;
@@ -88,7 +88,7 @@
     desconectarFirebase();
     if (!inicializarFirebase(cfg) || !db) return { ok: false, erro: 'Configuração inválida ou sem internet.' };
     try {
-      await db.collection(COLECAO_BASE).doc('ping').set({ v: 6, em: new Date().toISOString() });
+      await db.collection(COLECAO_BASE).doc('ping').set({ v: 9, em: new Date().toISOString() });
       return { ok: true, projectId: cfg.projectId };
     } catch (e) { return { ok: false, erro: String(e && e.message ? e.message : e) }; }
   }

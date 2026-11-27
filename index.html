@@ -75,7 +75,7 @@
         <img src="logo.png" alt="GCM Valparaíso" class="sidebar-logo">
         <div class="sidebar-marca">
           <strong>GCM VALPARAÍSO</strong>
-          <span>Comando Operacional</span>
+          <span>Operacional · <strong>v9.0</strong></span>
         </div>
         <button type="button" class="btn btn-sec btn-sm btn-fechar-side" id="btnFecharSidebar">X</button>
       </div>
@@ -85,8 +85,14 @@
         <button type="button" class="side-btn ativo" data-aba="secPonto">
           <span class="side-bar"></span><span>Folha de Ponto (Hoje)</span>
         </button>
+        <button type="button" class="side-btn" data-aba="secMinhaFolha">
+          <span class="side-bar"></span><span>Minha Folha de Ponto (PDF)</span>
+        </button>
         <button type="button" class="side-btn" data-aba="secEscalas">
           <span class="side-bar"></span><span>Escala 24x72 e Permutas</span>
+        </button>
+        <button type="button" class="side-btn" data-aba="secAfastamentos">
+          <span class="side-bar"></span><span>Atestados, Férias e Baixas</span>
         </button>
         <button type="button" class="side-btn" data-aba="secCartao">
           <span class="side-bar"></span><span>Cartão Programa e Mapa</span>
@@ -141,6 +147,7 @@
         </div>
         <div class="topbar-dir">
           <button type="button" class="btn btn-primario btn-sm" id="btnTopoRegistrarPonto">Registrar Folha de Ponto</button>
+          <button type="button" class="btn btn-sec btn-sm" id="btnAtualizarApp" title="Limpa cache antigo e recarrega a versão mais recente">Atualizar App (v9)</button>
           <span id="badgeSync" class="badge badge-neutro">Local</span>
           <button type="button" class="btn btn-sec btn-sm" id="btnTema">Modo Noturno</button>
         </div>
@@ -269,6 +276,7 @@
                     <option value="JUSTIFICADO">Justificado (Atestado / Férias / Permuta)</option>
                   </select>
                 </div>
+                <div class="campo campo-btn"><button type="button" class="btn btn-sec" id="btnAbrirRelComandoFreq">Relatório p/ Comando (PDF)</button></div>
                 <div class="campo campo-btn"><button type="button" class="btn btn-primario" id="btnPdfFolhaDia">PDF Autenticado do Dia</button></div>
               </div>
 
@@ -327,6 +335,87 @@
           </div>
         </section>
 
+
+        <!-- ===================================================== -->
+        <!-- 1B. MINHA FOLHA DE PONTO (AUTOATENDIMENTO EM PDF)     -->
+        <!-- ===================================================== -->
+        <section id="secMinhaFolha" class="secao-aba">
+          <div class="cab-secao">
+            <div>
+              <h2>Minha Folha de Ponto Individual (PDF Autenticado)</h2>
+              <p class="subtexto">Baixe sua folha de ponto oficial em PDF com sua foto, todas as fotos das batidas, datas, horários, localização e código autenticador SHA-256.</p>
+            </div>
+            <div class="acoes-linha">
+              <button type="button" class="btn btn-sec" id="btnAtualizarFotoPerfil">Tirar / Atualizar Minha Foto</button>
+              <button type="button" class="btn btn-primario" id="btnBaixarMinhaFolhaPdf">Baixar Minha Folha em PDF (Autenticado)</button>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="filtros-linha">
+              <div class="campo" id="wrapSelAgenteMinhaFolha">
+                <label for="selMfAgente">Guarda GCM (Agente vê somente a própria folha)</label>
+                <select id="selMfAgente"></select>
+              </div>
+              <div class="campo">
+                <label for="selMfPeriodo">Período da Folha</label>
+                <select id="selMfPeriodo">
+                  <option value="HOJE">Turno de Hoje (Entrada e Saída)</option>
+                  <option value="7D">Últimos 7 dias</option>
+                  <option value="30D" selected>Últimos 30 dias</option>
+                  <option value="MES">Mês Inteiro</option>
+                  <option value="CUSTOM">Período Personalizado</option>
+                </select>
+              </div>
+              <div class="campo" id="wrapMfMes">
+                <label for="inpMfMes">Mês / Ano</label>
+                <input type="month" id="inpMfMes">
+              </div>
+              <div class="campo oculto" id="wrapMfIni">
+                <label for="inpMfDataIni">Data Inicial</label>
+                <input type="date" id="inpMfDataIni">
+              </div>
+              <div class="campo oculto" id="wrapMfFim">
+                <label for="inpMfDataFim">Data Final</label>
+                <input type="date" id="inpMfDataFim">
+              </div>
+            </div>
+
+            <div id="avisoVinculoAgente" class="alerta-inline erro oculto mt-12"></div>
+
+            <div id="cardPerfilMinhaFolha" class="perfil-ponto-card mt-16"></div>
+          </div>
+
+          <div class="card mt-16">
+            <div class="card-cab">
+              <h3>Registros de Ponto no Período (Fotos, Data, Hora, Localização e Protocolo)</h3>
+              <span id="badgeQtdMfBatidas" class="badge badge-invertido">0 batidas</span>
+            </div>
+            <div class="tabela-wrap mt-12">
+              <table class="tabela">
+                <thead>
+                  <tr>
+                    <th>Foto da Batida</th>
+                    <th>Data e Hora</th>
+                    <th>Tipo / Posto</th>
+                    <th>Localização (Endereço e GPS)</th>
+                    <th>Protocolo / Autenticação</th>
+                  </tr>
+                </thead>
+                <tbody id="tbodyMinhaFolha"></tbody>
+              </table>
+            </div>
+          </div>
+
+          <div class="card mt-16">
+            <div class="card-cab">
+              <h3>Justificativas e Permutas no Período</h3>
+              <span id="badgeQtdMfOcorr" class="badge badge-neutro">0</span>
+            </div>
+            <div id="listaMfOcorrencias" class="lista-compacta mt-8"></div>
+          </div>
+        </section>
+
         <!-- ===================================================== -->
         <!-- 2. ESCALA CONTINUA 24x72 E PERMUTAS                   -->
         <!-- ===================================================== -->
@@ -337,6 +426,7 @@
               <p class="subtexto">Escala autoalimentada todo dia + controle oficial de permutas de serviço integradas à Folha de Ponto.</p>
             </div>
             <div class="acoes-linha">
+              <button type="button" class="btn btn-sec" id="btnAbrirRelComandoEsc">Relatório p/ Comando (Faltas e Atestados)</button>
               <button type="button" class="btn btn-primario" id="btnExportarPdfEscala">PDF Autenticado da Escala 24x72</button>
             </div>
           </div>
@@ -553,6 +643,144 @@
                 </div>
               </div>
               <div class="mt-16"><button type="button" class="btn btn-primario" id="btnSalvarResponsaveis">Salvar Assinaturas</button></div>
+            </div>
+          </div>
+        </section>
+
+
+        <!-- ===================================================== -->
+        <!-- 2B. ATESTADOS MEDICOS, FERIAS, AFASTAMENTOS E BAIXAS  -->
+        <!-- ===================================================== -->
+        <section id="secAfastamentos" class="secao-aba">
+          <div class="cab-secao">
+            <div>
+              <h2>Atestados Médicos, Férias e Afastamentos</h2>
+              <p class="subtexto">Cadastre quantos dias o guarda ficará fora, digitalize o atestado pela câmera ou anexe foto/PDF e emita o Relatório Oficial para o Comando.</p>
+            </div>
+            <div class="acoes-linha">
+              <button type="button" class="btn btn-primario" id="btnAbrirRelComandoAf">Relatório Oficial p/ Comando (PDF)</button>
+            </div>
+          </div>
+
+          <div class="grid-2-assimetrico">
+            <div class="card so-gestao">
+              <h3>Cadastrar Atestado / Férias / Afastamento</h3>
+              <p class="subtexto mt-4">O período lançado reflete automaticamente na Folha de Ponto, na Escala e no Relatório do Comando.</p>
+
+              <div class="campo mt-12">
+                <label for="selAfGuarda">Guarda GCM</label>
+                <select id="selAfGuarda"></select>
+              </div>
+
+              <div class="campo mt-8">
+                <label for="selAfTipo">Tipo de Afastamento / Ocorrência</label>
+                <select id="selAfTipo">
+                  <option value="ATESTADO_MEDICO">Atestado Médico</option>
+                  <option value="FERIAS">Férias Regulamentares</option>
+                  <option value="LICENCA_MEDICA">Licença Médica / INSS</option>
+                  <option value="LICENCA_FAMILIA">Licença Paternidade / Maternidade</option>
+                  <option value="LICENCA_PREMIO">Licença Prêmio / Especial</option>
+                  <option value="LUTO_GALA">Luto (Nojo) / Casamento (Gala)</option>
+                  <option value="DISPENSA">Dispensa / Folga Autorizada</option>
+                  <option value="CURSO_MISSAO">Curso / Instrução / Missão Externa</option>
+                  <option value="FALTA">Não Compareceu (Falta Injustificada)</option>
+                </select>
+              </div>
+
+              <div class="grid-2 mt-8">
+                <div class="campo">
+                  <label for="inpAfDataIni">Data de Início</label>
+                  <input type="date" id="inpAfDataIni">
+                </div>
+                <div class="campo">
+                  <label for="inpAfDias">Quantos Dias Fora?</label>
+                  <input type="number" id="inpAfDias" min="1" max="365" value="1">
+                </div>
+              </div>
+
+              <div class="regra-box mt-8" id="boxPreviaDiasAf">—</div>
+
+              <div class="grid-2 mt-8">
+                <div class="campo">
+                  <label for="inpAfCid">CID / CRM / Médico (Opcional)</label>
+                  <input type="text" id="inpAfCid" placeholder="Ex.: CID J06 · CRM-GO 12345">
+                </div>
+                <div class="campo">
+                  <label for="inpAfProtocoloExt">Nº Protocolo / RH (Opcional)</label>
+                  <input type="text" id="inpAfProtocoloExt" placeholder="Opcional">
+                </div>
+              </div>
+
+              <div class="campo mt-8">
+                <label for="inpAfObs">Observação para o Comando / Escala</label>
+                <textarea id="inpAfObs" rows="2" placeholder="Ex.: Entregou atestado presencialmente na Base, cobertura pela reserva..."></textarea>
+              </div>
+
+              <!-- DIGITALIZAR ATESTADO MEDICO (CAMERA AO VIVO OU ANEXO ARQUIVO) -->
+              <div class="box-borda mt-12">
+                <div class="card-cab">
+                  <h4>Digitalizar / Anexar Atestado Médico</h4>
+                  <span id="statusScanAf" class="badge badge-neutro">Sem anexo</span>
+                </div>
+                <div class="doc-scan-box mt-8">
+                  <video id="vidScanAf" autoplay playsinline muted class="oculto"></video>
+                  <canvas id="cvsScanAf" class="oculto"></canvas>
+                  <img id="imgScanAfPrev" class="oculto" alt="Atestado digitalizado">
+                  <div id="infoPdfScanAf" class="oculto" style="text-align:center;font-size:12px;"></div>
+                  <div id="phScanAf" class="subtexto" style="text-align:center;padding:12px;">Use a câmera para digitalizar o papel do atestado ou anexe uma foto/PDF do aparelho.</div>
+                </div>
+                <div class="acoes-linha mt-8">
+                  <button type="button" class="btn btn-sec btn-sm" id="btnAbrirCamScanAf">Digitalizar pela Câmera</button>
+                  <button type="button" class="btn btn-primario btn-sm" id="btnCapturarScanAf" disabled>Capturar Documento</button>
+                  <button type="button" class="btn btn-sec btn-sm" id="btnAnexarArquivoAf">Anexar Foto / PDF</button>
+                  <button type="button" class="btn btn-sec btn-sm oculto" id="btnLimparScanAf">Remover</button>
+                  <input type="file" id="inpFileScanAf" accept="image/*,.pdf" class="oculto">
+                </div>
+              </div>
+
+              <button type="button" class="btn btn-primario btn-bloco mt-12" id="btnSalvarAfastamento">Salvar Atestado / Afastamento</button>
+            </div>
+
+            <div class="card">
+              <div class="card-cab">
+                <h3>Quadro de Atestados, Férias e Baixas</h3>
+                <span id="badgeQtdAfastamentos" class="badge badge-invertido">0 registros</span>
+              </div>
+
+              <div class="filtros-linha mt-8">
+                <div class="campo"><label for="fltAfBusca">Buscar Nº ou Nome</label><input type="text" id="fltAfBusca" placeholder="Ex.: 04 ou Gabrielle..."></div>
+                <div class="campo"><label for="fltAfTipo">Tipo</label>
+                  <select id="fltAfTipo">
+                    <option value="">Todos</option>
+                    <option value="ATESTADO_MEDICO">Atestado Médico</option>
+                    <option value="FERIAS">Férias</option>
+                    <option value="LICENCA_MEDICA">Licença Médica</option>
+                    <option value="FALTA">Falta / Não Compareceu</option>
+                  </select>
+                </div>
+                <div class="campo"><label for="fltAfVigencia">Vigência</label>
+                  <select id="fltAfVigencia">
+                    <option value="ATIVOS">Em andamento / Futuros</option>
+                    <option value="TODOS">Todos (Histórico)</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="tabela-wrap mt-12">
+                <table class="tabela">
+                  <thead>
+                    <tr>
+                      <th>Anexo</th>
+                      <th>Guarda / Equipe</th>
+                      <th>Motivo</th>
+                      <th>Período / Dias Fora</th>
+                      <th>Retorno</th>
+                      <th>Ações</th>
+                    </tr>
+                  </thead>
+                  <tbody id="tbodyAfastamentos"></tbody>
+                </table>
+              </div>
             </div>
           </div>
         </section>
@@ -906,47 +1134,93 @@
         </section>
 
         <!-- ===================================================== -->
-        <!-- 7. VALIDAR AUTENTICIDADE (PDFs E CADEIA DE PONTO)     -->
+        <!-- 7. VALIDAR AUTENTICIDADE E CONFERENCIA DE IDENTIDADE  -->
         <!-- ===================================================== -->
         <section id="secAutenticacao" class="secao-aba">
           <div class="cab-secao">
             <div>
-              <h2>Autenticação Verídica e Auditoria Criptográfica (SHA-256)</h2>
-              <p class="subtexto">Confira a autenticidade de qualquer PDF emitido pelo sistema ou protocolo de Folha de Ponto, e audite se houve qualquer alteração indevida.</p>
+              <h2>Autenticação Verídica e Conferência de Identidade</h2>
+              <p class="subtexto">Valide códigos SHA-256 de documentos/pontos e faça a conferência fotográfica pós-turno (Foto Oficial × Entrada × Saída) sem atrasar a batida do guarda.</p>
             </div>
-            <button type="button" class="btn btn-primario" id="btnAuditarCadeiaPontos">Auditar Integridade de Toda a Folha de Ponto</button>
-          </div>
-
-          <div class="grid-2">
-            <div class="card">
-              <h3>Verificar Código de PDF ou Protocolo de Ponto</h3>
-              <p class="subtexto mt-4">Digite o código impresso no rodapé do PDF (ex.: <code>GCM-VALP-...</code>) ou no Comprovante de Ponto (ex.: <code>PT-...</code>).</p>
-              <div class="filtros-linha mt-12">
-                <div class="campo"><label for="inpCodigoValidar">Código de Autenticação ou Protocolo</label><input type="text" id="inpCodigoValidar" placeholder="Ex.: GCM-VALP-20261127-A1B2C3D4 ou PT-..."></div>
-                <div class="campo campo-btn"><button type="button" class="btn btn-primario" id="btnExecutarValidacao">Verificar Agora</button></div>
-              </div>
-              <div id="resultadoValidacao" class="mt-12 oculto"></div>
-            </div>
-
-            <div class="card">
-              <h3>Integridade da Cadeia Criptográfica de Ponto</h3>
-              <p class="subtexto mt-4">Cada batida de ponto carrega o hash SHA-256 da batida anterior e da foto capturada. Qualquer adulteração manual quebra a cadeia imediatamente.</p>
-              <div id="resultadoAuditoriaCadeia" class="mt-12">
-                <div class="regra-box">Clique em <strong>Auditar Integridade de Toda a Folha de Ponto</strong> para recalcular todos os hashes SHA-256 agora.</div>
-              </div>
+            <div class="acoes-linha">
+              <button type="button" class="btn btn-sec so-gestao" id="btnPdfAuditoriaIdentidade">PDF Conferência de Identidade</button>
+              <button type="button" class="btn btn-primario" id="btnAuditarCadeiaPontos">Auditar Integridade SHA-256</button>
             </div>
           </div>
 
-          <div class="card mt-16">
-            <div class="card-cab">
-              <h3>Livro Oficial de Documentos PDF Autenticados</h3>
-              <span id="badgeQtdDocsAut" class="badge badge-neutro">0 documentos</span>
+          <div class="subtabs">
+            <button type="button" class="subtab ativo" data-sub="subAutCodigos">Validar PDF / Protocolo e Cadeia SHA-256</button>
+            <button type="button" class="subtab so-gestao" data-sub="subAutIdentidade">Conferência de Identidade Pós-Turno (Admin / Escalante)</button>
+          </div>
+
+          <div id="subAutCodigos" class="subpainel ativo">
+            <div class="grid-2">
+              <div class="card">
+                <h3>Verificar Código de PDF ou Protocolo de Ponto</h3>
+                <p class="subtexto mt-4">Digite o código impresso no rodapé do PDF (ex.: <code>GCM-VALP-...</code>) ou no Comprovante de Ponto (ex.: <code>PT-...</code>).</p>
+                <div class="filtros-linha mt-12">
+                  <div class="campo"><label for="inpCodigoValidar">Código de Autenticação ou Protocolo</label><input type="text" id="inpCodigoValidar" placeholder="Ex.: GCM-VALP-20261127-A1B2C3D4 ou PT-..."></div>
+                  <div class="campo campo-btn"><button type="button" class="btn btn-primario" id="btnExecutarValidacao">Verificar Agora</button></div>
+                </div>
+                <div id="resultadoValidacao" class="mt-12 oculto"></div>
+              </div>
+
+              <div class="card">
+                <h3>Integridade da Cadeia Criptográfica de Ponto</h3>
+                <p class="subtexto mt-4">Cada batida de ponto carrega o hash SHA-256 da batida anterior e da foto capturada. Qualquer adulteração manual quebra a cadeia imediatamente.</p>
+                <div id="resultadoAuditoriaCadeia" class="mt-12">
+                  <div class="regra-box">Clique em <strong>Auditar Integridade SHA-256</strong> para recalcular todos os hashes agora.</div>
+                </div>
+              </div>
             </div>
-            <div class="tabela-wrap mt-12">
-              <table class="tabela">
-                <thead><tr><th>Código Autenticador</th><th>Documento</th><th>Data e Hora Exata</th><th>Emitido Por</th><th>Hash SHA-256</th></tr></thead>
-                <tbody id="tbodyDocsAutenticados"></tbody>
-              </table>
+
+            <div class="card mt-16">
+              <div class="card-cab">
+                <h3>Livro Oficial de Documentos PDF Autenticados</h3>
+                <span id="badgeQtdDocsAut" class="badge badge-neutro">0 documentos</span>
+              </div>
+              <div class="tabela-wrap mt-12">
+                <table class="tabela">
+                  <thead><tr><th>Código Autenticador</th><th>Documento</th><th>Data e Hora Exata</th><th>Emitido Por</th><th>Hash SHA-256</th></tr></thead>
+                  <tbody id="tbodyDocsAutenticados"></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <!-- CONFERENCIA POS-TURNO DE IDENTIDADE (FOTO OFICIAL x ENTRADA x SAIDA) -->
+          <div id="subAutIdentidade" class="subpainel">
+            <div class="card">
+              <div class="filtros-linha">
+                <div class="campo"><label for="fltIdMes">Mês da Conferência</label><input type="month" id="fltIdMes"></div>
+                <div class="campo"><label for="fltIdBusca">Buscar Nº ou Nome</label><input type="text" id="fltIdBusca" placeholder="Ex.: 03 ou nome..."></div>
+                <div class="campo"><label for="fltIdStatus">Parecer da Conferência</label>
+                  <select id="fltIdStatus">
+                    <option value="">Todos os Turnos</option>
+                    <option value="AGUARDANDO">Aguardando Conferência</option>
+                    <option value="CONFIRMADA">Identidade Confirmada</option>
+                    <option value="SUSPEITA">Suspeita / Divergência</option>
+                  </select>
+                </div>
+                <div class="campo campo-btn"><button type="button" class="btn btn-primario" id="btnPdfAuditoriaIdentidade2">Gerar PDF Conferência de Identidade</button></div>
+              </div>
+              <div class="regra-box mt-12">
+                <strong>Conferência Pós-Turno (sem atrasar o guarda na rua):</strong> Compare a <strong>Foto Oficial de Cadastro</strong> com a <strong>Foto da Entrada</strong> e a <strong>Foto da Saída</strong>. O sistema também sinaliza automaticamente fotos escuras/tampadas ou com divergência visual.
+              </div>
+              <div class="tabela-wrap mt-12">
+                <table class="tabela">
+                  <thead>
+                    <tr>
+                      <th>Data / Guarda</th>
+                      <th>Comparação Visual (Oficial × Entrada × Saída)</th>
+                      <th>Análise Automática</th>
+                      <th>Parecer Gestão</th>
+                      <th>Ação</th>
+                    </tr>
+                  </thead>
+                  <tbody id="tbodyAuditoriaIdentidade"></tbody>
+                </table>
+              </div>
             </div>
           </div>
         </section>

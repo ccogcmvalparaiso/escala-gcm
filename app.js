@@ -43,6 +43,17 @@
     COMPENSACAO: 'Folga Compensatória Gozada (-)',
     DEBITO_ATRASO: 'Débito / Saída Antecipada (-)'
   };
+  const TIPO_AFASTAMENTO_LABEL = {
+    ATESTADO_MEDICO: 'Atestado Médico',
+    FERIAS: 'Férias Regulamentares',
+    LICENCA_MEDICA: 'Licença Médica / INSS',
+    LICENCA_FAMILIA: 'Licença Paternidade / Maternidade',
+    LICENCA_PREMIO: 'Licença Prêmio / Especial',
+    LUTO_GALA: 'Luto / Casamento',
+    DISPENSA: 'Dispensa / Folga Autorizada',
+    CURSO_MISSAO: 'Curso / Instrução / Missão',
+    FALTA: 'Não Compareceu (Falta)'
+  };
   const JUSTIFICATIVAS_OPCOES = [
     'Atestado Médico',
     'Férias',
@@ -59,7 +70,9 @@
   };
   const TITULOS_ABAS = {
     secPonto: 'Folha de Ponto (Hoje)',
+    secMinhaFolha: 'Minha Folha de Ponto (PDF)',
     secEscalas: 'Escala Contínua 24x72 e Permutas',
+    secAfastamentos: 'Atestados Médicos, Férias e Baixas',
     secCartao: 'Cartão Programa Completo e Mapa dos Setores',
     secBancoHoras: 'Banco de Horas e Horas Extras',
     secEventos: 'Eventos e Operações Extras',
@@ -91,6 +104,8 @@
   let equipeDetalheAtual = 'ALFA';
   let eventoSelecionadoId = null;
   let streamCamera = null;
+  let streamScanAf = null;
+  let anexoScanAfAtual = null;
   let fotoCapturadaDataUrl = null;
   let locAtualPonto = null;
   let locAtualTs = 0;
@@ -342,7 +357,7 @@
     postos.forEach(p => { cartoesModelo[p.id] = criarModeloCartaoPadrao(p); });
 
     return {
-      versao: 6,
+      versao: 9,
       config: {
         dataBaseAlfa: hojeISO(),
         horarioTroca: '07:00 às 07:00',
@@ -380,7 +395,9 @@
       cartoesModelo,
       cartoesDia: {},
       pontos: [],
-      justificativas: {}
+      justificativas: {},
+      auditoriasIdentidade: {},
+      afastamentos: []
     };
   }
 
@@ -390,14 +407,53 @@
   function isAdmin() { return !!(SESSAO && SESSAO.perfil === 'ADMIN'); }
   function podeEditarEscala() { return !!(SESSAO && (SESSAO.perfil === 'ADMIN' || SESSAO.perfil === 'ESCALANTE')); }
 
+  function atualizarAlertaBotaoPonto() {
+    const btn = $('btnTopoRegistrarPonto');
+    if (!btn || !SESSAO || !ESTADO) return;
+    const hoje = hojeISO();
+    const meu = agenteLogadoAtual();
+    let devePiscar = false;
+
+    if (meu) {
+      const { escalados } = obterEscaladosDaData(hoje);
+      const escHoje = escalados.find(x => x.agente.id === meu.id);
+      const r = resumirDiaAgente(hoje, meu.id, escHoje?.permutaSaida);
+      // Pisca vermelho e branco enquanto o guarda ainda nao registrou a Entrada hoje (e nao esta dispensado/justificado)
+      if (!r.ent && r.status !== 'JUSTIFICADO') {
+        devePiscar = true;
+      }
+    } else if (SESSAO.perfil === 'AGENTE') {
+      // Agente logado ainda sem ponto registrado hoje
+      devePiscar = true;
+    }
+
+    btn.classList.toggle('piscando-alerta', devePiscar);
+    btn.title = devePiscar ? 'ATENÇÃO: Você ainda não registrou sua Folha de Ponto hoje!' : 'Abrir Folha de Ponto';
+  }
+
   function aplicarPermissoesVisuais() {
     const perfil = SESSAO?.perfil || 'AGENTE';
     document.body.setAttribute('data-perfil', perfil);
-    // Trava inputs do Cartao Programa e Eventos para perfil AGENTE (somente leitura)
     const somenteLeitura = !podeEditarEscala();
     ['#secCartao input:not(#inpCartaoData):not(#chkMostrarTodosSetores)', '#secCartao textarea', '#secEventos input', '#secEventos select', '#secEventos textarea'].forEach(sel => {
       document.querySelectorAll(sel).forEach(el => { el.disabled = somenteLeitura; });
     });
+    // Anti-impostor: perfil AGENTE com matricula vinculada fica travado no proprio numero/nome na Folha de Ponto
+    const inpId = $('inpIdentificaGuarda');
+    if (inpId) {
+      if (perfil === 'AGENTE') {
+        const meu = agenteLogadoAtual();
+        if (meu) {
+          inpId.readOnly = true;
+          inpId.title = 'Vinculado automaticamente à sua conta para segurança da Folha de Ponto';
+        } else {
+          inpId.readOnly = false;
+        }
+      } else {
+        inpId.readOnly = false;
+      }
+    }
+    atualizarAlertaBotaoPonto();
   }
 
   function toast(msg) {
@@ -425,6 +481,15 @@
   }
 
   function agentePorId(id) { return (ESTADO.efetivo || []).find(x => x.id === id); }
+  function agenteLogadoAtual() {
+    if (!SESSAO || !SESSAO.matricula) return null;
+    const numL = String(SESSAO.matricula).replace(/\D/g, '').replace(/^0+/, '');
+    const matNorm = String(SESSAO.matricula).trim().toUpperCase();
+    return (ESTADO.efetivo || []).find(a =>
+      String(a.matricula || '').trim().toUpperCase() === matNorm ||
+      (numL && String(a.matricula || '').replace(/\D/g, '').replace(/^0+/, '') === numL)
+    ) || null;
+  }
   function nomeAgentePorId(id) { const a = agentePorId(id); return a ? `[${a.matricula}] ${a.nomeGuerra || a.nome}` : ''; }
 
   function descobrirSetorDoAgente(ag) {
@@ -510,7 +575,7 @@
   function aplicarTema(tema) {
     const t = tema === 'noturno' ? 'noturno' : 'claro';
     document.documentElement.setAttribute('data-tema', t);
-    localStorage.setItem('escala_gcm_tema_v6', t);
+    localStorage.setItem('escala_gcm_tema_v9', t);
     $('metaThemeColor')?.setAttribute('content', t === 'noturno' ? '#080808' : '#FFFFFF');
     if ($('btnTema')) $('btnTema').textContent = t === 'noturno' ? 'Modo Claro' : 'Modo Noturno';
     if ($('btnTemaAuth')) $('btnTemaAuth').textContent = t === 'noturno' ? 'Modo Claro (Branco)' : 'Modo Noturno (Preto)';
@@ -546,7 +611,7 @@
     const latStr = ponto.localizacao && typeof ponto.localizacao.lat === 'number' ? ponto.localizacao.lat.toFixed(6) : '0';
     const lonStr = ponto.localizacao && typeof ponto.localizacao.lon === 'number' ? ponto.localizacao.lon.toFixed(6) : '0';
     const payload = [
-      hashAnterior || 'GENESIS_GCM_V6',
+      hashAnterior || 'GENESIS_GCM_V9',
       ponto.protocolo || '',
       ponto.agenteMatricula || '',
       ponto.tipo || '',
@@ -564,7 +629,7 @@
     const dataCompacta = `${dt.getFullYear()}${p2(dt.getMonth()+1)}${p2(dt.getDate())}`;
     const emissor = SESSAO ? `${SESSAO.nome} (${SESSAO.login} · ${SESSAO.perfil})` : 'Sistema GCM';
     const textoLimpo = String(corpoHtml || '').replace(/\s+/g, ' ').trim();
-    const hashSha256 = window.EscalaCloud.sha256Hex(`GCM_VALP_DOC_V6|${tipoDoc}|${titulo}|${emitidoEm}|${emissor}|${qtdRegistros || 0}|${textoLimpo}`);
+    const hashSha256 = window.EscalaCloud.sha256Hex(`GCM_VALP_DOC_V9|${tipoDoc}|${titulo}|${emitidoEm}|${emissor}|${qtdRegistros || 0}|${textoLimpo}`);
     const codigo = `GCM-VALP-${dataCompacta}-${hashSha256.slice(0, 8).toUpperCase()}`;
 
     const cert = {
@@ -605,14 +670,29 @@
   // =========================================================================
   // 1. FOLHA DE PONTO (AUTOMATICA + 4 BATIDAS + RECIBO + STATUS POR COR)
   // =========================================================================
+  function obterAfastamentoNaData(agenteId, dataISO) {
+    return (ESTADO.afastamentos || []).find(af => af.agenteId === agenteId && dataISO >= af.dataInicio && dataISO <= af.dataFim) || null;
+  }
+
   function resumirDiaAgente(dataISO, agenteId, permutaSaida) {
     const pts = (ESTADO.pontos || []).filter(p => p.dataLocal === dataISO && p.agenteId === agenteId).slice().reverse();
     const pegar = (tipo) => pts.find(x => x.tipo === tipo);
     const ent = pegar('ENTRADA'), sAlm = pegar('SAIDA_ALMOCO'), rAlm = pegar('RETORNO_ALMOCO'), sai = pegar('SAIDA');
     const just = (ESTADO.justificativas || {})[`${dataISO}|${agenteId}`] || null;
+    const afast = obterAfastamentoNaData(agenteId, dataISO);
     let status = 'PENDENTE';
     let motivoAuto = null;
-    if (just) {
+    if (afast) {
+      const diaAtual = diffDiasISO(dataISO, afast.dataInicio) + 1;
+      const rotTipo = TIPO_AFASTAMENTO_LABEL[afast.tipo] || afast.tipo;
+      if (afast.tipo === 'FALTA') {
+        status = 'FALTOU';
+        motivoAuto = `Não Compareceu (${afast.dias}d)`;
+      } else {
+        status = 'JUSTIFICADO';
+        motivoAuto = `${rotTipo} (Dia ${diaAtual}/${afast.dias} · Ret. ${formatarDataBR(afast.dataRetorno).slice(0,5)})`;
+      }
+    } else if (just) {
       status = just.motivo === 'Falta Injustificada' ? 'FALTOU' : 'JUSTIFICADO';
     } else if (permutaSaida) {
       status = 'JUSTIFICADO';
@@ -626,7 +706,7 @@
     } else if (dataISO < hojeISO()) {
       status = 'FALTOU';
     }
-    return { ent, sAlm, rAlm, sai, just, motivoAuto, status, pts };
+    return { ent, sAlm, rAlm, sai, just, afast, motivoAuto, status, pts };
   }
 
   function estiloStatusPonto(r, compacto) {
@@ -796,10 +876,70 @@
   }
   function pararCamera() { if (streamCamera) { streamCamera.getTracks().forEach(t => t.stop()); streamCamera = null; } }
 
+  let qualidadeFotoAtual = null;
+
+  function analisarQualidadeFrame(ctx, w, h) {
+    try {
+      const imgData = ctx.getImageData(0, 0, w, Math.max(1, h - 54)).data;
+      let soma = 0, somaSq = 0, n = 0;
+      for (let i = 0; i < imgData.length; i += 16) {
+        const lum = 0.299 * imgData[i] + 0.587 * imgData[i+1] + 0.114 * imgData[i+2];
+        soma += lum; somaSq += lum * lum; n++;
+      }
+      const media = n ? soma / n : 120;
+      const variancia = n ? Math.max(0, (somaSq / n) - (media * media)) : 1000;
+      const desvio = Math.sqrt(variancia);
+      if (media < 24 || desvio < 10) return { ok: false, motivo: 'Foto escura ou câmera obstruída', brilho: Math.round(media), contraste: Math.round(desvio) };
+      if (media > 240 && desvio < 14) return { ok: false, motivo: 'Foto estourada / excesso de claridade', brilho: Math.round(media), contraste: Math.round(desvio) };
+      return { ok: true, motivo: 'Imagem nítida', brilho: Math.round(media), contraste: Math.round(desvio) };
+    } catch (_) {
+      return { ok: true, motivo: 'Imagem capturada', brilho: 120, contraste: 40 };
+    }
+  }
+
+  function calcularSimilaridadeVisualBase(dataUrlA, dataUrlB) {
+    return new Promise((resolve) => {
+      if (!dataUrlA || !dataUrlB) return resolve(null);
+      const imgA = new Image(), imgB = new Image();
+      let carregadas = 0;
+      const processar = () => {
+        if (++carregadas < 2) return;
+        try {
+          const sz = 24, ca = document.createElement('canvas'), cb = document.createElement('canvas');
+          ca.width = cb.width = sz; ca.height = cb.height = sz;
+          const xa = ca.getContext('2d'), xb = cb.getContext('2d');
+          // Foca na area central superior (rosto), ignorando o carimbo de rodape
+          xa.drawImage(imgA, imgA.width * 0.15, imgA.height * 0.05, imgA.width * 0.70, imgA.height * 0.72, 0, 0, sz, sz);
+          xb.drawImage(imgB, imgB.width * 0.15, imgB.height * 0.05, imgB.width * 0.70, imgB.height * 0.72, 0, 0, sz, sz);
+          const da = xa.getImageData(0, 0, sz, sz).data, db = xb.getImageData(0, 0, sz, sz).data;
+          const va = [], vb = [];
+          for (let i = 0; i < da.length; i += 4) {
+            va.push(0.299 * da[i] + 0.587 * da[i+1] + 0.114 * da[i+2]);
+            vb.push(0.299 * db[i] + 0.587 * db[i+1] + 0.114 * db[i+2]);
+          }
+          const ma = va.reduce((s, x) => s + x, 0) / va.length;
+          const mb = vb.reduce((s, x) => s + x, 0) / vb.length;
+          let num = 0, denA = 0, denB = 0;
+          for (let i = 0; i < va.length; i++) {
+            const x = va[i] - ma, y = vb[i] - mb;
+            num += x * y; denA += x * x; denB += y * y;
+          }
+          const corr = (denA > 0 && denB > 0) ? (num / Math.sqrt(denA * denB)) : 0;
+          const pct = Math.max(0, Math.min(100, Math.round(((corr + 1) / 2) * 100)));
+          resolve(pct);
+        } catch (_) { resolve(null); }
+      };
+      imgA.onload = processar; imgB.onload = processar;
+      imgA.onerror = () => resolve(null); imgB.onerror = () => resolve(null);
+      imgA.src = dataUrlA; imgB.src = dataUrlB;
+    });
+  }
+
   function capturarFotoComCarimbo() {
     const v = $('videoCamera'), c = $('canvasFoto'); if (!v || !v.videoWidth) return toast('Aguarde a câmera.');
     const w = 420, h = Math.round((v.videoHeight / v.videoWidth) * w) || 315;
     c.width = w; c.height = h; const ctx = c.getContext('2d'); ctx.drawImage(v, 0, 0, w, h);
+    qualidadeFotoAtual = analisarQualidadeFrame(ctx, w, h);
     const ag = guardaSelecionadoPonto, tipo = TIPO_PONTO_LABEL[$('selPontoTipo').value] || $('selPontoTipo').value, agora = formatarDataHoraBR(new Date().toISOString());
     ctx.fillStyle = 'rgba(0,0,0,0.82)'; ctx.fillRect(0, h - 50, w, 50); ctx.fillStyle = '#FFFFFF';
     ctx.font = 'bold 11px monospace'; ctx.fillText(`GCM VALPARAÍSO-GO · ${tipo.toUpperCase()} · ${agora}`, 8, h - 32);
@@ -809,7 +949,12 @@
     pararCamera(); v.classList.add('oculto');
     const img = $('imgPreviewFoto'); img.src = fotoCapturadaDataUrl; img.classList.remove('oculto');
     $('btnCapturarFoto').disabled = true; $('btnRefazerFoto').disabled = false;
-    $('statusFoto').textContent = 'Foto OK'; $('statusFoto').className = 'badge badge-ok';
+    if (qualidadeFotoAtual && !qualidadeFotoAtual.ok) {
+      $('statusFoto').textContent = 'Foto Escura / Conferir'; $('statusFoto').className = 'badge badge-pendente';
+      toast('Aviso: ' + qualidadeFotoAtual.motivo + '. Se puder, refaça em local mais iluminado.');
+    } else {
+      $('statusFoto').textContent = 'Foto OK'; $('statusFoto').className = 'badge badge-ok';
+    }
   }
 
   function distanciaMetros(la1, lo1, la2, lo2) {
@@ -843,22 +988,54 @@
     if (promessaGpsAtiva) return promessaGpsAtiva;
 
     promessaGpsAtiva = (async () => {
-      if ($('statusGpsBadge')) { $('statusGpsBadge').textContent = 'Capturando automaticamente...'; $('statusGpsBadge').className = 'badge badge-pendente'; }
+      if ($('statusGpsBadge')) { $('statusGpsBadge').textContent = 'Localizando automaticamente...'; $('statusGpsBadge').className = 'badge badge-pendente'; }
       const amostras = []; let errG = null;
+
+      // Etapa 1: Alta precisao (ate 8s; encerra cedo assim que pegar 2 leituras ou 2.5s apos a 1a)
       await new Promise(resolve => {
-        let fim = false; const done = () => { if (fim) return; fim = true; try { navigator.geolocation.clearWatch(wid); } catch (_) {} resolve(); };
+        let fim = false, timerPos1 = null;
+        const done = () => { if (fim) return; fim = true; if (timerPos1) clearTimeout(timerPos1); try { navigator.geolocation.clearWatch(wid); } catch (_) {} resolve(); };
         const wid = navigator.geolocation.watchPosition(pos => {
           const c = pos.coords;
-          amostras.push({ lat: c.latitude, lon: c.longitude, accuracy: c.accuracy, altitude: c.altitude, ts: pos.timestamp || Date.now(), mocked: !!(pos.mocked || c.mocked) });
-          if (amostras.length >= 3) done();
-        }, e => { errG = e; done(); }, { enableHighAccuracy: true, maximumAge: 0, timeout: 10000 });
-        setTimeout(done, 3500);
+          amostras.push({ lat: c.latitude, lon: c.longitude, accuracy: c.accuracy, altitude: c.altitude, ts: pos.timestamp || Date.now(), mocked: !!(pos.mocked || c.mocked), modo: 'GPS' });
+          if (amostras.length >= 2) done();
+          else if (!timerPos1) timerPos1 = setTimeout(done, 2200);
+        }, e => { errG = e; done(); }, { enableHighAccuracy: true, maximumAge: 15000, timeout: 10000 });
+        setTimeout(done, 8000);
       });
+
+      // Etapa 2: Fallback automatico por Rede/Wi-Fi (resolve ambiente fechado e notebooks sem chip GPS!)
+      if (!amostras.length && (!errG || errG.code !== 1)) {
+        await new Promise(resolve => {
+          navigator.geolocation.getCurrentPosition(pos => {
+            const c = pos.coords;
+            amostras.push({ lat: c.latitude, lon: c.longitude, accuracy: c.accuracy, altitude: c.altitude, ts: pos.timestamp || Date.now(), mocked: !!(pos.mocked || c.mocked), modo: 'REDE' });
+            resolve();
+          }, e => { errG = e; resolve(); }, { enableHighAccuracy: false, maximumAge: 60000, timeout: 10000 });
+        });
+      }
+
       if (!amostras.length) {
-        if ($('statusGpsBadge')) { $('statusGpsBadge').textContent = 'Permita o GPS'; $('statusGpsBadge').className = 'badge badge-erro'; }
-        if ($('painelResultadoGps')) { $('painelResultadoGps').innerHTML = `<div class="alerta-inline erro">Ative a permissão de localização no aparelho (${esc(errG ? errG.message : 'GPS desligado')}).</div>`; }
+        const ehArquivoLocal = location.protocol === 'file:' && !window.escalaAPI;
+        let motivoDet = '';
+        if (ehArquivoLocal) {
+          motivoDet = 'Você abriu o arquivo index.html direto da pasta (file://). O Chrome/Edge bloqueia o GPS em arquivo solto — abra pelo link HTTPS do GitHub Pages ou pelo aplicativo .exe.';
+        } else if (errG && errG.code === 1) {
+          motivoDet = 'Permissão de localização negada pelo navegador ou pelo Windows. Clique no cadeado ao lado do endereço do site → Localização → Permitir (no Windows: Configurações → Privacidade → Localização).';
+        } else if (errG && errG.code === 2) {
+          motivoDet = 'Sinal de localização indisponível neste local fechado/computador. Verifique se o Wi-Fi ou GPS está ativo e tente perto de uma janela.';
+        } else {
+          motivoDet = 'O GPS demorou para responder neste ambiente. Aguarde um instante e tente novamente.';
+        }
+        if ($('statusGpsBadge')) { $('statusGpsBadge').textContent = 'Ajuste a Localização'; $('statusGpsBadge').className = 'badge badge-erro'; }
+        if ($('painelResultadoGps')) {
+          $('painelResultadoGps').innerHTML = `<div class="alerta-inline erro">${esc(motivoDet)}</div><div class="mt-8"><button type="button" class="btn btn-sec btn-sm" id="btnRetryGpsAuto">Tentar Novamente</button></div>`;
+          const bRetry = $('btnRetryGpsAuto');
+          if (bRetry) bRetry.addEventListener('click', () => coletarLocalizacaoAutomatica(true));
+        }
         return null;
       }
+
       const ult = amostras[amostras.length - 1];
       let irregular = amostras.some(a => a.mocked);
       if (amostras.length >= 2 && amostras.every(a => a.lat === amostras[0].lat && a.lon === amostras[0].lon) && [0,1,3,5,10].includes(ult.accuracy) && ult.altitude === null) irregular = true;
@@ -872,14 +1049,14 @@
       const resumoDist = distBase < 1000 ? `${distBase}m da Base` : `${(distBase/1000).toFixed(2)} km da Base`;
       const endereco = await consultarEnderecoReal(ult.lat, ult.lon);
       const status = irregular ? 'IRREGULAR' : (distBase <= raio ? 'OK' : 'FORA_BASE');
-      locAtualPonto = { lat: ult.lat, lon: ult.lon, accuracy: Math.round(ult.accuracy), distBase, resumoDist, endereco, status };
+      locAtualPonto = { lat: ult.lat, lon: ult.lon, accuracy: Math.round(ult.accuracy), distBase, resumoDist, endereco, status, modo: ult.modo || 'GPS' };
       locAtualTs = Date.now();
 
       const stLabel = status === 'OK' ? 'Local Automático OK' : (status === 'FORA_BASE' ? 'Fora da Base' : 'Sinal Irregular');
       const stCls = status === 'OK' ? 'badge-ok' : (status === 'FORA_BASE' ? 'badge-pendente' : 'badge-erro');
       if ($('statusGpsBadge')) { $('statusGpsBadge').textContent = stLabel; $('statusGpsBadge').className = 'badge ' + stCls; }
       if ($('painelResultadoGps')) {
-        $('painelResultadoGps').innerHTML = `<div><strong>Endereço:</strong> ${esc(endereco)}</div><div class="subtexto">GPS automático: ${ult.lat.toFixed(6)}, ${ult.lon.toFixed(6)} (±${Math.round(ult.accuracy)}m) · <strong>${esc(resumoDist)}</strong></div>`;
+        $('painelResultadoGps').innerHTML = `<div><strong>Endereço:</strong> ${esc(endereco)}</div><div class="subtexto">Localização (${esc(locAtualPonto.modo)}): ${ult.lat.toFixed(6)}, ${ult.lon.toFixed(6)} (±${Math.round(ult.accuracy)}m) · <strong>${esc(resumoDist)}</strong></div>`;
       }
       return locAtualPonto;
     })();
@@ -910,9 +1087,19 @@
     const dataLocal = `${dt.getFullYear()}-${p2(dt.getMonth()+1)}-${p2(dt.getDate())}`;
     const horaLocal = `${p2(dt.getHours())}:${p2(dt.getMinutes())}:${p2(dt.getSeconds())}`;
     const tipo = $('selPontoTipo').value;
-    const hashAnterior = ESTADO.pontos[0]?.hashIntegridade || 'GENESIS_GCM_V6';
+    const hashAnterior = ESTADO.pontos[0]?.hashIntegridade || 'GENESIS_GCM_V9';
     const randHex = window.EscalaCloud.sha256Hex(agoraIso + ag.matricula + Math.random()).slice(0, 6).toUpperCase();
     const protocolo = `PT-${dataLocal.replace(/-/g,'')}-${ag.matricula}-${randHex}`;
+
+    // Analise visual leve em segundo plano (nao atrasa a batida: <50ms)
+    const fotoRefOficial = ag.fotoPerfil || '';
+    const simVisual = fotoRefOficial ? await calcularSimilaridadeVisualBase(fotoRefOficial, fotoCapturadaDataUrl) : null;
+    const conferenciaVisual = {
+      qualidadeOk: qualidadeFotoAtual ? !!qualidadeFotoAtual.ok : true,
+      qualidadeMsg: qualidadeFotoAtual ? qualidadeFotoAtual.motivo : 'Imagem capturada',
+      temFotoOficial: !!fotoRefOficial,
+      indiceVisual: simVisual
+    };
 
     const reg = {
       id: 'pt_' + Date.now().toString(36),
@@ -921,6 +1108,7 @@
       tipo, posto: $('inpPontoPosto').value.trim() || 'Base GCM', obs: $('inpPontoObs').value.trim(),
       timestampIso: agoraIso, dataLocal, horaLocal,
       foto: fotoCapturadaDataUrl, localizacao: locAtualPonto,
+      conferenciaVisual,
       hashAnterior, hashIntegridade: ''
     };
     reg.hashIntegridade = calcularHashPonto(reg, hashAnterior);
@@ -946,7 +1134,8 @@
     $('inpPontoObs').value = '';
 
     selecionarGuardaParaPonto(ag);
-    renderFaixaPlantaoHoje(); renderResumoEscaladosHoje(); renderFrequenciaDia(); renderTabelaPontos();
+    atualizarAlertaBotaoPonto();
+    renderFaixaPlantaoHoje(); renderResumoEscaladosHoje(); renderFrequenciaDia(); renderTabelaPontos(); renderMinhaFolha(); renderAuditoriaIdentidade();
     coletarLocalizacaoAutomatica(true);
 
     // Exibe Comprovante Oficial Imediato (acaba com "eu bati e nao deu")
@@ -975,7 +1164,8 @@
           const txt = `*COMPROVANTE DE PONTO — GCM VALPARAÍSO*\nProtocolo: *${pt.protocolo}*\nGuarda: Nº ${pt.agenteMatricula} — ${pt.agenteNome}\nBatida: *${tipoTxt}*\nData/Hora: *${formatarDataBR(pt.dataLocal)} às ${pt.horaLocal}*\nLocal: ${loc.endereco || '—'}\nSHA-256: ${pt.hashIntegridade.slice(0,24)}...`;
           if (navigator.clipboard?.writeText) navigator.clipboard.writeText(txt).then(() => toast('Recibo copiado!'));
         }},
-        { texto: 'Baixar Comprovante em PDF', classe: 'btn-primario', onClick: () => gerarPdfComprovantePonto(pt) },
+        { texto: 'Baixar PDF do Turno (Entrada e Saída)', classe: 'btn-primario', onClick: () => gerarPdfMinhaFolhaPeriodoDireto(pt.agenteId, pt.dataLocal, pt.dataLocal, `Turno ${formatarDataBR(pt.dataLocal)} (Entrada e Saída)`) },
+        { texto: 'Minha Folha (7 / 30 dias)', classe: 'btn-sec', onClick: () => { fecharModal(); abrirAba('secMinhaFolha'); } },
         { texto: 'Fechar', classe: 'btn-sec', onClick: fecharModal }
       ]
     );
@@ -983,7 +1173,9 @@
 
   function filtrarPontosHistorico() {
     const m = $('fltPontoMes').value||'', b = ($('fltPontoBusca').value||'').trim().toLowerCase(), tp = $('fltPontoTipo').value||'', st = $('fltPontoStatus').value||'';
+    const meuAg = !podeEditarEscala() ? agenteLogadoAtual() : null;
     return (ESTADO.pontos||[]).filter(p =>
+      (!podeEditarEscala() ? (meuAg ? p.agenteId === meuAg.id : false) : true) &&
       (!m || (p.dataLocal||'').startsWith(m)) &&
       (!tp || p.tipo === tp) &&
       (!st || (p.localizacao?.status||'') === st) &&
@@ -1038,6 +1230,381 @@
       `;
     }).join('');
     $('tbodyPontos').querySelectorAll('[data-ver-ponto]').forEach(img => img.addEventListener('click', () => abrirDetalhePonto(img.getAttribute('data-ver-ponto'))));
+  }
+
+
+  // =========================================================================
+  // 1B. MINHA FOLHA DE PONTO INDIVIDUAL (AUTOATENDIMENTO EM PDF COM FOTOS)
+  // =========================================================================
+  function obterIntervaloMinhaFolha() {
+    const modo = $('selMfPeriodo')?.value || '30D';
+    const hoje = hojeISO();
+    if (modo === 'HOJE') return { ini: hoje, fim: hoje, rotulo: `Turno de Hoje (${formatarDataBR(hoje)} — Entrada e Saída)` };
+    if (modo === '7D') {
+      const ini = somarDiasISO(hoje, -6);
+      return { ini, fim: hoje, rotulo: `Últimos 7 dias (${formatarDataBR(ini)} a ${formatarDataBR(hoje)})` };
+    }
+    if (modo === '30D') {
+      const ini = somarDiasISO(hoje, -29);
+      return { ini, fim: hoje, rotulo: `Últimos 30 dias (${formatarDataBR(ini)} a ${formatarDataBR(hoje)})` };
+    }
+    if (modo === 'CUSTOM') {
+      const ini = $('inpMfDataIni')?.value || somarDiasISO(hoje, -30);
+      const fim = $('inpMfDataFim')?.value || hoje;
+      return { ini, fim, rotulo: `${formatarDataBR(ini)} a ${formatarDataBR(fim)}` };
+    }
+    const mesVal = $('inpMfMes')?.value || mesAtualISO();
+    const [ano, mes] = mesVal.split('-').map(Number);
+    const ult = String(new Date(ano, mes, 0).getDate()).padStart(2, '0');
+    const ini = `${mesVal}-01`, fim = `${mesVal}-${ult}`;
+    return { ini, fim, rotulo: `${MESES_EXT[mes - 1]} / ${ano} (${formatarDataBR(ini)} a ${formatarDataBR(fim)})` };
+  }
+
+  function calcularMinutosNoIntervalo(agenteId, ini, fim) {
+    const pts = (ESTADO.pontos || []).filter(p => p.agenteId === agenteId && p.dataLocal >= ini && p.dataLocal <= fim);
+    const porDia = {};
+    pts.forEach(p => { porDia[p.dataLocal] = porDia[p.dataLocal] || []; porDia[p.dataLocal].push(p); });
+    let totalMin = 0;
+    Object.values(porDia).forEach(arr => {
+      const ord = arr.slice().reverse();
+      const ent = ord.find(x => x.tipo === 'ENTRADA'), sai = ord.find(x => x.tipo === 'SAIDA');
+      if (ent && sai) {
+        let diff = (new Date(sai.timestampIso) - new Date(ent.timestampIso)) / 60000;
+        if (diff < 0) diff += 1440;
+        const sA = ord.find(x => x.tipo === 'SAIDA_ALMOCO'), rA = ord.find(x => x.tipo === 'RETORNO_ALMOCO');
+        if (sA && rA) { const alm = (new Date(rA.timestampIso) - new Date(sA.timestampIso)) / 60000; if (alm > 0 && alm < 240) diff -= alm; }
+        if (diff > 0 && diff < 2880) totalMin += diff;
+      }
+    });
+    return Math.round(totalMin);
+  }
+
+  function obterFotoIdentificacaoAgente(ag) {
+    if (!ag) return '';
+    if (ag.fotoPerfil) return ag.fotoPerfil;
+    const ultPt = (ESTADO.pontos || []).find(p => p.agenteId === ag.id && p.foto);
+    return ultPt ? ultPt.foto : '';
+  }
+
+  function obterDadosMinhaFolha() {
+    const sel = $('selMfAgente');
+    const agId = podeEditarEscala() ? (sel?.value || '') : (agenteLogadoAtual()?.id || '');
+    const ag = agentePorId(agId);
+    const interv = obterIntervaloMinhaFolha();
+    if (!ag) return { ag: null, interv, batidas: [], ocorrencias: [], totalMin: 0, fotoPerfil: '' };
+
+    const batidas = (ESTADO.pontos || [])
+      .filter(p => p.agenteId === ag.id && p.dataLocal >= interv.ini && p.dataLocal <= interv.fim)
+      .slice()
+      .sort((a, b) => (a.timestampIso || '').localeCompare(b.timestampIso || ''));
+
+    const ocorrencias = [];
+    // Afastamentos / Atestados / Ferias no periodo
+    (ESTADO.afastamentos || []).filter(af => af.agenteId === ag.id && af.dataInicio <= interv.fim && af.dataFim >= interv.ini).forEach(af => {
+      ocorrencias.push({
+        data: af.dataInicio,
+        tipo: af.tipo === 'FALTA' ? 'FALTA' : 'AFASTAMENTO',
+        titulo: `${TIPO_AFASTAMENTO_LABEL[af.tipo] || af.tipo} — ${af.dias} dia(s) fora`,
+        detalhe: `Período: ${formatarDataBR(af.dataInicio)} a ${formatarDataBR(af.dataFim)} · Retorno: ${formatarDataBR(af.dataRetorno)}${af.cid ? ' · ' + af.cid : ''}${af.anexo ? ' · [Atestado Digitalizado Anexado]' : ''}`
+      });
+    });
+    // Justificativas no periodo
+    Object.entries(ESTADO.justificativas || {}).forEach(([chave, val]) => {
+      const [dt, aid] = chave.split('|');
+      if (aid === ag.id && dt >= interv.ini && dt <= interv.fim) {
+        ocorrencias.push({ data: dt, tipo: 'JUSTIFICATIVA', titulo: val.motivo, detalhe: val.obs || 'Registrado pela Gestão' });
+      }
+    });
+    // Permutas aprovadas no periodo
+    (ESTADO.permutas || []).filter(pm => pm.status === 'APROVADA' && (pm.solicitanteId === ag.id || pm.substitutoId === ag.id)).forEach(pm => {
+      if ((pm.dataOriginal >= interv.ini && pm.dataOriginal <= interv.fim) || (pm.dataCompensacao && pm.dataCompensacao >= interv.ini && pm.dataCompensacao <= interv.fim)) {
+        const outro = agentePorId(pm.solicitanteId === ag.id ? pm.substitutoId : pm.solicitanteId);
+        const papel = pm.solicitanteId === ag.id ? 'Saiu (Solicitante)' : 'Assumiu (Substituto)';
+        ocorrencias.push({ data: pm.dataOriginal, tipo: 'PERMUTA', titulo: `${TIPO_PERMUTA_LABEL[pm.tipo] || pm.tipo} — ${papel}`, detalhe: `Com Nº ${outro ? outro.matricula + ' ' + outro.nomeGuerra : '—'}${pm.dataCompensacao ? ' · Devolução: ' + formatarDataBR(pm.dataCompensacao) : ''}` });
+      }
+    });
+    ocorrencias.sort((a, b) => a.data.localeCompare(b.data));
+
+    const totalMin = calcularMinutosNoIntervalo(ag.id, interv.ini, interv.fim);
+    const fotoPerfil = obterFotoIdentificacaoAgente(ag);
+    return { ag, interv, batidas, ocorrencias, totalMin, fotoPerfil };
+  }
+
+  function renderMinhaFolha() {
+    const modo = $('selMfPeriodo')?.value || 'MES';
+    $('wrapMfMes').classList.toggle('oculto', modo !== 'MES');
+    $('wrapMfIni').classList.toggle('oculto', modo !== 'CUSTOM');
+    $('wrapMfFim').classList.toggle('oculto', modo !== 'CUSTOM');
+    if (!$('inpMfMes').value) $('inpMfMes').value = mesAtualISO();
+    if (!$('inpMfDataIni').value) $('inpMfDataIni').value = somarDiasISO(hojeISO(), -14);
+    if (!$('inpMfDataFim').value) $('inpMfDataFim').value = hojeISO();
+
+    const sel = $('selMfAgente');
+    const aviso = $('avisoVinculoAgente');
+    const ativos = ESTADO.efetivo.filter(a => a.situacao === 'ATIVO');
+
+    if (podeEditarEscala()) {
+      const atual = sel.value;
+      sel.innerHTML = ativos.map(a => `<option value="${esc(a.id)}">Nº ${esc(a.matricula)} — ${esc(a.nome)} (${esc(a.equipe)})</option>`).join('');
+      const meu = agenteLogadoAtual();
+      if (atual && ativos.some(a => a.id === atual)) sel.value = atual;
+      else if (meu) sel.value = meu.id;
+      sel.disabled = false;
+      aviso.classList.add('oculto');
+    } else {
+      const meu = agenteLogadoAtual();
+      if (meu) {
+        sel.innerHTML = `<option value="${esc(meu.id)}">Nº ${esc(meu.matricula)} — ${esc(meu.nome)} (${esc(meu.equipe)})</option>`;
+        sel.value = meu.id;
+        sel.disabled = true;
+        aviso.classList.add('oculto');
+      } else {
+        sel.innerHTML = '<option value="">Conta sem Nº / Matrícula vinculada</option>';
+        sel.disabled = true;
+        aviso.textContent = 'Sua conta de Agente ainda não está vinculada a um Nº do efetivo (ex.: 03). Solicite ao Administrador em Contas, Base e Banco para vincular seu Nº.';
+        aviso.classList.remove('oculto');
+      }
+    }
+
+    const { ag, interv, batidas, ocorrencias, totalMin, fotoPerfil } = obterDadosMinhaFolha();
+    const card = $('cardPerfilMinhaFolha');
+    if (!ag) {
+      card.innerHTML = '<div class="subtexto">Nenhum guarda selecionado ou vinculado.</div>';
+      $('tbodyMinhaFolha').innerHTML = '';
+      $('listaMfOcorrencias').innerHTML = '';
+      $('badgeQtdMfBatidas').textContent = '0 batidas';
+      $('badgeQtdMfOcorr').textContent = '0';
+      return;
+    }
+
+    const infSetor = descobrirSetorDoAgente(ag);
+    const bh = calcularResumoBancoAgente(ag.id, '');
+    const clsSaldo = bh.saldoMin > 0 ? 'saldo-pos' : (bh.saldoMin < 0 ? 'saldo-neg' : 'saldo-zero');
+
+    card.innerHTML = `
+      <div class="perfil-foto-box">${fotoPerfil ? `<img src="${fotoPerfil}" alt="Foto do Guarda">` : '<span>Sem foto cadastrada</span>'}</div>
+      <div class="perfil-ponto-info">
+        <div class="card-cab">
+          <strong style="font-size:15px;">Nº ${esc(ag.matricula)} — ${esc(ag.nome)}</strong>
+          <span class="insig eq-${esc(ag.equipe)}">EQUIPE ${esc(ag.equipe)}</span>
+        </div>
+        <div class="subtexto">${esc(infSetor.nome)} · ${esc(infSetor.funcao)} · Período: <strong>${esc(interv.rotulo)}</strong></div>
+        <div style="display:flex;gap:14px;flex-wrap:wrap;margin-top:4px;font-size:12.5px;">
+          <span>Batidas no período: <strong>${batidas.length}</strong></span>
+          <span>Horas trabalhadas: <strong>${formatarMinutosHM(totalMin, false)}</strong></span>
+          <span>Banco de Horas: <span class="${clsSaldo}">${formatarMinutosHM(bh.saldoMin, true)}</span></span>
+        </div>
+      </div>
+    `;
+
+    $('badgeQtdMfBatidas').textContent = `${batidas.length} batida(s)`;
+    $('tbodyMinhaFolha').innerHTML = batidas.map(p => {
+      const loc = p.localizacao || {};
+      const st = loc.status || 'OK';
+      const cls = st === 'OK' ? 'badge-ok' : (st === 'FORA_BASE' ? 'badge-pendente' : 'badge-erro');
+      const txt = st === 'OK' ? 'Regular' : (st === 'FORA_BASE' ? 'Fora da Base' : 'Irregular');
+      return `
+        <tr>
+          <td><img src="${p.foto}" class="foto-thumb-md" data-ver-ponto-mf="${esc(p.id)}" alt="Foto da batida"></td>
+          <td><strong>${formatarDataBR(p.dataLocal)}</strong><div class="subtexto">${esc(p.horaLocal)}</div></td>
+          <td><span class="badge badge-invertido">${esc(TIPO_PONTO_LABEL[p.tipo] || p.tipo)}</span><div class="subtexto mt-4">${esc(p.posto || 'Base GCM')}</div></td>
+          <td>
+            <div style="font-size:12px;">${esc(loc.endereco || '—')}</div>
+            <div class="subtexto">${loc.lat ? `${loc.lat.toFixed(5)}, ${loc.lon.toFixed(5)}` : '—'} · ${esc(loc.resumoDist || '')}</div>
+          </td>
+          <td>
+            <div><code>${esc(p.protocolo || '—')}</code> <span class="badge ${cls}">${esc(txt)}</span></div>
+            <div class="subtexto" style="font-size:10.5px;margin-top:2px;">SHA: ${esc((p.hashIntegridade || '').slice(0, 16))}...</div>
+          </td>
+        </tr>
+      `;
+    }).join('') || '<tr><td colspan="5" class="subtexto" style="text-align:center;padding:18px;">Nenhuma batida registrada neste período.</td></tr>';
+
+    $('tbodyMinhaFolha').querySelectorAll('[data-ver-ponto-mf]').forEach(img => img.addEventListener('click', () => abrirDetalhePonto(img.getAttribute('data-ver-ponto-mf'))));
+
+    $('badgeQtdMfOcorr').textContent = String(ocorrencias.length);
+    $('listaMfOcorrencias').innerHTML = ocorrencias.length ? ocorrencias.map(oc => `
+      <div class="item-compacto">
+        <div><strong>${formatarDataBR(oc.data)} — ${esc(oc.titulo)}</strong><div class="subtexto">${esc(oc.detalhe)}</div></div>
+        <span class="badge badge-warn">${esc(oc.tipo)}</span>
+      </div>
+    `).join('') : '<div class="subtexto">Nenhuma justificativa ou permuta registrada neste período.</div>';
+  }
+
+  function abrirModalAtualizarFotoPerfil() {
+    const { ag } = obterDadosMinhaFolha();
+    if (!ag) return toast('Selecione ou vincule seu Nº primeiro.');
+    let streamPerfil = null;
+    let fotoNova = null;
+
+    abrirModal(
+      `Foto de Identificação — Nº ${ag.matricula} ${ag.nomeGuerra}`,
+      `
+        <p class="subtexto">Esta foto aparece no cabeçalho da sua Folha de Ponto Individual em PDF.</p>
+        <div class="camera-box">
+          <video id="vidFotoPerfil" autoplay playsinline muted class="oculto"></video>
+          <canvas id="cvsFotoPerfil" class="oculto"></canvas>
+          <img id="imgFotoPerfilPrev" class="${ag.fotoPerfil ? '' : 'oculto'}" src="${ag.fotoPerfil || ''}" alt="Foto perfil">
+          <div id="phFotoPerfil" class="camera-placeholder ${ag.fotoPerfil ? 'oculto' : ''}">Clique em "Ligar Câmera" para tirar sua foto de identificação.</div>
+        </div>
+        <div class="acoes-linha">
+          <button type="button" class="btn btn-sec btn-sm" id="btnLigarCamPerfil">Ligar Câmera</button>
+          <button type="button" class="btn btn-primario btn-sm" id="btnBaterFotoPerfil" disabled>Capturar Foto</button>
+        </div>
+      `,
+      [
+        { texto: 'Cancelar', classe: 'btn-sec', onClick: () => { if (streamPerfil) streamPerfil.getTracks().forEach(t => t.stop()); fecharModal(); } },
+        { texto: 'Salvar Foto no Perfil', classe: 'btn-primario', onClick: async () => {
+          if (streamPerfil) streamPerfil.getTracks().forEach(t => t.stop());
+          if (!fotoNova) return toast('Capture uma foto primeiro.');
+          ag.fotoPerfil = fotoNova;
+          await salvarTudo();
+          fecharModal();
+          renderMinhaFolha();
+          toast('Foto de identificação atualizada!');
+        }}
+      ]
+    );
+
+    $('btnLigarCamPerfil').addEventListener('click', async () => {
+      try {
+        streamPerfil = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', width: { ideal: 480 }, height: { ideal: 480 } }, audio: false });
+        const v = $('vidFotoPerfil'); v.srcObject = streamPerfil; v.classList.remove('oculto');
+        $('phFotoPerfil').classList.add('oculto'); $('imgFotoPerfilPrev').classList.add('oculto');
+        $('btnBaterFotoPerfil').disabled = false;
+      } catch (e) { toast('Permita acesso à câmera.'); }
+    });
+
+    $('btnBaterFotoPerfil').addEventListener('click', () => {
+      const v = $('vidFotoPerfil'), c = $('cvsFotoPerfil');
+      if (!v || !v.videoWidth) return;
+      const w = 320, h = Math.round((v.videoHeight / v.videoWidth) * w) || 320;
+      c.width = w; c.height = h;
+      c.getContext('2d').drawImage(v, 0, 0, w, h);
+      fotoNova = c.toDataURL('image/jpeg', 0.72);
+      if (streamPerfil) { streamPerfil.getTracks().forEach(t => t.stop()); streamPerfil = null; }
+      v.classList.add('oculto');
+      const img = $('imgFotoPerfilPrev'); img.src = fotoNova; img.classList.remove('oculto');
+      $('btnBaterFotoPerfil').disabled = true;
+      toast('Foto capturada! Clique em "Salvar Foto no Perfil".');
+    });
+  }
+
+  function gerarPdfMinhaFolhaPeriodoDireto(agenteId, ini, fim, rotuloPeriodo) {
+    const ag = agentePorId(agenteId);
+    if (!ag) return toast('Guarda não encontrado.');
+    const batidas = (ESTADO.pontos || [])
+      .filter(p => p.agenteId === ag.id && p.dataLocal >= ini && p.dataLocal <= fim)
+      .slice()
+      .sort((a, b) => (a.timestampIso || '').localeCompare(b.timestampIso || ''));
+    const ocorrencias = [];
+    Object.entries(ESTADO.justificativas || {}).forEach(([chave, val]) => {
+      const [dt, aid] = chave.split('|');
+      if (aid === ag.id && dt >= ini && dt <= fim) ocorrencias.push({ data: dt, tipo: 'JUSTIFICATIVA', titulo: val.motivo, detalhe: val.obs || 'Registrado pela Gestão' });
+    });
+    const totalMin = calcularMinutosNoIntervalo(ag.id, ini, fim);
+    const fotoPerfil = obterFotoIdentificacaoAgente(ag);
+    montarEEmitirPdfFolhaIndividual(ag, { ini, fim, rotulo: rotuloPeriodo }, batidas, ocorrencias, totalMin, fotoPerfil);
+  }
+
+  function gerarPdfMinhaFolhaIndividual() {
+    const { ag, interv, batidas, ocorrencias, totalMin, fotoPerfil } = obterDadosMinhaFolha();
+    if (!ag) return toast('Nenhum guarda selecionado ou vinculado.');
+    montarEEmitirPdfFolhaIndividual(ag, interv, batidas, ocorrencias, totalMin, fotoPerfil);
+  }
+
+  function montarEEmitirPdfFolhaIndividual(ag, interv, batidas, ocorrencias, totalMin, fotoPerfil) {
+    const infSetor = descobrirSetorDoAgente(ag);
+    const bh = calcularResumoBancoAgente(ag.id, '');
+
+    const cardServidor = `
+      <div class="box" style="border-left:5px solid ${EQUIPE_CORES[ag.equipe]?.cor || '#18181B'};">
+        <div style="display:flex;gap:12px;align-items:center;">
+          <div style="width:74px;height:88px;border:1px solid #333;background:#F5F5F5;display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0;font-size:8px;color:#555;text-align:center;">
+            ${fotoPerfil ? `<img src="${fotoPerfil}" style="width:100%;height:100%;object-fit:cover;">` : 'SEM FOTO'}
+          </div>
+          <div style="flex:1;">
+            <div style="font-size:12px;font-weight:700;">Nº ${esc(ag.matricula)} — ${esc(ag.nome)}</div>
+            <div style="margin-top:3px;"><strong>Equipe:</strong> ${esc(ag.equipe)} | <strong>Setor / Viatura:</strong> ${esc(infSetor.nome)} | <strong>Função:</strong> ${esc(infSetor.funcao)}</div>
+            <div style="margin-top:3px;"><strong>Período Consultado:</strong> ${esc(interv.rotulo)}</div>
+            <div style="margin-top:4px;display:flex;gap:16px;flex-wrap:wrap;">
+              <span><strong>Total de Batidas:</strong> ${batidas.length}</span>
+              <span><strong>Horas Trabalhadas no Período:</strong> ${formatarMinutosHM(totalMin, false)}</span>
+              <span><strong>Saldo Banco de Horas:</strong> ${formatarMinutosHM(bh.saldoMin, true)}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+
+    const rowsBatidas = batidas.map(p => {
+      const loc = p.localizacao || {};
+      const stTxt = loc.status === 'OK' ? 'Regular' : (loc.status === 'FORA_BASE' ? 'Fora da Base' : 'Irregular');
+      return `
+        <tr>
+          <td style="width:13%;"><img src="${p.foto}" style="width:62px;height:46px;object-fit:cover;border:1px solid #333;display:block;"></td>
+          <td style="width:13%;"><strong>${formatarDataBR(p.dataLocal)}</strong><br>${esc(p.horaLocal)}</td>
+          <td style="width:15%;"><strong>${esc(TIPO_PONTO_LABEL[p.tipo] || p.tipo)}</strong><br><small>${esc(p.posto || 'Base GCM')}</small></td>
+          <td style="width:36%;">${esc(loc.endereco || '—')}<br><small>GPS: ${loc.lat ? loc.lat.toFixed(6) + ', ' + loc.lon.toFixed(6) : '—'} (${esc(loc.resumoDist || '')})</small>${p.obs ? `<br><small>Obs.: ${esc(p.obs)}</small>` : ''}</td>
+          <td style="width:23%;"><code><strong>${esc(p.protocolo || '—')}</strong></code><br><small>Status: ${esc(stTxt)}</small><br><small style="font-family:monospace;font-size:7px;">SHA: ${esc((p.hashIntegridade || '').slice(0, 20))}...</small></td>
+        </tr>
+      `;
+    }).join('') || '<tr><td colspan="5" style="text-align:center;padding:10px;">Nenhuma batida registrada neste período.</td></tr>';
+
+    const blocoOcorr = ocorrencias.length ? `
+      <h2>3. JUSTIFICATIVAS E PERMUTAS NO PERÍODO</h2>
+      <table>
+        <thead><tr><th style="width:14%;">Data</th><th style="width:16%;">Tipo</th><th style="width:32%;">Descrição</th><th style="width:38%;">Detalhes</th></tr></thead>
+        <tbody>${ocorrencias.map(oc => `<tr><td><strong>${formatarDataBR(oc.data)}</strong></td><td>${esc(oc.tipo)}</td><td>${esc(oc.titulo)}</td><td>${esc(oc.detalhe)}</td></tr>`).join('')}</tbody>
+      </table>
+    ` : '';
+
+    const blocoAssinaturaServidor = `
+      <div class="pdf-assinaturas" style="margin-top:20px;">
+        <div class="ass-col"><div class="ass-linha"></div><strong>${esc(ag.nome)}</strong><div>Servidor GCM · Nº ${esc(ag.matricula)}</div></div>
+        <div class="ass-col"><div class="ass-linha"></div><strong>${esc(ESTADO.config?.responsaveis?.comandoNome || 'Chefia / Comando GCM')}</strong><div>${esc(ESTADO.config?.responsaveis?.comandoCargo || 'Comandante GCM')}</div></div>
+      </div>
+    `;
+
+    // Agrupamento consolidado por Turno/Dia (Entrada + Almoco + Saida em uma unica linha)
+    const datasTurnos = Array.from(new Set(batidas.map(b => b.dataLocal))).sort();
+    const rowsTurnos = datasTurnos.map(dt => {
+      const doDia = batidas.filter(b => b.dataLocal === dt);
+      const ent = doDia.find(x => x.tipo === 'ENTRADA');
+      const sA = doDia.find(x => x.tipo === 'SAIDA_ALMOCO');
+      const rA = doDia.find(x => x.tipo === 'RETORNO_ALMOCO');
+      const sai = doDia.find(x => x.tipo === 'SAIDA');
+      const minDia = calcularMinutosNoIntervalo(ag.id, dt, dt);
+      const situ = ent && sai ? 'Turno Completo (Entrada e Saída)' : (ent ? 'Entrada Registrada (Aguardando Saída)' : 'Registro Parcial');
+      return `<tr><td style="width:12%;"><strong>${formatarDataBR(dt)}</strong></td><td style="width:12%;">${ent ? '<strong>'+ent.horaLocal.slice(0,5)+'</strong>' : '—'}</td><td style="width:12%;">${sA ? sA.horaLocal.slice(0,5) : '—'}</td><td style="width:12%;">${rA ? rA.horaLocal.slice(0,5) : '—'}</td><td style="width:12%;">${sai ? '<strong>'+sai.horaLocal.slice(0,5)+'</strong>' : '—'}</td><td style="width:12%;"><strong>${formatarMinutosHM(minDia, false)}</strong></td><td style="width:28%;">${esc(situ)}</td></tr>`;
+    }).join('') || '<tr><td colspan="7" style="text-align:center;">Nenhum turno registrado neste período.</td></tr>';
+
+    const corpo = `
+      ${cardServidor}
+      <h2>1. RESUMO CONSOLIDADO POR TURNO (ENTRADA, ALMOÇO E SAÍDA)</h2>
+      <table>
+        <thead><tr><th style="width:12%;">Data</th><th style="width:12%;">Entrada</th><th style="width:12%;">S. Almoço</th><th style="width:12%;">R. Almoço</th><th style="width:12%;">Saída</th><th style="width:12%;">Total</th><th style="width:28%;">Situação do Turno</th></tr></thead>
+        <tbody>${rowsTurnos}</tbody>
+      </table>
+      <h2>2. PROVA FOTOGRÁFICA, DATA, HORÁRIO, LOCALIZAÇÃO E PROTOCOLOS (ENTRADA E SAÍDA)</h2>
+      <table>
+        <thead><tr><th style="width:13%;">Foto Batida</th><th style="width:13%;">Data / Hora</th><th style="width:15%;">Batida / Posto</th><th style="width:36%;">Localização Completa (Endereço e GPS)</th><th style="width:23%;">Protocolo e Hash</th></tr></thead>
+        <tbody>${rowsBatidas}</tbody>
+      </table>
+      ${blocoOcorr}
+      ${blocoAssinaturaServidor}
+    `;
+
+    emitirPdfAutenticado({
+      tipoDoc: 'FOLHA_PONTO_INDIVIDUAL',
+      titulo: `FOLHA DE PONTO INDIVIDUAL — Nº ${ag.matricula} ${ag.nome}`,
+      subtitulo: `Período: ${interv.rotulo} · Equipe ${ag.equipe} · ${batidas.length} registro(s)`,
+      corpoHtml: corpo,
+      nomeArquivo: `minha-folha-ponto-${ag.matricula}-${hojeISO()}.pdf`,
+      paisagem: false,
+      qtdRegistros: batidas.length,
+      incluirAssinaturas: false
+    });
   }
 
   // =========================================================================
@@ -1252,6 +1819,395 @@
     const r = ESTADO.config.responsaveis || {};
     $('inpRespEscalanteNome').value = r.escalanteNome||''; $('inpRespEscalanteCargo').value = r.escalanteCargo||''; $('inpRespEscalanteMat').value = r.escalanteMat||'';
     $('inpRespComandoNome').value = r.comandoNome||''; $('inpRespComandoCargo').value = r.comandoCargo||''; $('inpRespComandoMat').value = r.comandoMat||'';
+  }
+
+
+  // =========================================================================
+  // 2B. ATESTADOS MEDICOS (DIGITALIZACAO), FERIAS, AFASTAMENTOS E REL. COMANDO
+  // =========================================================================
+  function pararCameraScanAf() {
+    if (streamScanAf) { streamScanAf.getTracks().forEach(t => t.stop()); streamScanAf = null; }
+  }
+
+  function atualizarPreviaDiasAf() {
+    const ini = $('inpAfDataIni')?.value || hojeISO();
+    const dias = Math.max(1, Math.min(365, Number($('inpAfDias')?.value || 1)));
+    const fim = somarDiasISO(ini, dias - 1);
+    const retorno = somarDiasISO(ini, dias);
+    if ($('boxPreviaDiasAf')) {
+      $('boxPreviaDiasAf').innerHTML = `<strong>Cálculo Automático:</strong> Fica fora por <strong>${dias} dia(s)</strong> (${formatarDataBR(ini)} até ${formatarDataBR(fim)}) · <strong>Retorno ao serviço em ${formatarDataBR(retorno)}</strong>.`;
+    }
+  }
+
+  function limparAnexoScanAf() {
+    pararCameraScanAf();
+    anexoScanAfAtual = null;
+    if ($('vidScanAf')) $('vidScanAf').classList.add('oculto');
+    if ($('imgScanAfPrev')) $('imgScanAfPrev').classList.add('oculto');
+    if ($('infoPdfScanAf')) $('infoPdfScanAf').classList.add('oculto');
+    if ($('phScanAf')) $('phScanAf').classList.remove('oculto');
+    if ($('btnCapturarScanAf')) $('btnCapturarScanAf').disabled = true;
+    if ($('btnLimparScanAf')) $('btnLimparScanAf').classList.add('oculto');
+    if ($('statusScanAf')) { $('statusScanAf').textContent = 'Sem anexo'; $('statusScanAf').className = 'badge badge-neutro'; }
+  }
+
+  function mostrarPreviaAnexoAf(anexo) {
+    anexoScanAfAtual = anexo;
+    pararCameraScanAf();
+    $('vidScanAf').classList.add('oculto');
+    $('phScanAf').classList.add('oculto');
+    $('btnCapturarScanAf').disabled = true;
+    $('btnLimparScanAf').classList.remove('oculto');
+    $('statusScanAf').textContent = anexo.tipo === 'pdf' ? 'PDF Anexado' : 'Atestado Digitalizado';
+    $('statusScanAf').className = 'badge badge-ok';
+    if (anexo.tipo === 'pdf') {
+      $('imgScanAfPrev').classList.add('oculto');
+      $('infoPdfScanAf').innerHTML = `<strong>Documento PDF anexado:</strong><br>${esc(anexo.nome || 'atestado.pdf')}`;
+      $('infoPdfScanAf').classList.remove('oculto');
+    } else {
+      $('infoPdfScanAf').classList.add('oculto');
+      $('imgScanAfPrev').src = anexo.dataUrl;
+      $('imgScanAfPrev').classList.remove('oculto');
+    }
+  }
+
+  async function abrirCameraScanAf() {
+    pararCameraScanAf();
+    try {
+      // Prefere camera traseira no celular (para fotografar o papel do atestado) com fallback para webcam no PC
+      streamScanAf = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: { ideal: 'environment' }, width: { ideal: 1024 }, height: { ideal: 1280 } },
+        audio: false
+      });
+      const v = $('vidScanAf');
+      v.srcObject = streamScanAf;
+      v.classList.remove('oculto');
+      $('phScanAf').classList.add('oculto');
+      $('imgScanAfPrev').classList.add('oculto');
+      $('infoPdfScanAf').classList.add('oculto');
+      $('btnCapturarScanAf').disabled = false;
+      $('statusScanAf').textContent = 'Câmera pronta — enquadre o atestado';
+      $('statusScanAf').className = 'badge badge-pendente';
+    } catch (e) {
+      toast('Permita o uso da câmera para digitalizar o atestado (ou clique em Anexar Foto / PDF).');
+    }
+  }
+
+  function capturarDocumentoScanAf() {
+    const v = $('vidScanAf'), c = $('cvsScanAf');
+    if (!v || !v.videoWidth) return toast('Aguarde a câmera carregar.');
+    const maxW = 720;
+    const w = Math.min(maxW, v.videoWidth);
+    const h = Math.round((v.videoHeight / v.videoWidth) * w) || 900;
+    c.width = w; c.height = h;
+    const ctx = c.getContext('2d');
+    ctx.drawImage(v, 0, 0, w, h);
+    const dataUrl = c.toDataURL('image/jpeg', 0.68);
+    mostrarPreviaAnexoAf({ tipo: 'imagem', nome: `atestado-${hojeISO()}.jpg`, dataUrl });
+    toast('Atestado digitalizado com sucesso!');
+  }
+
+  function processarArquivoAnexoAf(file) {
+    if (!file) return;
+    if (file.size > 2500000) return toast('Arquivo muito grande (máx. 2,5 MB). Tire uma foto mais leve ou comprima o PDF.');
+    if (file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')) {
+      const reader = new FileReader();
+      reader.onload = () => mostrarPreviaAnexoAf({ tipo: 'pdf', nome: file.name, dataUrl: reader.result });
+      reader.readAsDataURL(file);
+      return;
+    }
+    if (file.type.startsWith('image/')) {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const img = new Image();
+        img.onload = () => {
+          const maxW = 780, w = Math.min(maxW, img.width), h = Math.round((img.height / img.width) * w);
+          const c = $('cvsScanAf'); c.width = w; c.height = h;
+          c.getContext('2d').drawImage(img, 0, 0, w, h);
+          mostrarPreviaAnexoAf({ tipo: 'imagem', nome: file.name, dataUrl: c.toDataURL('image/jpeg', 0.68) });
+        };
+        img.src = reader.result;
+      };
+      reader.readAsDataURL(file);
+      return;
+    }
+    toast('Envie uma imagem (JPG/PNG) ou PDF do atestado.');
+  }
+
+  function abrirVisualizadorAtestado(af) {
+    if (!af) return;
+    const ag = agentePorId(af.agenteId);
+    const rot = TIPO_AFASTAMENTO_LABEL[af.tipo] || af.tipo;
+    const previewHtml = !af.anexo
+      ? '<div class="regra-box">Nenhum documento/atestado digitalizado anexado neste registro.</div>'
+      : (af.anexo.tipo === 'pdf'
+          ? `<div class="box-borda" style="text-align:center;"><strong>PDF Anexado:</strong> ${esc(af.anexo.nome || 'atestado.pdf')}<div class="mt-8"><a class="btn btn-primario btn-sm" href="${af.anexo.dataUrl}" download="${esc(af.anexo.nome || 'atestado.pdf')}">Baixar PDF do Atestado</a></div></div>`
+          : `<div style="text-align:center;"><img src="${af.anexo.dataUrl}" style="max-width:100%;max-height:420px;border:1px solid var(--border-strong);border-radius:6px;"></div>`);
+    abrirModal(
+      `${rot} — ${ag ? 'Nº ' + ag.matricula + ' ' + ag.nome : 'Guarda'}`,
+      `
+        <div class="box-borda" style="font-size:12.5px;">
+          <div><strong>Período:</strong> ${formatarDataBR(af.dataInicio)} até ${formatarDataBR(af.dataFim)} (<strong>${af.dias} dia(s) fora</strong>)</div>
+          <div><strong>Data de Retorno:</strong> <strong>${formatarDataBR(af.dataRetorno)}</strong></div>
+          ${af.cid ? `<div><strong>CID / Médico:</strong> ${esc(af.cid)}</div>` : ''}
+          ${af.protocoloExt ? `<div><strong>Protocolo / RH:</strong> ${esc(af.protocoloExt)}</div>` : ''}
+          ${af.obs ? `<div><strong>Observação:</strong> ${esc(af.obs)}</div>` : ''}
+          <div class="subtexto mt-4">Registrado por ${esc(af.por || 'Gestão')} em ${formatarDataHoraBR(af.criadoEm)}</div>
+        </div>
+        ${previewHtml}
+      `,
+      [
+        ...(af.anexo && af.anexo.tipo === 'imagem' ? [{ texto: 'Baixar Imagem', classe: 'btn-sec', onClick: () => { const a = document.createElement('a'); a.href = af.anexo.dataUrl; a.download = af.anexo.nome || 'atestado.jpg'; a.click(); } }] : []),
+        { texto: 'Fechar', classe: 'btn-primario', onClick: fecharModal }
+      ]
+    );
+  }
+
+  function renderAfastamentos() {
+    const ativos = ESTADO.efetivo.filter(a => a.situacao === 'ATIVO');
+    const sel = $('selAfGuarda');
+    if (sel) {
+      const cur = sel.value;
+      sel.innerHTML = ativos.map(a => `<option value="${esc(a.id)}">Nº ${esc(a.matricula)} — ${esc(a.nome)} (${esc(a.equipe)})</option>`).join('');
+      if (cur && ativos.some(a => a.id === cur)) sel.value = cur;
+    }
+    if ($('inpAfDataIni') && !$('inpAfDataIni').value) $('inpAfDataIni').value = hojeISO();
+    atualizarPreviaDiasAf();
+
+    const busca = ($('fltAfBusca')?.value || '').trim().toLowerCase();
+    const fltTp = $('fltAfTipo')?.value || '';
+    const vig = $('fltAfVigencia')?.value || 'ATIVOS';
+    const hoje = hojeISO();
+
+    const lista = (ESTADO.afastamentos || []).filter(af => {
+      const ag = agentePorId(af.agenteId);
+      if (fltTp && af.tipo !== fltTp) return false;
+      if (vig === 'ATIVOS' && af.dataFim < hoje) return false;
+      if (busca && !(ag && (ag.nome.toLowerCase().includes(busca) || ag.matricula.toLowerCase().includes(busca)))) return false;
+      return true;
+    }).sort((a, b) => b.dataInicio.localeCompare(a.dataInicio));
+
+    if ($('badgeQtdAfastamentos')) $('badgeQtdAfastamentos').textContent = `${lista.length} registro(s)`;
+    const tbody = $('tbodyAfastamentos');
+    if (!tbody) return;
+    tbody.innerHTML = lista.map(af => {
+      const ag = agentePorId(af.agenteId);
+      const rot = TIPO_AFASTAMENTO_LABEL[af.tipo] || af.tipo;
+      const cls = af.tipo === 'FALTA' ? 'badge-erro' : (af.tipo === 'ATESTADO_MEDICO' || af.tipo === 'LICENCA_MEDICA' ? 'badge-pendente' : 'badge-warn');
+      const anexoHtml = af.anexo
+        ? (af.anexo.tipo === 'imagem' ? `<img src="${af.anexo.dataUrl}" class="doc-thumb-atestado" data-ver-af="${esc(af.id)}" title="Clique para ampliar atestado">` : `<button type="button" class="btn btn-sec btn-sm" data-ver-af="${esc(af.id)}">PDF</button>`)
+        : '<span class="subtexto">Sem anexo</span>';
+      return `
+        <tr>
+          <td>${anexoHtml}</td>
+          <td><strong>${ag ? `Nº ${esc(ag.matricula)} — ${esc(ag.nome)}` : '—'}</strong><div class="subtexto">${ag ? `Equipe ${esc(ag.equipe)}` : ''}</div></td>
+          <td><span class="badge ${cls}">${esc(rot)}</span>${af.cid ? `<div class="subtexto" style="font-size:11px;">${esc(af.cid)}</div>` : ''}</td>
+          <td><strong>${af.dias} dia(s) fora</strong><div class="subtexto">${formatarDataBR(af.dataInicio)} a ${formatarDataBR(af.dataFim)}</div></td>
+          <td><strong>${formatarDataBR(af.dataRetorno)}</strong></td>
+          <td>
+            <div class="acoes-linha">
+              <button type="button" class="btn btn-sec btn-sm" data-ver-af="${esc(af.id)}">Ver</button>
+              ${podeEditarEscala() ? `<button type="button" class="btn btn-sec btn-sm" data-del-af="${esc(af.id)}">X</button>` : ''}
+            </div>
+          </td>
+        </tr>
+      `;
+    }).join('') || '<tr><td colspan="6" class="subtexto" style="text-align:center;padding:16px;">Nenhum atestado, férias ou afastamento neste filtro.</td></tr>';
+
+    tbody.querySelectorAll('[data-ver-af]').forEach(el => el.addEventListener('click', () => {
+      const af = (ESTADO.afastamentos || []).find(x => x.id === el.getAttribute('data-ver-af'));
+      if (af) abrirVisualizadorAtestado(af);
+    }));
+    tbody.querySelectorAll('[data-del-af]').forEach(el => el.addEventListener('click', async () => {
+      if (!podeEditarEscala() || !confirm('Remover este registro de afastamento?')) return;
+      ESTADO.afastamentos = ESTADO.afastamentos.filter(x => x.id !== el.getAttribute('data-del-af'));
+      await salvarTudo(); atualizarTodasVistas();
+    }));
+  }
+
+  // Modal e Gerador do RELATORIO OFICIAL DA ESCALA PARA O COMANDO / SUPERIOR
+  function abrirModalRelatorioComando(dataRef) {
+    const dt = dataRef || hojeISO();
+    abrirModal(
+      'Emitir Relatório Oficial para o Comando / Superior (PDF)',
+      `
+        <div class="campo">
+          <label for="mCmdDest">Autoridade / Destinatário Superior</label>
+          <input type="text" id="mCmdDest" value="${esc(ESTADO.config?.responsaveis?.comandoCargo || 'Comandante da Guarda Civil Municipal de Valparaíso de Goiás')}">
+        </div>
+        <div class="grid-2">
+          <div class="campo">
+            <label for="mCmdPeriodo">Período do Relatório</label>
+            <select id="mCmdPeriodo">
+              <option value="DIA">Somente do Dia Selecionado</option>
+              <option value="7D">Últimos 7 dias</option>
+              <option value="30D">Últimos 30 dias</option>
+            </select>
+          </div>
+          <div class="campo">
+            <label for="mCmdData">Data de Referência</label>
+            <input type="date" id="mCmdData" value="${esc(dt)}">
+          </div>
+        </div>
+        <div class="campo">
+          <label for="mCmdObs">Observações / Encaminhamento ao Comando (Opcional)</label>
+          <textarea id="mCmdObs" rows="2" placeholder="Ex.: Encaminhamos para ciência e providências quanto às faltas e atestados médicos..."></textarea>
+        </div>
+        <label class="check-linha">
+          <input type="checkbox" id="mCmdIncluirAnexos" checked>
+          <span>Incluir cópias dos atestados médicos digitalizados ao final do PDF</span>
+        </label>
+      `,
+      [
+        { texto: 'Cancelar', classe: 'btn-sec', onClick: fecharModal },
+        { texto: 'Gerar PDF Oficial para o Comando', classe: 'btn-primario', onClick: () => {
+          const dest = $('mCmdDest').value.trim() || 'Comando da GCM Valparaíso de Goiás';
+          const modo = $('mCmdPeriodo').value;
+          const dtBase = $('mCmdData').value || hojeISO();
+          const obs = $('mCmdObs').value.trim();
+          const incAnexos = $('mCmdIncluirAnexos').checked;
+          fecharModal();
+          gerarPdfRelatorioComando({ dest, modo, dtBase, obs, incAnexos });
+        }}
+      ]
+    );
+  }
+
+  function gerarPdfRelatorioComando({ dest, modo, dtBase, obs, incAnexos }) {
+    const ini = modo === '7D' ? somarDiasISO(dtBase, -6) : (modo === '30D' ? somarDiasISO(dtBase, -29) : dtBase);
+    const fim = dtBase;
+    const rotPeriodo = ini === fim ? formatarDataBR(ini) : `${formatarDataBR(ini)} a ${formatarDataBR(fim)}`;
+
+    // Coleta faltas (nao comparecimentos) e presentes no periodo
+    const faltasLista = [];
+    let totEscalados = 0, totEmServico = 0;
+    const qtdDiasLoop = Math.min(31, diffDiasISO(fim, ini) + 1);
+    for (let i = 0; i < qtdDiasLoop; i++) {
+      const d = somarDiasISO(ini, i);
+      const { escalados } = obterEscaladosDaData(d);
+      totEscalados += escalados.length;
+      escalados.forEach(item => {
+        const r = resumirDiaAgente(d, item.agente.id, item.permutaSaida);
+        if (r.status === 'EM_SERVICO' || r.status === 'PRESENTE') totEmServico++;
+        else if (r.status === 'FALTOU') {
+          faltasLista.push({
+            data: d, ag: item.agente, posto: item.posto,
+            detalhe: r.just?.obs || r.afast?.obs || 'Não compareceu ao serviço sem justificativa registrada'
+          });
+        }
+      });
+    }
+
+    // Coleta atestados medicos, ferias e afastamentos vigentes no periodo
+    const afastPeriodo = (ESTADO.afastamentos || [])
+      .filter(af => af.tipo !== 'FALTA' && af.dataInicio <= fim && af.dataFim >= ini)
+      .sort((a, b) => a.dataInicio.localeCompare(b.dataInicio));
+
+    // Tambem inclui justificativas avulsas (ex: atestado lancado direto na frequencia sem passar pelo cadastro de dias)
+    const justAvulsas = [];
+    Object.entries(ESTADO.justificativas || {}).forEach(([chave, val]) => {
+      const [dt, aid] = chave.split('|');
+      if (dt >= ini && dt <= fim && val.motivo !== 'Falta Injustificada') {
+        const ag = agentePorId(aid);
+        if (ag && !afastPeriodo.some(af => af.agenteId === aid && dt >= af.dataInicio && dt <= af.dataFim)) {
+          justAvulsas.push({ data: dt, ag, motivo: val.motivo, obs: val.obs || '' });
+        }
+      }
+    });
+
+    const permsPeriodo = (ESTADO.permutas || []).filter(pm => pm.status === 'APROVADA' && pm.dataOriginal >= ini && pm.dataOriginal <= fim);
+
+    const rowsFaltas = faltasLista.map(f => `
+      <tr>
+        <td style="width:12%;"><strong>${formatarDataBR(f.data)}</strong></td>
+        <td style="width:7%;"><strong>${esc(f.ag.matricula)}</strong></td>
+        <td style="width:27%;"><strong>${esc(f.ag.nome)}</strong></td>
+        <td style="width:16%;">${esc(f.ag.equipe)} · ${esc(f.posto)}</td>
+        <td style="width:38%;">${esc(f.detalhe)}</td>
+      </tr>
+    `).join('') || '<tr><td colspan="5" style="text-align:center;">Nenhum não comparecimento (falta) registrado neste período.</td></tr>';
+
+    const rowsAfast = [
+      ...afastPeriodo.map(af => {
+        const ag = agentePorId(af.agenteId);
+        return `
+          <tr>
+            <td style="width:24%;"><strong>${ag ? `Nº ${esc(ag.matricula)} — ${esc(ag.nome)}` : '—'}</strong><br><small>Equipe ${ag ? esc(ag.equipe) : '—'}</small></td>
+            <td style="width:17%;"><strong>${esc(TIPO_AFASTAMENTO_LABEL[af.tipo] || af.tipo)}</strong>${af.cid ? `<br><small>${esc(af.cid)}</small>` : ''}</td>
+            <td style="width:10%;"><strong>${af.dias} dia(s)</strong></td>
+            <td style="width:17%;">${formatarDataBR(af.dataInicio)} a ${formatarDataBR(af.dataFim)}</td>
+            <td style="width:10%;"><strong>${formatarDataBR(af.dataRetorno)}</strong></td>
+            <td style="width:22%;">${af.anexo ? '<strong>[Anexado]</strong> ' : '[Sem anexo] '}${esc(af.obs || '—')}</td>
+          </tr>
+        `;
+      }),
+      ...justAvulsas.map(j => `
+        <tr>
+          <td style="width:24%;"><strong>Nº ${esc(j.ag.matricula)} — ${esc(j.ag.nome)}</strong><br><small>Equipe ${esc(j.ag.equipe)}</small></td>
+          <td style="width:17%;"><strong>${esc(j.motivo)}</strong></td>
+          <td style="width:10%;"><strong>1 dia</strong></td>
+          <td style="width:17%;">${formatarDataBR(j.data)}</td>
+          <td style="width:10%;">—</td>
+          <td style="width:22%;">${esc(j.obs || 'Justificativa diária')}</td>
+        </tr>
+      `)
+    ].join('') || '<tr><td colspan="6" style="text-align:center;">Nenhum atestado médico, férias ou afastamento no período.</td></tr>';
+
+    const rowsPerms = permsPeriodo.map(pm => {
+      const sol = agentePorId(pm.solicitanteId), sub = agentePorId(pm.substitutoId);
+      return `<tr><td style="width:14%;">${formatarDataBR(pm.dataOriginal)}</td><td style="width:26%;">${esc(TIPO_PERMUTA_LABEL[pm.tipo]||pm.tipo)}</td><td style="width:30%;">${sol?`Nº ${sol.matricula} ${sol.nome}`:'—'}</td><td style="width:30%;">${sub?`Nº ${sub.matricula} ${sub.nome}`:'—'}</td></tr>`;
+    }).join('');
+
+    const anexosImg = incAnexos ? afastPeriodo.filter(af => af.anexo && af.anexo.tipo === 'imagem') : [];
+    const blocoAnexos = anexosImg.length ? `
+      <div class="quebra"></div>
+      <h2>ANEXO — ATESTADOS MÉDICOS E DOCUMENTOS DIGITALIZADOS (${anexosImg.length})</h2>
+      ${anexosImg.map((af, idx) => {
+        const ag = agentePorId(af.agenteId);
+        return `
+          <div class="box" style="text-align:center;">
+            <div style="text-align:left;margin-bottom:6px;border-bottom:1px solid #CCC;padding-bottom:4px;">
+              <strong>Anexo ${idx + 1}:</strong> ${esc(TIPO_AFASTAMENTO_LABEL[af.tipo] || af.tipo)} — <strong>${ag ? `Nº ${esc(ag.matricula)} ${esc(ag.nome)}` : '—'}</strong> · ${af.dias} dia(s) fora (${formatarDataBR(af.dataInicio)} a ${formatarDataBR(af.dataFim)} · Retorno ${formatarDataBR(af.dataRetorno)})${af.cid ? ' · ' + esc(af.cid) : ''}
+            </div>
+            <img src="${af.anexo.dataUrl}" style="max-width:100%;max-height:360px;object-fit:contain;border:1px solid #333;">
+          </div>
+        `;
+      }).join('')}
+    ` : '';
+
+    const corpo = `
+      <div class="box">
+        <div><strong>AO / DESTINATÁRIO SUPERIOR:</strong> ${esc(dest)}</div>
+        <div style="margin-top:3px;"><strong>ASSUNTO:</strong> Relatório Oficial da Escala — Não Comparecimentos (Faltas), Atestados Médicos, Férias e Afastamentos</div>
+        <div style="margin-top:3px;"><strong>PERÍODO APURADO:</strong> ${esc(rotPeriodo)} · <strong>Escalados no período:</strong> ${totEscalados} | <strong>Em Serviço:</strong> ${totEmServico} | <strong>Não Compareceram (Faltas):</strong> ${faltasLista.length} | <strong>Atestados / Afastamentos:</strong> ${afastPeriodo.length + justAvulsas.length} | <strong>Permutas:</strong> ${permsPeriodo.length}</div>
+        ${obs ? `<div style="margin-top:5px;border-top:1px solid #CCC;padding-top:4px;"><strong>Encaminhamento / Observação:</strong> ${esc(obs)}</div>` : ''}
+      </div>
+
+      <h2>1. RELAÇÃO DE NÃO COMPARECIMENTOS (FALTAS SEM JUSTIFICATIVA)</h2>
+      <table>
+        <thead><tr><th style="width:12%;">Data</th><th style="width:7%;">Nº</th><th style="width:27%;">Guarda GCM</th><th style="width:16%;">Equipe / Setor</th><th style="width:38%;">Ocorrência / Situação</th></tr></thead>
+        <tbody>${rowsFaltas}</tbody>
+      </table>
+
+      <h2>2. ATESTADOS MÉDICOS, FÉRIAS E AFASTAMENTOS (DIAS FORA E DATA DE RETORNO)</h2>
+      <table>
+        <thead><tr><th style="width:24%;">Guarda GCM</th><th style="width:17%;">Motivo / CID</th><th style="width:10%;">Dias Fora</th><th style="width:17%;">Período</th><th style="width:10%;">Retorno</th><th style="width:22%;">Documento / Obs.</th></tr></thead>
+        <tbody>${rowsAfast}</tbody>
+      </table>
+
+      ${permsPeriodo.length ? `<h2>3. PERMUTAS HOMOLOGADAS NO PERÍODO</h2><table><thead><tr><th style="width:14%;">Data</th><th style="width:26%;">Tipo</th><th style="width:30%;">Solicitante (Saiu)</th><th style="width:30%;">Substituto (Assumiu)</th></tr></thead><tbody>${rowsPerms}</tbody></table>` : ''}
+      ${blocoAnexos}
+    `;
+
+    emitirPdfAutenticado({
+      tipoDoc: 'RELATORIO_COMANDO',
+      titulo: 'RELATÓRIO OFICIAL DE ESCALA, FALTAS E ATESTADOS PARA O COMANDO',
+      subtitulo: `Destinatário: ${dest} · Período: ${rotPeriodo}`,
+      corpoHtml: corpo,
+      nomeArquivo: `relatorio-comando-escala-${dtBase}.pdf`,
+      paisagem: false,
+      qtdRegistros: faltasLista.length + afastPeriodo.length + justAvulsas.length
+    });
   }
 
   // =========================================================================
@@ -1636,7 +2592,7 @@
           <td>${esc(inf.nome)}</td>
           <td>${esc(inf.funcao)}</td>
           <td class="${clsSaldo}">${formatarMinutosHM(bh.saldoMin, true)}</td>
-          <td><span class="badge ${a.situacao==='ATIVO'?'badge-ok':'badge-warn'}">${esc(a.situacao)}</span></td>
+          <td>${(() => { const afH = obterAfastamentoNaData(a.id, hojeISO()); if (afH) return `<span class="badge ${afH.tipo==='FALTA'?'badge-erro':'badge-warn'}">${esc(TIPO_AFASTAMENTO_LABEL[afH.tipo]||afH.tipo)} (${afH.dias}d · Ret. ${formatarDataBR(afH.dataRetorno).slice(0,5)})</span>`; return `<span class="badge ${a.situacao==='ATIVO'?'badge-ok':'badge-warn'}">${esc(a.situacao)}</span>`; })()}</td>
         </tr>
       `;
     }).join('') || '<tr><td colspan="7" class="subtexto" style="text-align:center;">Nenhum integrante nesta equipe.</td></tr>';
@@ -1645,6 +2601,155 @@
   // =========================================================================
   // 6. VALIDAR AUTENTICIDADE E AUDITORIA DA CADEIA SHA-256
   // =========================================================================
+  function obterTurnosParaAuditoriaIdentidade() {
+    const mes = $('fltIdMes')?.value || '';
+    const busca = ($('fltIdBusca')?.value || '').trim().toLowerCase();
+    const fltSt = $('fltIdStatus')?.value || '';
+    const grupos = new Map();
+
+    (ESTADO.pontos || []).forEach(p => {
+      if (mes && !(p.dataLocal || '').startsWith(mes)) return;
+      const ag = agentePorId(p.agenteId);
+      if (busca && !(p.agenteNome.toLowerCase().includes(busca) || String(p.agenteMatricula).toLowerCase().includes(busca))) return;
+      const chave = `${p.dataLocal}|${p.agenteId}`;
+      if (!grupos.has(chave)) {
+        grupos.set(chave, { chave, dataLocal: p.dataLocal, agenteId: p.agenteId, ag, nome: p.agenteNome, matricula: p.agenteMatricula, equipe: p.equipe, ent: null, sai: null, outros: [] });
+      }
+      const g = grupos.get(chave);
+      if (p.tipo === 'ENTRADA' && !g.ent) g.ent = p;
+      else if (p.tipo === 'SAIDA' && !g.sai) g.sai = p;
+      else g.outros.push(p);
+    });
+
+    const lista = Array.from(grupos.values()).sort((a, b) => b.dataLocal.localeCompare(a.dataLocal) || Number(a.matricula) - Number(b.matricula));
+    return lista.filter(g => {
+      const par = (ESTADO.auditoriasIdentidade || {})[g.chave];
+      const st = par ? par.status : 'AGUARDANDO';
+      return !fltSt || st === fltSt;
+    });
+  }
+
+  function resumoAnaliseAutomaticaTurno(g) {
+    const fotoOf = g.ag?.fotoPerfil || '';
+    const pts = [g.ent, g.sai, ...g.outros].filter(Boolean);
+    const avisos = [];
+    if (!fotoOf) avisos.push('Sem Foto Oficial cadastrada');
+    pts.forEach(p => {
+      if (p.conferenciaVisual && !p.conferenciaVisual.qualidadeOk) {
+        avisos.push(`${TIPO_PONTO_LABEL[p.tipo] || p.tipo}: ${p.conferenciaVisual.qualidadeMsg}`);
+      }
+      if (p.conferenciaVisual && typeof p.conferenciaVisual.indiceVisual === 'number' && p.conferenciaVisual.indiceVisual < 45) {
+        avisos.push(`${TIPO_PONTO_LABEL[p.tipo] || p.tipo}: baixa similaridade visual (${p.conferenciaVisual.indiceVisual}%)`);
+      }
+    });
+    if (!avisos.length) return { cls: 'badge-ok', txt: 'Fotos nítidas — Conferir visualmente' };
+    return { cls: 'badge-pendente', txt: avisos.join(' · ') };
+  }
+
+  function renderAuditoriaIdentidade() {
+    if (!podeEditarEscala()) return;
+    if ($('fltIdMes') && !$('fltIdMes').value) $('fltIdMes').value = mesAtualISO();
+    const turnos = obterTurnosParaAuditoriaIdentidade();
+    const tbody = $('tbodyAuditoriaIdentidade');
+    if (!tbody) return;
+    if (!turnos.length) {
+      tbody.innerHTML = '<tr><td colspan="5" class="subtexto" style="text-align:center;padding:16px;">Nenhum turno com foto encontrado neste filtro.</td></tr>';
+      return;
+    }
+    tbody.innerHTML = turnos.map(g => {
+      const fotoOf = g.ag?.fotoPerfil || '';
+      const ana = resumoAnaliseAutomaticaTurno(g);
+      const par = (ESTADO.auditoriasIdentidade || {})[g.chave];
+      const stPar = par ? par.status : 'AGUARDANDO';
+      const parCls = stPar === 'CONFIRMADA' ? 'badge-ok' : (stPar === 'SUSPEITA' ? 'badge-erro' : 'badge-pendente');
+      const parTxt = stPar === 'CONFIRMADA' ? 'Identidade Confirmada' : (stPar === 'SUSPEITA' ? `Suspeita${par.obs ? ': ' + par.obs : ''}` : 'Aguardando Conferência');
+      const boxFoto = (src, rotulo, ptId) => src
+        ? `<div class="foto-comp-item"><img src="${src}" ${ptId ? `data-ver-ponto-id="${esc(ptId)}"` : ''} alt="${esc(rotulo)}"><span>${esc(rotulo)}</span></div>`
+        : `<div class="foto-comp-item"><div class="foto-vazia-mini">Sem foto</div><span>${esc(rotulo)}</span></div>`;
+
+      return `
+        <tr>
+          <td><strong>${formatarDataBR(g.dataLocal)}</strong><div class="subtexto">Nº ${esc(g.matricula)} — ${esc(g.nome)}</div><span class="insig eq-${esc(g.equipe)}">${esc(g.equipe)}</span></td>
+          <td>
+            <div class="foto-comp-par">
+              ${boxFoto(fotoOf, 'Foto Oficial', '')}
+              ${boxFoto(g.ent?.foto || '', g.ent ? 'Ent. ' + g.ent.horaLocal.slice(0,5) : 'Entrada', g.ent?.id || '')}
+              ${boxFoto(g.sai?.foto || '', g.sai ? 'Saí. ' + g.sai.horaLocal.slice(0,5) : 'Saída', g.sai?.id || '')}
+            </div>
+          </td>
+          <td><span class="badge ${ana.cls}">${esc(ana.txt)}</span></td>
+          <td><span class="badge ${parCls}">${esc(parTxt)}</span>${par?.por ? `<div class="subtexto" style="font-size:10.5px;">Por: ${esc(par.por)}</div>` : ''}</td>
+          <td>
+            <div class="acoes-linha">
+              <button type="button" class="btn btn-primario btn-sm" data-id-ok="${esc(g.chave)}">Confirmar</button>
+              <button type="button" class="btn btn-sec btn-sm" data-id-susp="${esc(g.chave)}">Suspeita</button>
+            </div>
+          </td>
+        </tr>
+      `;
+    }).join('');
+
+    tbody.querySelectorAll('[data-ver-ponto-id]').forEach(img => img.addEventListener('click', () => abrirDetalhePonto(img.getAttribute('data-ver-ponto-id'))));
+    tbody.querySelectorAll('[data-id-ok]').forEach(b => b.addEventListener('click', async () => {
+      const k = b.getAttribute('data-id-ok');
+      ESTADO.auditoriasIdentidade[k] = { status: 'CONFIRMADA', obs: '', por: SESSAO?.nome || 'Gestão', em: new Date().toISOString() };
+      await salvarTudo(true); renderAuditoriaIdentidade(); toast('Identidade confirmada.');
+    }));
+    tbody.querySelectorAll('[data-id-susp]').forEach(b => b.addEventListener('click', () => {
+      const k = b.getAttribute('data-id-susp');
+      abrirModal('Sinalizar Suspeita / Divergência de Identidade',
+        `<div class="campo"><label>Observação da Gestão (ex.: rosto divergente da foto oficial, câmera tampada)</label><textarea id="mIdSuspObs" rows="3" placeholder="Descreva a divergência encontrada..."></textarea></div>`,
+        [
+          { texto: 'Cancelar', classe: 'btn-sec', onClick: fecharModal },
+          { texto: 'Registrar Suspeita', classe: 'btn-perigo', onClick: async () => {
+            ESTADO.auditoriasIdentidade[k] = { status: 'SUSPEITA', obs: $('mIdSuspObs').value.trim() || 'Divergência visual', por: SESSAO?.nome || 'Gestão', em: new Date().toISOString() };
+            await salvarTudo(); fecharModal(); renderAuditoriaIdentidade();
+          }}
+        ]
+      );
+    }));
+  }
+
+  function gerarPdfAuditoriaIdentidade() {
+    if (!podeEditarEscala()) return toast('Exclusivo Administrador ou Escalante.');
+    const turnos = obterTurnosParaAuditoriaIdentidade();
+    const mes = $('fltIdMes')?.value || 'Todos';
+    const imgTd = (src) => src ? `<img src="${src}" style="width:52px;height:52px;object-fit:cover;border:1px solid #333;display:block;">` : '<span style="font-size:8px;color:#666;">Sem foto</span>';
+    const rows = turnos.map(g => {
+      const fotoOf = g.ag?.fotoPerfil || '';
+      const ana = resumoAnaliseAutomaticaTurno(g);
+      const par = (ESTADO.auditoriasIdentidade || {})[g.chave];
+      const stPar = par ? (par.status === 'CONFIRMADA' ? 'IDENTIDADE CONFIRMADA' : 'SUSPEITA: ' + (par.obs || 'Divergência')) : 'AGUARDANDO CONFERÊNCIA';
+      const corSt = par?.status === 'CONFIRMADA' ? 'background:#E7F4EC;color:#166534;border:1px solid #166534;' : (par?.status === 'SUSPEITA' ? 'background:#F9E6E6;color:#991B1B;border:1px solid #991B1B;' : 'background:#FFEDD5;color:#C2410C;border:1px solid #EA580C;');
+      return `
+        <tr>
+          <td style="width:18%;"><strong>${formatarDataBR(g.dataLocal)}</strong><br>Nº ${esc(g.matricula)} — ${esc(g.nome)}<br><small>Equipe ${esc(g.equipe)}</small></td>
+          <td style="width:11%;">${imgTd(fotoOf)}</td>
+          <td style="width:14%;">${imgTd(g.ent?.foto || '')}<small>${g.ent ? g.ent.horaLocal.slice(0,5) : '—'}</small></td>
+          <td style="width:14%;">${imgTd(g.sai?.foto || '')}<small>${g.sai ? g.sai.horaLocal.slice(0,5) : '—'}</small></td>
+          <td style="width:21%;">${esc(ana.txt)}<br><small>${g.ent?.localizacao?.endereco ? 'Local: ' + esc(g.ent.localizacao.endereco) : ''}</small></td>
+          <td style="width:22%;"><span style="display:inline-block;padding:2px 5px;font-weight:700;font-size:8px;border-radius:3px;${corSt}">${esc(stPar)}</span>${par?.por ? `<br><small>Conferido por: ${esc(par.por)}</small>` : ''}</td>
+        </tr>
+      `;
+    }).join('') || '<tr><td colspan="6" style="text-align:center;">Nenhum turno encontrado para conferência.</td></tr>';
+
+    const corpo = `
+      <table>
+        <thead><tr><th style="width:18%;">Data / Guarda</th><th style="width:11%;">Foto Oficial</th><th style="width:14%;">Foto Entrada</th><th style="width:14%;">Foto Saída</th><th style="width:21%;">Análise e Local</th><th style="width:22%;">Parecer Oficial</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    `;
+    emitirPdfAutenticado({
+      tipoDoc: 'AUDITORIA_IDENTIDADE',
+      titulo: 'RELATÓRIO DE CONFERÊNCIA DE IDENTIDADE PÓS-TURNO',
+      subtitulo: `Competência: ${mes} · Comparação Foto Oficial × Entrada × Saída · Total: ${turnos.length} turno(s)`,
+      corpoHtml: corpo,
+      nomeArquivo: `auditoria-identidade-gcm-${mes}.pdf`,
+      paisagem: true,
+      qtdRegistros: turnos.length
+    });
+  }
+
   function renderTelaAutenticacao() {
     const docs = ESTADO.documentosAutenticados || [];
     $('badgeQtdDocsAut').textContent = `${docs.length} documento(s)`;
@@ -1657,6 +2762,7 @@
         <td><code style="font-size:10.5px;">${esc(d.hashSha256.slice(0, 22))}...</code></td>
       </tr>
     `).join('') || '<tr><td colspan="5" class="subtexto" style="text-align:center;padding:16px;">Nenhum PDF autenticado emitido ainda.</td></tr>';
+    renderAuditoriaIdentidade();
   }
 
   function validarCodigoDocumentoOuPonto() {
@@ -1708,7 +2814,7 @@
       box.innerHTML = '<div class="selo-card"><div><span class="badge badge-ok">CADEIA LIMPA</span></div><div>Nenhuma batida de ponto registrada ainda.</div></div>';
       return;
     }
-    let prev = 'GENESIS_GCM_V6';
+    let prev = 'GENESIS_GCM_V9';
     const violacoes = [];
     pts.forEach((pt, idx) => {
       const esperado = calcularHashPonto(pt, prev);
@@ -1793,7 +2899,7 @@
   function renderEfetivo() {
     const busca = ($('fltEfBusca').value||'').trim().toLowerCase(), eq = $('fltEfEquipe').value||'', area = $('fltEfArea').value||'';
     const lista = ESTADO.efetivo.filter(a => (!eq||a.equipe===eq) && (!area||a.area===area) && (!busca || a.nome.toLowerCase().includes(busca) || a.matricula.toLowerCase().includes(busca) || (a.nomeGuerra||'').toLowerCase().includes(busca)));
-    $('tbodyEfetivo').innerHTML = lista.map(a => `<tr><td><strong>${esc(a.matricula)}</strong></td><td><strong>${esc(a.nome)}</strong></td><td>${esc(a.nomeGuerra||'—')}</td><td><span class="insig eq-${esc(a.equipe)}">${esc(a.equipe)}</span></td><td>${esc(AREAS_LABEL[a.area]||a.area)}</td><td>${esc(FUNCOES_LABEL[a.funcao]||a.funcao)}</td><td><span class="badge ${a.situacao==='ATIVO'?'badge-ok':'badge-warn'}">${esc(a.situacao)}</span></td><td class="so-gestao">${podeEditarEscala()?`<button type="button" class="btn btn-sec btn-sm" data-ed-ag="${esc(a.id)}">Editar</button> <button type="button" class="btn btn-sec btn-sm" data-del-ag="${esc(a.id)}">X</button>`:'—'}</td></tr>`).join('');
+    $('tbodyEfetivo').innerHTML = lista.map(a => `<tr><td><strong>${esc(a.matricula)}</strong></td><td><strong>${esc(a.nome)}</strong></td><td>${esc(a.nomeGuerra||'—')}</td><td><span class="insig eq-${esc(a.equipe)}">${esc(a.equipe)}</span></td><td>${esc(AREAS_LABEL[a.area]||a.area)}</td><td>${esc(FUNCOES_LABEL[a.funcao]||a.funcao)}</td><td>${(() => { const afH = obterAfastamentoNaData(a.id, hojeISO()); if (afH) return `<span class="badge ${afH.tipo==='FALTA'?'badge-erro':'badge-warn'}">${esc(TIPO_AFASTAMENTO_LABEL[afH.tipo]||afH.tipo)} (${afH.dias}d · Ret. ${formatarDataBR(afH.dataRetorno).slice(0,5)})</span>`; return `<span class="badge ${a.situacao==='ATIVO'?'badge-ok':'badge-warn'}">${esc(a.situacao)}</span>`; })()}</td><td class="so-gestao">${podeEditarEscala()?`<button type="button" class="btn btn-sec btn-sm" data-ed-ag="${esc(a.id)}">Editar</button> <button type="button" class="btn btn-sec btn-sm" data-del-ag="${esc(a.id)}">X</button>`:'—'}</td></tr>`).join('');
     $('tbodyEfetivo').querySelectorAll('[data-ed-ag]').forEach(b => b.addEventListener('click', () => abrirModalAgente(agentePorId(b.getAttribute('data-ed-ag')))));
     $('tbodyEfetivo').querySelectorAll('[data-del-ag]').forEach(b => b.addEventListener('click', async () => { if (!confirm('Remover guarda?')) return; ESTADO.efetivo = ESTADO.efetivo.filter(x => x.id !== b.getAttribute('data-del-ag')); await salvarTudo(); atualizarTodasVistas(); }));
   }
@@ -1988,6 +3094,13 @@
       <table><thead><tr><th style="width:5%;">Nº</th><th style="width:24%;">Guarda GCM</th><th style="width:10%;">Equipe</th><th style="width:18%;">Setor/VTR</th><th style="width:13%;">Função</th><th style="width:30%;">Próximos Dias de Serviço</th></tr></thead><tbody>${rowsPessoas}</tbody></table>
       <h2>4. EXPEDIENTE ADMINISTRATIVO (SEGUNDA A SEXTA)</h2>
       <table><thead><tr><th style="width:25%;">Cargo</th><th style="width:35%;">Titular</th><th style="width:20%;">Horário</th><th style="width:20%;">Obs.</th></tr></thead><tbody>${rowsAdm}</tbody></table>
+      <h2>5. QUADRO DE ATESTADOS MÉDICOS, FÉRIAS, AFASTAMENTOS E FALTAS (CIÊNCIA DO COMANDO)</h2>
+      <table><thead><tr><th style="width:25%;">Guarda GCM</th><th style="width:18%;">Motivo / CID</th><th style="width:11%;">Dias Fora</th><th style="width:18%;">Período</th><th style="width:11%;">Retorno</th><th style="width:17%;">Documento</th></tr></thead><tbody>${
+        (ESTADO.afastamentos || []).filter(af => af.dataFim >= hojeISO()).map(af => {
+          const ag = agentePorId(af.agenteId);
+          return `<tr><td><strong>${ag ? `Nº ${esc(ag.matricula)} ${esc(ag.nome)}` : '—'}</strong></td><td>${esc(TIPO_AFASTAMENTO_LABEL[af.tipo]||af.tipo)}${af.cid ? ' · '+esc(af.cid) : ''}</td><td><strong>${af.dias} dia(s)</strong></td><td>${formatarDataBR(af.dataInicio)} a ${formatarDataBR(af.dataFim)}</td><td><strong>${formatarDataBR(af.dataRetorno)}</strong></td><td>${af.anexo ? 'Digitalizado' : 'Pendente'}</td></tr>`;
+        }).join('') || '<tr><td colspan="6" style="text-align:center;">Nenhum afastamento, férias ou atestado médico ativo no momento.</td></tr>'
+      }</tbody></table>
     `;
     emitirPdfAutenticado({ tipoDoc:'ESCALA_24X72', titulo:'ESCALA CONTÍNUA 24x72 — GCM VALPARAÍSO DE GOIÁS', subtitulo:`${titulo} · Turno ${ESTADO.config.horarioTroca}`, corpoHtml:corpo, nomeArquivo:`escala-24x72-gcm-${hojeISO()}.pdf`, paisagem:true, qtdRegistros:listaPessoas.length });
   }
@@ -2120,8 +3233,11 @@
     if ($('lblTituloPaginaAtual')) $('lblTituloPaginaAtual').textContent = TITULOS_ABAS[idSecao] || 'GCM Valparaíso';
     fecharSidebarMobile();
     if (idSecao !== 'secPonto') pararCamera();
+    if (idSecao !== 'secAfastamentos') pararCameraScanAf();
     if (idSecao === 'secPonto') { renderFaixaPlantaoHoje(); renderResumoEscaladosHoje(); renderFrequenciaDia(); renderTabelaPontos(); coletarLocalizacaoAutomatica(false); }
+    if (idSecao === 'secMinhaFolha') renderMinhaFolha();
     if (idSecao === 'secEscalas') { renderCalendario24(); renderPermutas(); renderQuadroPessoas(); renderMontagemEquipe(); renderSetoresResponsaveis(); renderAdmE12x36(); renderResponsaveis(); }
+    if (idSecao === 'secAfastamentos') renderAfastamentos();
     if (idSecao === 'secCartao') { popularSelectsCartao(); carregarEditorCartao(); }
     if (idSecao === 'secBancoHoras') renderBancoHoras();
     if (idSecao === 'secEventos') renderListaEventos();
@@ -2132,8 +3248,8 @@
   }
 
   function atualizarTodasVistas() {
-    renderFaixaPlantaoHoje(); renderResumoEscaladosHoje(); renderFrequenciaDia(); renderTabelaPontos();
-    renderCalendario24(); renderPermutas(); renderQuadroPessoas(); renderMontagemEquipe(); renderSetoresResponsaveis();
+    renderFaixaPlantaoHoje(); renderResumoEscaladosHoje(); renderFrequenciaDia(); renderTabelaPontos(); renderMinhaFolha();
+    renderCalendario24(); renderPermutas(); renderAfastamentos(); renderQuadroPessoas(); renderMontagemEquipe(); renderSetoresResponsaveis();
     renderAdmE12x36(); renderResponsaveis(); popularSelectsCartao(); carregarEditorCartao();
     renderBancoHoras(); renderListaEventos(); renderTelaEquipeDetalhe(); renderTelaAutenticacao();
     renderEfetivo(); renderContas(); renderConfigBase(); aplicarPermissoesVisuais();
@@ -2150,11 +3266,9 @@
     sincronizarDataCartao(); atualizarTodasVistas();
     abrirAba('secPonto');
 
-    if (sessao.matricula) {
-      const numL = sessao.matricula.replace(/\D/g,'').replace(/^0+/,'');
-      const meu = ESTADO.efetivo.find(a => a.matricula.replace(/\D/g,'').replace(/^0+/,'') === numL);
-      if (meu) selecionarGuardaParaPonto(meu);
-    }
+    const meuLogado = agenteLogadoAtual();
+    if (meuLogado) selecionarGuardaParaPonto(meuLogado);
+    atualizarAlertaBotaoPonto();
 
     if (timerRelogio) clearInterval(timerRelogio);
     timerRelogio = setInterval(() => { if ($('lblRelogioPonto')) $('lblRelogioPonto').textContent = new Date().toLocaleTimeString('pt-BR'); }, 1000);
@@ -2176,6 +3290,65 @@
     $('btnAlterarMeuCodigoTopo').addEventListener('click', abrirModalAlterarMeuCodigo);
 
     $('btnTopoRegistrarPonto').addEventListener('click', () => { abrirAba('secPonto'); ativarSubtab('secPonto', 'subPtRegistrar'); $('inpIdentificaGuarda').focus(); });
+
+    // Botao Atualizar App (limpa caches antigos do GitHub Pages / Service Worker e recarrega)
+    $('btnAtualizarApp').addEventListener('click', async () => {
+      toast('Limpando cache antigo e carregando versão mais recente...');
+      try {
+        if ('serviceWorker' in navigator) {
+          const regs = await navigator.serviceWorker.getRegistrations();
+          for (const r of regs) await r.unregister();
+        }
+        if ('caches' in window) {
+          const keys = await caches.keys();
+          for (const k of keys) await caches.delete(k);
+        }
+      } catch (_) {}
+      setTimeout(() => location.reload(true), 350);
+    });
+
+    // Atestados, Ferias, Afastamentos e Relatorio Oficial p/ Comando
+    $('inpAfDataIni').addEventListener('change', atualizarPreviaDiasAf);
+    $('inpAfDias').addEventListener('input', atualizarPreviaDiasAf);
+    $('btnAbrirCamScanAf').addEventListener('click', abrirCameraScanAf);
+    $('btnCapturarScanAf').addEventListener('click', capturarDocumentoScanAf);
+    $('btnAnexarArquivoAf').addEventListener('click', () => $('inpFileScanAf').click());
+    $('inpFileScanAf').addEventListener('change', (e) => { processarArquivoAnexoAf(e.target.files[0]); e.target.value = ''; });
+    $('btnLimparScanAf').addEventListener('click', limparAnexoScanAf);
+    $('btnSalvarAfastamento').addEventListener('click', async () => {
+      if (!podeEditarEscala()) return toast('Apenas Administrador ou Escalante.');
+      const agenteId = $('selAfGuarda').value;
+      const tipo = $('selAfTipo').value;
+      const dataInicio = $('inpAfDataIni').value || hojeISO();
+      const dias = Math.max(1, Math.min(365, Number($('inpAfDias').value || 1)));
+      if (!agenteId) return toast('Selecione o guarda.');
+      const dataFim = somarDiasISO(dataInicio, dias - 1);
+      const dataRetorno = somarDiasISO(dataInicio, dias);
+      const reg = {
+        id: 'af_' + Date.now().toString(36),
+        agenteId, tipo, dataInicio, dias, dataFim, dataRetorno,
+        cid: $('inpAfCid').value.trim(),
+        protocoloExt: $('inpAfProtocoloExt').value.trim(),
+        obs: $('inpAfObs').value.trim(),
+        anexo: anexoScanAfAtual || null,
+        por: SESSAO?.nome || 'Gestão',
+        criadoEm: new Date().toISOString()
+      };
+      ESTADO.afastamentos = ESTADO.afastamentos || [];
+      ESTADO.afastamentos.unshift(reg);
+      const ok = await salvarTudo();
+      if (!ok) { ESTADO.afastamentos.shift(); return; }
+      $('inpAfCid').value = ''; $('inpAfProtocoloExt').value = ''; $('inpAfObs').value = ''; $('inpAfDias').value = '1';
+      limparAnexoScanAf();
+      atualizarTodasVistas();
+      toast(`${TIPO_AFASTAMENTO_LABEL[tipo] || tipo} (${dias} dia(s)) registrado!`);
+    });
+    $('fltAfBusca').addEventListener('input', renderAfastamentos);
+    $('fltAfTipo').addEventListener('change', renderAfastamentos);
+    $('fltAfVigencia').addEventListener('change', renderAfastamentos);
+    $('btnAbrirRelComandoAf').addEventListener('click', () => abrirModalRelatorioComando(hojeISO()));
+    $('btnAbrirRelComandoEsc').addEventListener('click', () => abrirModalRelatorioComando(hojeISO()));
+    $('btnAbrirRelComandoFreq').addEventListener('click', () => abrirModalRelatorioComando($('inpFreqData')?.value || hojeISO()));
 
     // Botoes clicaveis ALFA / BRAVO / CHARLIE / DELTA (sidebar esquerda e barra da tela de equipe)
     document.querySelectorAll('[data-ver-equipe]').forEach(btn => btn.addEventListener('click', () => abrirTelaEquipe(btn.getAttribute('data-ver-equipe'))));
@@ -2224,6 +3397,15 @@
     $('fltPontoTipo').addEventListener('change', renderTabelaPontos);
     $('fltPontoStatus').addEventListener('change', renderTabelaPontos);
     $('btnPdfFolhaMensal').addEventListener('click', gerarPdfFolhaMensal);
+
+    // Minha Folha de Ponto Individual (PDF)
+    $('selMfAgente').addEventListener('change', renderMinhaFolha);
+    $('selMfPeriodo').addEventListener('change', renderMinhaFolha);
+    $('inpMfMes').addEventListener('change', renderMinhaFolha);
+    $('inpMfDataIni').addEventListener('change', renderMinhaFolha);
+    $('inpMfDataFim').addEventListener('change', renderMinhaFolha);
+    $('btnAtualizarFotoPerfil').addEventListener('click', abrirModalAtualizarFotoPerfil);
+    $('btnBaixarMinhaFolhaPdf').addEventListener('click', gerarPdfMinhaFolhaIndividual);
 
     // Escala e Permutas
     $('selModoEscala').addEventListener('change', renderCalendario24);
@@ -2337,10 +3519,15 @@
     $('btnWhatsAppEvento').addEventListener('click', copiarWhatsAppEvento);
     $('btnPdfEvento').addEventListener('click', gerarPdfEvento);
 
-    // Validacao de Autenticidade
+    // Validacao de Autenticidade e Conferencia de Identidade Pos-Turno
     $('btnExecutarValidacao').addEventListener('click', validarCodigoDocumentoOuPonto);
     $('inpCodigoValidar').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); validarCodigoDocumentoOuPonto(); } });
     $('btnAuditarCadeiaPontos').addEventListener('click', auditarCadeiaCompletaPontos);
+    $('fltIdMes').addEventListener('change', renderAuditoriaIdentidade);
+    $('fltIdBusca').addEventListener('input', renderAuditoriaIdentidade);
+    $('fltIdStatus').addEventListener('change', renderAuditoriaIdentidade);
+    $('btnPdfAuditoriaIdentidade').addEventListener('click', gerarPdfAuditoriaIdentidade);
+    $('btnPdfAuditoriaIdentidade2').addEventListener('click', gerarPdfAuditoriaIdentidade);
 
     // Efetivo (Gestao) e Sistema (EXCLUSIVO ADMIN)
     $('fltEfBusca').addEventListener('input', renderEfetivo);
@@ -2380,7 +3567,7 @@
     $('btnAlterarMinhaSenha').addEventListener('click', abrirModalAlterarMeuCodigo);
     $('btnExportarBackup').addEventListener('click', async () => {
       if (!isAdmin()) return toast('Exclusivo Administrador.');
-      const pac = { sistema:'GCM_VALP_ESCALA_V6', exportadoEm:new Date().toISOString(), estado:ESTADO, usuarios:window.EscalaCloud.lerUsuariosLocal() };
+      const pac = { sistema:'GCM_VALP_ESCALA_V9', exportadoEm:new Date().toISOString(), estado:ESTADO, usuarios:window.EscalaCloud.lerUsuariosLocal() };
       if (window.escalaAPI?.exportarBackup) { const r = await window.escalaAPI.exportarBackup(pac); if (r?.ok) toast('Backup salvo em: '+r.caminho); return; }
       const b = new Blob([JSON.stringify(pac,null,2)], { type:'application/json' }), u = URL.createObjectURL(b), a = document.createElement('a'); a.href = u; a.download = `backup-gcm-escala-${hojeISO()}.json`; a.click(); URL.revokeObjectURL(u); toast('Backup baixado!');
     });
@@ -2397,11 +3584,13 @@
   }
 
   async function init() {
-    aplicarTema(localStorage.getItem('escala_gcm_tema_v6') || 'claro');
+    aplicarTema(localStorage.getItem('escala_gcm_tema_v9') || 'claro');
     if ('serviceWorker' in navigator && location.protocol.startsWith('http')) navigator.serviceWorker.register('./sw.js').catch(() => {});
     const carregado = await window.EscalaCloud.carregarEstadoLocal();
-    ESTADO = (carregado && carregado.efetivo && carregado.postos && carregado.versao >= 6) ? carregado : criarEstadoInicial();
+    ESTADO = (carregado && carregado.efetivo && carregado.postos && carregado.versao >= 9) ? carregado : criarEstadoInicial();
     if (!ESTADO.justificativas) ESTADO.justificativas = {};
+    if (!ESTADO.auditoriasIdentidade) ESTADO.auditoriasIdentidade = {};
+    if (!Array.isArray(ESTADO.afastamentos)) ESTADO.afastamentos = [];
     if (!Array.isArray(ESTADO.eventos)) ESTADO.eventos = [];
     if (!Array.isArray(ESTADO.permutas)) ESTADO.permutas = [];
     if (!Array.isArray(ESTADO.bancoHorasMovs)) ESTADO.bancoHorasMovs = [];
