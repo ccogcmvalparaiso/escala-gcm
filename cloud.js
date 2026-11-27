@@ -1,12 +1,12 @@
 (function () {
   'use strict';
 
-  const COLECAO_BASE = 'escala_gcm_valparaiso_v4';
-  const COLECAO_PONTOS = 'escala_gcm_pontos_v4';
-  const CHAVE_LOCAL_DADOS = 'escala_gcm_valp_dados_v4';
-  const CHAVE_LOCAL_USERS = 'escala_gcm_valp_users_v4';
-  const CHAVE_LOCAL_SESSAO = 'escala_gcm_valp_sessao_v4';
-  const CHAVE_LOCAL_FB = 'escala_gcm_valp_firebase_cfg_v4';
+  const COLECAO_BASE = 'escala_gcm_valparaiso_v6';
+  const COLECAO_PONTOS = 'escala_gcm_pontos_v6';
+  const CHAVE_LOCAL_DADOS = 'escala_gcm_valp_dados_v6';
+  const CHAVE_LOCAL_USERS = 'escala_gcm_valp_users_v6';
+  const CHAVE_LOCAL_SESSAO = 'escala_gcm_valp_sessao_v6';
+  const CHAVE_LOCAL_FB = 'escala_gcm_valp_firebase_cfg_v6';
 
   let fbApp = null, db = null, unsubNuvem = null;
 
@@ -49,7 +49,7 @@
     }
     return H.map(v => v.toString(16).padStart(8, '0')).join('');
   }
-  function hashSenha(login, senha) { return sha256Hex('GCM_VALP_V4::' + normalizarLogin(login) + '::' + String(senha)); }
+  function hashSenha(login, senha) { return sha256Hex('GCM_VALP_V6::' + normalizarLogin(login) + '::' + String(senha)); }
 
   function lerConfigFirebase() { try { const r = localStorage.getItem(CHAVE_LOCAL_FB); return r ? JSON.parse(r) : null; } catch (e) { return null; } }
   function desconectarFirebase() {
@@ -76,7 +76,7 @@
     if (db) return true;
     try {
       if (typeof firebase !== 'undefined' && firebase.initializeApp) {
-        const nm = 'escala_gcm_v4_' + cfg.projectId;
+        const nm = 'escala_gcm_v6_' + cfg.projectId;
         fbApp = firebase.apps.find(a => a.name === nm) || firebase.initializeApp(cfg, nm);
         db = fbApp.firestore();
         return true;
@@ -88,7 +88,7 @@
     desconectarFirebase();
     if (!inicializarFirebase(cfg) || !db) return { ok: false, erro: 'Configuração inválida ou sem internet.' };
     try {
-      await db.collection(COLECAO_BASE).doc('ping').set({ v: 4, em: new Date().toISOString() });
+      await db.collection(COLECAO_BASE).doc('ping').set({ v: 6, em: new Date().toISOString() });
       return { ok: true, projectId: cfg.projectId };
     } catch (e) { return { ok: false, erro: String(e && e.message ? e.message : e) }; }
   }
@@ -165,8 +165,26 @@
     try { const r = localStorage.getItem(CHAVE_LOCAL_DADOS); return r ? JSON.parse(r) : null; } catch (e) { return null; }
   }
   async function salvarEstadoLocal(estado) {
-    try { localStorage.setItem(CHAVE_LOCAL_DADOS, JSON.stringify(estado)); } catch (e) {}
-    if (window.escalaAPI?.salvarDados) { try { await window.escalaAPI.salvarDados(estado); } catch (e) {} }
+    let okLocal = false;
+    let erroMsg = '';
+    const serializado = JSON.stringify(estado);
+    try {
+      localStorage.setItem(CHAVE_LOCAL_DADOS, serializado);
+      const check = localStorage.getItem(CHAVE_LOCAL_DADOS);
+      okLocal = !!(check && check.length > 20);
+    } catch (e) {
+      erroMsg = 'Armazenamento do navegador cheio: ' + String(e && e.message ? e.message : e);
+    }
+    if (window.escalaAPI?.salvarDados) {
+      try {
+        const res = await window.escalaAPI.salvarDados(estado);
+        if (res && res.ok) okLocal = true;
+        else if (res && res.erro) erroMsg = res.erro;
+      } catch (e) {
+        erroMsg = String(e && e.message ? e.message : e);
+      }
+    }
+    return { ok: okLocal, erro: erroMsg };
   }
 
   function lerSessao() { try { const r = localStorage.getItem(CHAVE_LOCAL_SESSAO); return r ? JSON.parse(r) : null; } catch (e) { return null; } }

@@ -1,8 +1,8 @@
 {
-  "id": "/?source=pwa-escala-gcm-v4",
+  "id": "/?source=pwa-escala-gcm-v6",
   "name": "GCM Valparaíso — Folha de Ponto, Escala 24x72 e Cartão Programa",
   "short_name": "GCM Ponto/Escala",
-  "description": "Sistema Operacional de Folha de Ponto vinculada à Escala Contínua 24x72 e Cartão Programa com Mapa dos Setores.",
+  "description": "Sistema Operacional de Folha de Ponto Autenticada, Escala 24x72, Permutas, Banco de Horas e Cartão Programa — GCM Valparaíso de Goiás.",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",

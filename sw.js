@@ -1,4 +1,4 @@
-const CACHE_NAME = 'gcm-valparaiso-escala-v4';
+const CACHE_NAME = 'gcm-valparaiso-escala-v6';
 const ARQUIVOS = ['./', './index.html', './styles.css', './cloud.js', './app.js', './manifest.json', './logo.png', './icon.png', './icon-192.png'];
 self.addEventListener('install', (ev) => { self.skipWaiting(); ev.waitUntil(caches.open(CACHE_NAME).then(c => c.addAll(ARQUIVOS)).catch(() => {})); });
 self.addEventListener('activate', (ev) => { ev.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k !== CACHE_NAME).map(k => caches.delete(k)))).then(() => self.clients.claim())); });

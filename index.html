@@ -11,11 +11,11 @@
   <link rel="manifest" href="manifest.json">
   <link rel="icon" type="image/png" href="icon-192.png">
   <link rel="apple-touch-icon" href="icon-192.png">
-  <title>GCM Valparaíso de Goiás — Folha de Ponto, Escala 24x72 e Cartão Programa</title>
+  <title>GCM Valparaíso de Goiás — Folha de Ponto, Escala 24x72, Permutas, Banco de Horas e Cartão Programa</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
   <link rel="stylesheet" href="styles.css">
 </head>
-<body>
+<body data-perfil="AGENTE">
 
   <!-- TELA DE LOGIN (CODIGO 4 DIGITOS) -->
   <div id="telaAuth" class="auth-overlay">
@@ -24,7 +24,7 @@
         <img src="logo.png" alt="Brasão GCM Valparaíso de Goiás" class="auth-logo">
         <div>
           <h1 class="auth-titulo">GCM Valparaíso de Goiás</h1>
-          <p class="auth-sub">Folha de Ponto · Escala 24x72 · Cartão Programa</p>
+          <p class="auth-sub">Folha de Ponto · Escala 24x72 · Permutas · Banco de Horas</p>
         </div>
       </div>
 
@@ -56,6 +56,7 @@
         <div class="campo"><label for="inpCadPass">Código de Acesso (mín. 4 dígitos)</label><input type="password" id="inpCadPass" minlength="4" placeholder="Mínimo 4 dígitos" required></div>
         <div id="msgCadInfo" class="alerta-inline oculto"></div>
         <button type="submit" class="btn btn-primario btn-bloco">Enviar Solicitação</button>
+        <p class="auth-dica">Novas contas entram como <strong>Agente (Consulta e Ponto)</strong> após aprovação do Administrador.</p>
       </form>
 
       <div class="auth-rodape">
@@ -85,38 +86,46 @@
           <span class="side-bar"></span><span>Folha de Ponto (Hoje)</span>
         </button>
         <button type="button" class="side-btn" data-aba="secEscalas">
-          <span class="side-bar"></span><span>Escala Contínua 24x72</span>
+          <span class="side-bar"></span><span>Escala 24x72 e Permutas</span>
         </button>
         <button type="button" class="side-btn" data-aba="secCartao">
-          <span class="side-bar"></span><span>Cartão Programa &amp; Mapa</span>
+          <span class="side-bar"></span><span>Cartão Programa e Mapa</span>
+        </button>
+        <button type="button" class="side-btn" data-aba="secBancoHoras">
+          <span class="side-bar"></span><span>Banco de Horas e Extras</span>
         </button>
         <button type="button" class="side-btn" data-aba="secEventos">
-          <span class="side-bar"></span><span>Eventos &amp; Operações Extras</span>
+          <span class="side-bar"></span><span>Eventos e Operações Extras</span>
+        </button>
+        <button type="button" class="side-btn" data-aba="secAutenticacao">
+          <span class="side-bar"></span><span>Validar Autenticidade</span>
         </button>
       </nav>
 
-      <div class="sidebar-grupo">ADMINISTRAÇÃO</div>
-      <nav class="sidebar-nav">
-        <button type="button" class="side-btn" data-aba="secEfetivo">
+      <div class="sidebar-grupo so-gestao">GESTÃO E ADMINISTRAÇÃO</div>
+      <nav class="sidebar-nav so-gestao">
+        <button type="button" class="side-btn so-gestao" data-aba="secEfetivo">
           <span class="side-bar"></span><span>Efetivo da Guarda (64)</span>
         </button>
-        <button type="button" class="side-btn" data-aba="secSistema">
-          <span class="side-bar"></span><span>Contas, Base &amp; Banco</span>
+        <button type="button" class="side-btn so-admin" data-aba="secSistema">
+          <span class="side-bar"></span><span>Contas, Base e Banco</span>
         </button>
       </nav>
 
       <div class="sidebar-rodape">
+        <div class="sidebar-grupo" style="margin:0 0 6px 2px;">EQUIPES (CLIQUE PARA VER)</div>
         <div class="side-legenda-tatica">
-          <span class="insig eq-ALFA">ALFA</span>
-          <span class="insig eq-BRAVO">BRAVO</span>
-          <span class="insig eq-CHARLIE">CHARLIE</span>
-          <span class="insig eq-DELTA">DELTA</span>
+          <button type="button" class="insig insig-btn eq-ALFA" data-ver-equipe="ALFA">ALFA</button>
+          <button type="button" class="insig insig-btn eq-BRAVO" data-ver-equipe="BRAVO">BRAVO</button>
+          <button type="button" class="insig insig-btn eq-CHARLIE" data-ver-equipe="CHARLIE">CHARLIE</button>
+          <button type="button" class="insig insig-btn eq-DELTA" data-ver-equipe="DELTA">DELTA</button>
         </div>
         <div class="side-user">
           <strong id="lblUsuarioTopo">—</strong>
           <span id="lblPerfilTopo" class="badge badge-invertido">—</span>
         </div>
-        <button type="button" class="btn btn-sec btn-sm btn-bloco mt-8" id="btnSair">Sair</button>
+        <button type="button" class="btn btn-sec btn-sm btn-bloco mt-8" id="btnAlterarMeuCodigoTopo">Alterar Meu Código</button>
+        <button type="button" class="btn btn-sec btn-sm btn-bloco mt-4" id="btnSair">Sair</button>
       </div>
     </aside>
 
@@ -140,23 +149,23 @@
       <main class="conteudo">
 
         <!-- ===================================================== -->
-        <!-- 1. FOLHA DE PONTO & PLANTAO DO DIA (PRIMEIRA TELA!)   -->
+        <!-- 1. FOLHA DE PONTO E PLANTAO DO DIA (PRIMEIRA TELA!)   -->
         <!-- ===================================================== -->
         <section id="secPonto" class="secao-aba ativa">
           <div id="faixaPlantaoHoje" class="faixa-plantao"></div>
 
           <div class="subtabs mt-12">
             <button type="button" class="subtab ativo" data-sub="subPtRegistrar">Registrar Ponto (Entrada / Almoço / Saída)</button>
-            <button type="button" class="subtab" data-sub="subPtFrequencia">Frequência dos Escalados do Dia &amp; Justificativas</button>
+            <button type="button" class="subtab" data-sub="subPtFrequencia">Frequência dos Escalados do Dia e Justificativas</button>
             <button type="button" class="subtab" data-sub="subPtHistorico">Histórico Completo de Batidas</button>
           </div>
 
-          <!-- 1.1 REGISTRAR PONTO POR DIGITACAO DE NUMERO OU NOME -->
+          <!-- 1.1 REGISTRAR PONTO -->
           <div id="subPtRegistrar" class="subpainel ativo">
             <div class="grid-2-assimetrico">
               <div class="card">
                 <div class="card-cab">
-                  <h3>Registro de Ponto</h3>
+                  <h3>Registro de Ponto Autenticado</h3>
                   <span id="lblRelogioPonto" class="badge badge-invertido">--:--:--</span>
                 </div>
 
@@ -166,7 +175,6 @@
                   <div id="listaSugestoesGuarda" class="sugestoes-box oculto"></div>
                 </div>
 
-                <!-- CARTAO DE CONFIRMACAO DO GUARDA IDENTIFICADO -->
                 <div id="cardGuardaIdentificado" class="guarda-id-box oculto mt-8"></div>
 
                 <div class="grid-2 mt-12">
@@ -204,35 +212,34 @@
                   </div>
                 </div>
 
-                <!-- LOCALIZACAO DISCRETA -->
+                <!-- LOCALIZACAO AUTOMATICA -->
                 <div class="box-borda mt-12">
                   <div class="card-cab">
-                    <h4>Localização do Registro</h4>
-                    <span id="statusGpsBadge" class="badge badge-neutro">Não obtida</span>
+                    <h4>Localização Automática do Registro</h4>
+                    <span id="statusGpsBadge" class="badge badge-pendente">Capturando automaticamente...</span>
                   </div>
-                  <div class="mt-8">
-                    <button type="button" class="btn btn-sec btn-bloco" id="btnColetarGps">Obter Localização Atual</button>
+                  <div id="painelResultadoGps" class="gps-resultado mt-8">
+                    <span class="subtexto">A localização é capturada automaticamente pelo dispositivo ao abrir a Folha de Ponto.</span>
                   </div>
-                  <div id="painelResultadoGps" class="gps-resultado oculto mt-8"></div>
                 </div>
 
                 <div class="campo mt-12">
-                  <label for="inpPontoObs">Observação (Opcional — ex.: permuta, ocorrência)</label>
+                  <label for="inpPontoObs">Observação (Opcional — ex.: permuta, prorrogação de ocorrência)</label>
                   <input type="text" id="inpPontoObs" placeholder="Opcional">
                 </div>
 
                 <div id="msgPontoErro" class="alerta-inline erro oculto mt-8"></div>
-                <button type="button" class="btn btn-primario btn-bloco mt-12" id="btnConfirmarPonto">Confirmar Batida de Ponto</button>
+                <button type="button" class="btn btn-primario btn-bloco mt-12" id="btnConfirmarPonto">Confirmar e Emitir Comprovante de Ponto</button>
               </div>
 
-              <!-- RESUMO IMEDIATO DE QUEM JA BATEU PONTO HOJE -->
+              <!-- RESUMO ESCALADOS HOJE -->
               <div class="card">
                 <div class="card-cab">
                   <div>
                     <h3>Escalados Hoje — Resumo em Tempo Real</h3>
                     <p class="subtexto" id="lblResumoEscaladosHoje">—</p>
                   </div>
-                  <button type="button" class="btn btn-sec btn-sm" id="btnVerFrequenciaCompleta">Abrir Frequência / Justificativas</button>
+                  <button type="button" class="btn btn-sec btn-sm" id="btnVerFrequenciaCompleta">Abrir Frequência e Justificativas</button>
                 </div>
                 <div class="tabela-wrap mt-12">
                   <table class="tabela">
@@ -246,7 +253,7 @@
             </div>
           </div>
 
-          <!-- 1.2 FREQUENCIA COMPLETA DOS ESCALADOS DO DIA + JUSTIFICATIVAS -->
+          <!-- 1.2 FREQUENCIA DO DIA + JUSTIFICATIVAS -->
           <div id="subPtFrequencia" class="subpainel">
             <div class="card">
               <div class="filtros-linha">
@@ -255,13 +262,14 @@
                 <div class="campo"><label for="fltFreqSituacao">Situação</label>
                   <select id="fltFreqSituacao">
                     <option value="">Todos os Escalados</option>
-                    <option value="PRESENTE">Presente / Completo</option>
-                    <option value="PARCIAL">Em Serviço (Parcial)</option>
-                    <option value="PENDENTE">Pendente / Sem Batida</option>
-                    <option value="JUSTIFICADO">Justificado (Atestado / Férias / etc.)</option>
+                    <option value="EM_SERVICO">Em Serviço (Verde)</option>
+                    <option value="PRESENTE">Turno Completo (Verde)</option>
+                    <option value="PENDENTE">Pendente (Laranja)</option>
+                    <option value="FALTOU">Faltou (Vermelho)</option>
+                    <option value="JUSTIFICADO">Justificado (Atestado / Férias / Permuta)</option>
                   </select>
                 </div>
-                <div class="campo campo-btn"><button type="button" class="btn btn-primario" id="btnPdfFolhaDia">Gerar PDF Folha do Dia</button></div>
+                <div class="campo campo-btn"><button type="button" class="btn btn-primario" id="btnPdfFolhaDia">PDF Autenticado do Dia</button></div>
               </div>
 
               <div class="regra-box mt-12" id="boxInfoEscalaDiaFreq">—</div>
@@ -272,7 +280,7 @@
                     <tr>
                       <th>Nº</th><th>Guarda GCM</th><th>Equipe / Setor</th>
                       <th>Entrada</th><th>Saída Almoço</th><th>Retorno Almoço</th><th>Saída</th>
-                      <th>Situação / Justificativa</th><th>Ação</th>
+                      <th>Situação / Justificativa</th><th class="so-gestao">Ação</th>
                     </tr>
                   </thead>
                   <tbody id="tbodyFrequenciaDia"></tbody>
@@ -281,16 +289,16 @@
             </div>
           </div>
 
-          <!-- 1.3 HISTORICO COMPLETO DE BATIDAS (FOTOS + ENDERECO + PDF MENSAL) -->
+          <!-- 1.3 HISTORICO DE BATIDAS -->
           <div id="subPtHistorico" class="subpainel">
             <div class="card">
               <div class="card-cab">
-                <h3>Histórico de Batidas e Auditoria</h3>
-                <button type="button" class="btn btn-primario btn-sm" id="btnPdfFolhaMensal">Gerar PDF Espelho Mensal</button>
+                <h3>Histórico de Batidas e Comprovantes</h3>
+                <button type="button" class="btn btn-primario btn-sm" id="btnPdfFolhaMensal">PDF Autenticado Espelho Mensal</button>
               </div>
               <div class="filtros-linha mt-12">
                 <div class="campo"><label for="fltPontoMes">Mês</label><input type="month" id="fltPontoMes"></div>
-                <div class="campo"><label for="fltPontoBusca">Buscar Nº ou Nome</label><input type="text" id="fltPontoBusca" placeholder="Ex.: 03 ou nome..."></div>
+                <div class="campo"><label for="fltPontoBusca">Buscar Nº, Nome ou Protocolo</label><input type="text" id="fltPontoBusca" placeholder="Ex.: 03, nome ou PT-..."></div>
                 <div class="campo"><label for="fltPontoTipo">Tipo</label>
                   <select id="fltPontoTipo">
                     <option value="">Todos</option>
@@ -311,7 +319,7 @@
               </div>
               <div class="tabela-wrap mt-12">
                 <table class="tabela">
-                  <thead><tr><th>Foto</th><th>Data / Hora</th><th>Nº / Guarda</th><th>Batida</th><th>Localização</th><th>Status</th></tr></thead>
+                  <thead><tr><th>Foto</th><th>Data / Hora</th><th>Nº / Guarda</th><th>Batida</th><th>Localização</th><th>Protocolo / Status</th></tr></thead>
                   <tbody id="tbodyPontos"></tbody>
                 </table>
               </div>
@@ -320,29 +328,30 @@
         </section>
 
         <!-- ===================================================== -->
-        <!-- 2. ESCALA CONTINUA 24x72 (AUTOALIMENTADA TODO DIA)    -->
+        <!-- 2. ESCALA CONTINUA 24x72 E PERMUTAS                   -->
         <!-- ===================================================== -->
         <section id="secEscalas" class="secao-aba">
           <div class="cab-secao">
             <div>
-              <h2>Escala Contínua 24x72 (Autoalimentada)</h2>
-              <p class="subtexto">A escala nunca termina no dia 30: todo dia que passa acrescenta automaticamente um novo dia na frente no ciclo 24x72.</p>
+              <h2>Escala Contínua 24x72 e Permutas</h2>
+              <p class="subtexto">Escala autoalimentada todo dia + controle oficial de permutas de serviço integradas à Folha de Ponto.</p>
             </div>
             <div class="acoes-linha">
-              <button type="button" class="btn btn-primario" id="btnExportarPdfEscala">Gerar PDF da Escala 24x72</button>
+              <button type="button" class="btn btn-primario" id="btnExportarPdfEscala">PDF Autenticado da Escala 24x72</button>
             </div>
           </div>
 
           <div class="subtabs">
             <button type="button" class="subtab ativo" data-sub="subEscCalendario">Escala Contínua (Autoalimentada)</button>
+            <button type="button" class="subtab" data-sub="subEscPermutas">Permutas de Serviço</button>
             <button type="button" class="subtab" data-sub="subEscQuadroPessoas">Quadro Nominal por Guarda</button>
-            <button type="button" class="subtab" data-sub="subEscEquipes">Montar 4 Equipes</button>
-            <button type="button" class="subtab" data-sub="subEscSetores">Setores &amp; Responsáveis</button>
-            <button type="button" class="subtab" data-sub="subEscAdm12">Administrativo &amp; 12x36</button>
-            <button type="button" class="subtab" data-sub="subEscResp">Assinaturas PDF</button>
+            <button type="button" class="subtab so-gestao" data-sub="subEscEquipes">Montar 4 Equipes</button>
+            <button type="button" class="subtab so-gestao" data-sub="subEscSetores">Setores e Responsáveis</button>
+            <button type="button" class="subtab so-gestao" data-sub="subEscAdm12">Administrativo e 12x36</button>
+            <button type="button" class="subtab so-gestao" data-sub="subEscResp">Assinaturas PDF</button>
           </div>
 
-          <!-- 2.1 ESCALA CONTINUA ROLANTE -->
+          <!-- 2.1 ESCALA CONTINUA -->
           <div id="subEscCalendario" class="subpainel ativo">
             <div class="card">
               <div class="filtros-linha">
@@ -356,9 +365,9 @@
                   </select>
                 </div>
                 <div class="campo oculto" id="wrapMesEscala"><label for="selMesEscala">Mês / Ano</label><input type="month" id="selMesEscala"></div>
-                <div class="campo"><label for="inpDataBaseAlfa">Data-Base (Dia da Equipe ALFA)</label><input type="date" id="inpDataBaseAlfa"></div>
-                <div class="campo"><label for="inpHorarioTroca">Turno</label><input type="text" id="inpHorarioTroca" value="07:00 às 07:00"></div>
-                <div class="campo campo-btn"><button type="button" class="btn btn-primario" id="btnSalvarCiclo24">Salvar Ciclo</button></div>
+                <div class="campo so-gestao"><label for="inpDataBaseAlfa">Data-Base (Dia da Equipe ALFA)</label><input type="date" id="inpDataBaseAlfa"></div>
+                <div class="campo so-gestao"><label for="inpHorarioTroca">Turno</label><input type="text" id="inpHorarioTroca" value="07:00 às 07:00"></div>
+                <div class="campo campo-btn so-gestao"><button type="button" class="btn btn-primario" id="btnSalvarCiclo24">Salvar Ciclo</button></div>
               </div>
               <div class="regra-box mt-12" id="boxResumoEscalaContinua"></div>
               <div class="tabela-wrap mt-12">
@@ -372,7 +381,73 @@
             </div>
           </div>
 
-          <!-- 2.2 QUADRO NOMINAL POR GUARDA -->
+          <!-- 2.2 PERMUTAS DE SERVICO (NOVO!) -->
+          <div id="subEscPermutas" class="subpainel">
+            <div class="grid-2-assimetrico">
+              <div class="card">
+                <h3>Solicitar / Registrar Permuta de Serviço</h3>
+                <p class="subtexto mt-4">Quando aprovada pela Gestão/Comando, a troca reflete automaticamente na Folha de Ponto do dia.</p>
+
+                <div class="campo mt-12">
+                  <label for="selPermTipo">Tipo de Permuta</label>
+                  <select id="selPermTipo">
+                    <option value="TROCA_PLANTAO_24H">Troca de Plantão Completo (24h × 24h)</option>
+                    <option value="PERMUTA_PARCIAL_12H_DIA">Permuta Parcial 12h — Diurno (07h às 19h)</option>
+                    <option value="PERMUTA_PARCIAL_12H_NOITE">Permuta Parcial 12h — Noturno (19h às 07h)</option>
+                    <option value="COBERTURA_POSTO">Cobertura de Posto / Viatura no Turno</option>
+                    <option value="SUBSTITUICAO_BANCO_HORAS">Substituição com Compensação em Banco de Horas</option>
+                  </select>
+                </div>
+
+                <div class="campo mt-8">
+                  <label for="selPermSolicitante">Guarda Solicitante (quem sai do plantão)</label>
+                  <select id="selPermSolicitante"></select>
+                </div>
+
+                <div class="campo mt-8">
+                  <label for="selPermSubstituto">Guarda Substituto (quem assume o serviço)</label>
+                  <select id="selPermSubstituto"></select>
+                </div>
+
+                <div class="grid-2 mt-8">
+                  <div class="campo"><label for="inpPermDataOrig">Data do Plantão Original</label><input type="date" id="inpPermDataOrig"></div>
+                  <div class="campo"><label for="inpPermDataComp">Data da Devolução / Troca (Opcional)</label><input type="date" id="inpPermDataComp"></div>
+                </div>
+
+                <div class="campo mt-8">
+                  <label for="inpPermMotivo">Motivo / Justificativa da Permuta</label>
+                  <textarea id="inpPermMotivo" rows="2" placeholder="Descreva o motivo da permuta..."></textarea>
+                </div>
+
+                <button type="button" class="btn btn-primario btn-bloco mt-12" id="btnSalvarPermuta">Registrar Solicitação de Permuta</button>
+              </div>
+
+              <div class="card">
+                <div class="card-cab">
+                  <h3>Controle de Permutas</h3>
+                  <div class="acoes-linha">
+                    <select id="fltPermStatus" style="padding:6px 8px;border-radius:6px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:12px;">
+                      <option value="">Todas</option>
+                      <option value="PENDENTE">Pendentes</option>
+                      <option value="APROVADA">Aprovadas</option>
+                      <option value="RECUSADA">Recusadas</option>
+                    </select>
+                    <button type="button" class="btn btn-sec btn-sm" id="btnPdfListaPermutas">PDF Relatório de Permutas</button>
+                  </div>
+                </div>
+                <div class="tabela-wrap mt-12">
+                  <table class="tabela">
+                    <thead>
+                      <tr><th>Tipo / Data</th><th>Solicitante → Substituto</th><th>Devolução</th><th>Status</th><th>Ações</th></tr>
+                    </thead>
+                    <tbody id="tbodyPermutas"></tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 2.3 QUADRO NOMINAL POR GUARDA -->
           <div id="subEscQuadroPessoas" class="subpainel">
             <div class="card">
               <div class="filtros-linha">
@@ -385,7 +460,7 @@
                   </select>
                 </div>
                 <div class="campo"><label for="fltQpBusca">Buscar Nº ou Nome</label><input type="text" id="fltQpBusca" placeholder="Ex.: 03 ou nome..."></div>
-                <div class="campo campo-btn"><button type="button" class="btn btn-primario" id="btnPdfQuadroPessoas">PDF deste Quadro</button></div>
+                <div class="campo campo-btn"><button type="button" class="btn btn-primario" id="btnPdfQuadroPessoas">PDF Autenticado deste Quadro</button></div>
               </div>
               <div class="tabela-wrap mt-12">
                 <table class="tabela">
@@ -396,7 +471,7 @@
             </div>
           </div>
 
-          <!-- 2.3 MONTAR 4 EQUIPES -->
+          <!-- 2.4 MONTAR 4 EQUIPES (GESTAO) -->
           <div id="subEscEquipes" class="subpainel">
             <div class="card">
               <div class="filtros-linha">
@@ -415,7 +490,7 @@
             </div>
           </div>
 
-          <!-- 2.4 SETORES & RESPONSAVEIS -->
+          <!-- 2.5 SETORES E RESPONSAVEIS (GESTAO) -->
           <div id="subEscSetores" class="subpainel">
             <div class="card">
               <div class="card-cab">
@@ -432,7 +507,7 @@
             </div>
           </div>
 
-          <!-- 2.5 ADM & 12x36 -->
+          <!-- 2.6 ADM E 12x36 (GESTAO) -->
           <div id="subEscAdm12" class="subpainel">
             <div class="grid-2">
               <div class="card">
@@ -455,7 +530,7 @@
             </div>
           </div>
 
-          <!-- 2.6 ASSINATURAS -->
+          <!-- 2.7 ASSINATURAS (GESTAO) -->
           <div id="subEscResp" class="subpainel">
             <div class="card">
               <h3>Assinaturas Oficiais nos PDFs</h3>
@@ -483,17 +558,17 @@
         </section>
 
         <!-- ===================================================== -->
-        <!-- 3. CARTAO PROGRAMA + MAPA INTERATIVO DOS SETORES      -->
+        <!-- 3. CARTAO PROGRAMA COMPLETO E MAPA DOS SETORES        -->
         <!-- ===================================================== -->
         <section id="secCartao" class="secao-aba">
           <div class="cab-secao">
             <div>
-              <h2>Cartão Programa &amp; Mapa dos Setores (Valparaíso de Goiás)</h2>
-              <p class="subtexto">Visualize a área exata de cada setor no mapa, os pontos ideais sugeridos (PB 1 a PB 4), edite clicando no mapa e gere o PDF com croqui embutido.</p>
+              <h2>Cartão Programa Completo e Mapa dos Setores</h2>
+              <p class="subtexto">Ordem operacional detalhada: o que fazer em cada horário, pontos críticos, checklist de viatura, contatos de apoio e mapa do setor.</p>
             </div>
             <div class="acoes-linha">
               <button type="button" class="btn btn-sec" id="btnCopiarWhatsApp">Copiar WhatsApp</button>
-              <button type="button" class="btn btn-primario" id="btnPdfCartaoCompleto">Gerar PDF Completo do Turno</button>
+              <button type="button" class="btn btn-primario" id="btnPdfCartaoCompleto">PDF Autenticado do Turno Completo</button>
             </div>
           </div>
 
@@ -511,16 +586,16 @@
             </div>
           </div>
 
-          <!-- MAPA INTERATIVO DO SETOR SELECIONADO -->
+          <!-- MAPA INTERATIVO DO SETOR -->
           <div class="card mt-16">
             <div class="card-cab">
               <div>
                 <h3 id="tituloMapaSetor">Mapa do Setor — Valparaíso de Goiás</h3>
-                <p class="subtexto" id="subMapaSetor">Área demarcada do setor + pinos numerados dos Pontos Base (PB) sugeridos.</p>
+                <p class="subtexto" id="subMapaSetor">Área demarcada do setor e pinos numerados dos Pontos Base (PB).</p>
               </div>
               <div class="acoes-linha">
                 <label class="check-linha"><input type="checkbox" id="chkMostrarTodosSetores"><span>Mostrar todos os setores</span></label>
-                <button type="button" class="btn btn-sec btn-sm" id="btnModoMarcarPb">+ Marcar PB clicando no Mapa</button>
+                <button type="button" class="btn btn-sec btn-sm so-gestao" id="btnModoMarcarPb">+ Marcar PB clicando no Mapa</button>
                 <button type="button" class="btn btn-sec btn-sm" id="btnCentralizarSetor">Centralizar Setor</button>
               </div>
             </div>
@@ -528,24 +603,31 @@
             <div id="mapaSetorCanvas" class="mapa-setor-box mt-12"></div>
           </div>
 
-          <!-- EDITOR DIDATICO DO CARTAO PROGRAMA -->
+          <!-- EDITOR DETALHADO DO CARTAO PROGRAMA -->
           <div class="card mt-16">
             <div class="card-cab">
-              <h3 id="tituloEditorCartao">Roteiro Operacional do Setor</h3>
+              <h3 id="tituloEditorCartao">Ordem Operacional Detalhada do Setor</h3>
               <span id="badgeAreaCartao" class="badge badge-invertido">—</span>
             </div>
 
             <div class="grid-4 mt-12">
               <div class="campo"><label for="inpCpSetor">Setor</label><input type="text" id="inpCpSetor"></div>
               <div class="campo"><label for="inpCpPrefixo">Prefixo / Viatura</label><input type="text" id="inpCpPrefixo"></div>
+              <div class="campo"><label for="inpCpPlaca">Placa / Modelo Viatura</label><input type="text" id="inpCpPlaca" placeholder="Ex.: ABC-1D23 / Duster"></div>
+              <div class="campo"><label for="inpCpRadio">Canal / Frequência Rádio</label><input type="text" id="inpCpRadio" placeholder="Ex.: Canal 01 — CCO 153"></div>
+            </div>
+
+            <div class="grid-4 mt-8">
               <div class="campo"><label for="inpCpRespSetor">Responsável pelo Setor</label><input type="text" id="inpCpRespSetor"></div>
-              <div class="campo"><label for="inpCpBairros">Bairros / Referências</label><input type="text" id="inpCpBairros"></div>
+              <div class="campo"><label for="inpCpBairros">Bairros e Vias Principais</label><input type="text" id="inpCpBairros"></div>
+              <div class="campo"><label for="inpCpKmIni">KM Inicial (Assunção)</label><input type="text" id="inpCpKmIni" placeholder="Ex.: 45.210 km"></div>
+              <div class="campo"><label for="inpCpKmFim">KM Final (Passagem)</label><input type="text" id="inpCpKmFim" placeholder="Preencher ao encerrar"></div>
             </div>
 
             <div class="box-borda mt-12">
               <div class="card-cab">
-                <h4>Guarnição Escalada (puxada da escala — editável para permuta)</h4>
-                <button type="button" class="btn btn-sec btn-sm" id="btnPuxarGuarnicaoEscala">Sincronizar Escala</button>
+                <h4>Guarnição Escalada (01 Comandante, 02 Motorista, 03 Patrulheiro)</h4>
+                <button type="button" class="btn btn-sec btn-sm so-gestao" id="btnPuxarGuarnicaoEscala">Sincronizar Escala</button>
               </div>
               <div class="grid-3 mt-8">
                 <div class="campo"><label for="inpCpG01">01 — Comandante</label><input type="text" id="inpCpG01"></div>
@@ -554,15 +636,30 @@
               </div>
             </div>
 
-            <div class="campo mt-12"><label for="inpCpMissao">Objetivo do Turno (Explicação Simples para a Guarnição)</label><textarea id="inpCpMissao" rows="2"></textarea></div>
+            <div class="box-borda mt-12">
+              <h4>Checklist Obrigatório de Saída da Guarnição</h4>
+              <div class="checklist-grid mt-8" id="wrapChecklistCp">
+                <label class="check-linha"><input type="checkbox" class="cp-chk" value="Vistoria de Viatura (Combustível, Pneus, Óleo)"><span>Vistoria de Viatura (Combustível/Pneus)</span></label>
+                <label class="check-linha"><input type="checkbox" class="cp-chk" value="Giroflex, Sirene e Faróis testados"><span>Giroflex, Sirene e Faróis</span></label>
+                <label class="check-linha"><input type="checkbox" class="cp-chk" value="Rádio HT / Móvel em escuta com CCO 153"><span>Rádio HT / Móvel testado</span></label>
+                <label class="check-linha"><input type="checkbox" class="cp-chk" value="Coletes Balísticos e EPI completos"><span>Coletes Balísticos e EPI</span></label>
+                <label class="check-linha"><input type="checkbox" class="cp-chk" value="Cones, Lanterna e Fita de Isolamento"><span>Cones, Lanterna e Isolamento</span></label>
+                <label class="check-linha"><input type="checkbox" class="cp-chk" value="Registro de Entrada na Folha de Ponto"><span>Entrada na Folha de Ponto</span></label>
+              </div>
+            </div>
+
+            <div class="grid-2 mt-12">
+              <div class="campo"><label for="inpCpMissao">Objetivo do Turno e Diretriz Operacional</label><textarea id="inpCpMissao" rows="3"></textarea></div>
+              <div class="campo"><label for="inpCpAreasSensiveis">Pontos Críticos e Áreas Sensíveis do Setor (Escolas, UBSs, Praças, Comércio)</label><textarea id="inpCpAreasSensiveis" rows="3"></textarea></div>
+            </div>
 
             <div class="mt-16">
               <div class="card-cab">
                 <div>
-                  <h4>Pontos Base Ideais — Onde Ficar e Como Fazer (100% Editável)</h4>
-                  <p class="subtexto">Cada PB aparece numerado no mapa acima e no croqui do PDF.</p>
+                  <h4>Roteiro Detalhado de Pontos Base — Onde Ficar e Como Executar na Prática</h4>
+                  <p class="subtexto">Cada PB aparece numerado no mapa acima e no croqui do PDF sem cortes.</p>
                 </div>
-                <button type="button" class="btn btn-sec btn-sm" id="btnAddLinhaPb">+ Adicionar PB Manual</button>
+                <button type="button" class="btn btn-sec btn-sm so-gestao" id="btnAddLinhaPb">+ Adicionar PB Manual</button>
               </div>
               <div class="tabela-wrap mt-8">
                 <table class="tabela">
@@ -570,10 +667,10 @@
                     <tr>
                       <th style="width:45px;">PB</th>
                       <th style="width:120px;">Horário</th>
-                      <th style="width:210px;">Onde Ficar (Local / Referência)</th>
-                      <th>Como Fazer na Prática (Passo a Passo)</th>
+                      <th style="width:205px;">Onde Ficar (Local e Referência)</th>
+                      <th>Como Executar na Prática (Passo a Passo Detalhado)</th>
                       <th style="width:130px;">GPS (Lat, Lon)</th>
-                      <th style="width:55px;">Ação</th>
+                      <th style="width:55px;" class="so-gestao">Ação</th>
                     </tr>
                   </thead>
                   <tbody id="tbodyPontosBase"></tbody>
@@ -581,9 +678,12 @@
               </div>
             </div>
 
-            <div class="campo mt-12"><label for="inpCpObs">Conduta e Recomendações do Comando</label><textarea id="inpCpObs" rows="2"></textarea></div>
+            <div class="grid-2 mt-12">
+              <div class="campo"><label for="inpCpProcedimentos">Procedimentos em Caso de Ocorrência e Telefones de Apoio</label><textarea id="inpCpProcedimentos" rows="3"></textarea></div>
+              <div class="campo"><label for="inpCpObs">Conduta e Recomendações do Comando</label><textarea id="inpCpObs" rows="3"></textarea></div>
+            </div>
 
-            <div class="acoes-linha mt-16">
+            <div class="acoes-linha mt-16 so-gestao">
               <button type="button" class="btn btn-primario" id="btnSalvarCartaoDia">Salvar Cartão deste Dia</button>
               <button type="button" class="btn btn-sec" id="btnSalvarModeloSetor">Salvar como Padrão deste Setor</button>
             </div>
@@ -591,15 +691,131 @@
         </section>
 
         <!-- ===================================================== -->
-        <!-- 4. EVENTOS & OPERACOES EXTRAS                         -->
+        <!-- 4. BANCO DE HORAS E HORAS EXTRAS (NOVO!)              -->
+        <!-- ===================================================== -->
+        <section id="secBancoHoras" class="secao-aba">
+          <div class="cab-secao">
+            <div>
+              <h2>Banco de Horas e Horas Extras</h2>
+              <p class="subtexto">Apuração automática pela Folha de Ponto + lançamentos de horas extras (50% e 100%), eventos e compensações em folga.</p>
+            </div>
+            <div class="acoes-linha">
+              <button type="button" class="btn btn-sec so-gestao" id="btnApurarBancoPeloPonto">Calcular Extras pela Folha de Ponto</button>
+              <button type="button" class="btn btn-primario" id="btnPdfBancoHoras">PDF Autenticado Banco de Horas</button>
+            </div>
+          </div>
+
+          <div class="subtabs">
+            <button type="button" class="subtab ativo" data-sub="subBhSaldo">Saldo do Efetivo</button>
+            <button type="button" class="subtab" data-sub="subBhLancamentos">Lançamentos e Extrato Detalhado</button>
+            <button type="button" class="subtab so-gestao" data-sub="subBhRegras">Parâmetros de Cálculo</button>
+          </div>
+
+          <!-- 4.1 SALDO GERAL -->
+          <div id="subBhSaldo" class="subpainel ativo">
+            <div class="card">
+              <div class="filtros-linha">
+                <div class="campo"><label for="fltBhMes">Competência (Mês ou Todos)</label><input type="month" id="fltBhMes"></div>
+                <div class="campo"><label for="fltBhBusca">Buscar Nº ou Nome</label><input type="text" id="fltBhBusca" placeholder="Ex.: 03 ou nome..."></div>
+                <div class="campo"><label for="fltBhEquipe">Equipe</label>
+                  <select id="fltBhEquipe">
+                    <option value="">Todas</option>
+                    <option value="ALFA">ALFA</option><option value="BRAVO">BRAVO</option>
+                    <option value="CHARLIE">CHARLIE</option><option value="DELTA">DELTA</option>
+                    <option value="ADM">Administrativo</option><option value="12X36">12x36</option>
+                  </select>
+                </div>
+                <div class="campo campo-btn"><button type="button" class="btn btn-sec" id="btnBhLimparMes">Ver Acumulado Geral</button></div>
+              </div>
+
+              <div class="tabela-wrap mt-12">
+                <table class="tabela">
+                  <thead>
+                    <tr>
+                      <th>Nº</th><th>Guarda GCM</th><th>Equipe</th>
+                      <th>Horas Ponto (Mês)</th><th>Créditos / Extras (+)</th><th>Débitos / Folgas (-)</th>
+                      <th>Saldo Atual</th><th>Valor Extra Est.</th><th>Extrato</th>
+                    </tr>
+                  </thead>
+                  <tbody id="tbodyBhSaldo"></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <!-- 4.2 LANCAMENTOS E EXTRATO -->
+          <div id="subBhLancamentos" class="subpainel">
+            <div class="grid-2-assimetrico">
+              <div class="card so-gestao">
+                <h3>Lançar Hora Extra / Compensação</h3>
+                <div class="campo mt-12"><label for="selBhAgente">Guarda GCM</label><select id="selBhAgente"></select></div>
+                <div class="grid-2 mt-8">
+                  <div class="campo"><label for="inpBhData">Data</label><input type="date" id="inpBhData"></div>
+                  <div class="campo"><label for="selBhTipo">Natureza</label>
+                    <select id="selBhTipo">
+                      <option value="EXTRA_50">Hora Extra 50% (Dia Útil / +1.5x)</option>
+                      <option value="EXTRA_100">Hora Extra 100% (Dom / Feriado / +2.0x)</option>
+                      <option value="CREDITO_SIMPLES">Crédito Banco de Horas (+1.0x)</option>
+                      <option value="EVENTO_EXTRA">Convocação em Evento / Operação (+)</option>
+                      <option value="PRORROGACAO">Prorrogação de Ocorrência (+)</option>
+                      <option value="COMPENSACAO">Folga Compensatória Gozada (-)</option>
+                      <option value="DEBITO_ATRASO">Débito / Saída Antecipada (-)</option>
+                    </select>
+                  </div>
+                </div>
+                <div class="grid-3 mt-8">
+                  <div class="campo"><label for="inpBhInicio">Hora Início</label><input type="time" id="inpBhInicio"></div>
+                  <div class="campo"><label for="inpBhFim">Hora Fim</label><input type="time" id="inpBhFim"></div>
+                  <div class="campo"><label for="inpBhHoras">Total (Horas)</label><input type="number" step="0.25" min="0.25" max="72" id="inpBhHoras" placeholder="Ex.: 4.5"></div>
+                </div>
+                <div class="campo mt-8"><label for="inpBhMotivo">Justificativa / Ocorrência</label><input type="text" id="inpBhMotivo" placeholder="Ex.: Apoio ocorrência flagrante / Evento municipal"></div>
+                <button type="button" class="btn btn-primario btn-bloco mt-12" id="btnSalvarMovBh">Registrar no Banco de Horas</button>
+              </div>
+
+              <div class="card">
+                <div class="card-cab">
+                  <h3>Movimentações Registradas</h3>
+                  <span id="badgeQtdMovBh" class="badge badge-neutro">0</span>
+                </div>
+                <div class="tabela-wrap mt-12">
+                  <table class="tabela">
+                    <thead><tr><th>Data</th><th>Guarda</th><th>Natureza</th><th>Duração</th><th>Computado</th><th>Motivo</th><th class="so-admin">Ação</th></tr></thead>
+                    <tbody id="tbodyBhMovs"></tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 4.3 PARAMETROS DE CALCULO (GESTAO) -->
+          <div id="subBhRegras" class="subpainel">
+            <div class="card" style="max-width:640px;">
+              <h3>Parâmetros de Cálculo de Banco de Horas e Extras</h3>
+              <p class="subtexto mt-4">Usados para apurar automaticamente excedentes pela Folha de Ponto e estimar valores financeiros (opcional).</p>
+              <div class="grid-2 mt-12">
+                <div class="campo"><label for="inpBhCarga24">Carga Padrão Turno 24x72 (horas)</label><input type="number" id="inpBhCarga24" value="24" min="1" max="48"></div>
+                <div class="campo"><label for="inpBhCargaAdm">Carga Padrão Administrativo (horas/dia)</label><input type="number" id="inpBhCargaAdm" value="8" min="1" max="16"></div>
+              </div>
+              <div class="grid-3 mt-8">
+                <div class="campo"><label for="inpBhValorHora">Valor Base da Hora (R$ — Opcional)</label><input type="number" step="0.01" min="0" id="inpBhValorHora" value="0"></div>
+                <div class="campo"><label for="inpBhMult50">Fator Extra 50%</label><input type="number" step="0.1" id="inpBhMult50" value="1.5"></div>
+                <div class="campo"><label for="inpBhMult100">Fator Extra 100%</label><input type="number" step="0.1" id="inpBhMult100" value="2.0"></div>
+              </div>
+              <button type="button" class="btn btn-primario mt-12" id="btnSalvarRegrasBh">Salvar Parâmetros</button>
+            </div>
+          </div>
+        </section>
+
+        <!-- ===================================================== -->
+        <!-- 5. EVENTOS E OPERACOES EXTRAS                         -->
         <!-- ===================================================== -->
         <section id="secEventos" class="secao-aba">
           <div class="cab-secao">
             <div>
-              <h2>Eventos &amp; Operações Extraordinárias</h2>
-              <p class="subtexto">Monte reforços eventuais (1, 2 ou mais viaturas extras) sem alterar a escala fixa 24x72.</p>
+              <h2>Eventos e Operações Extraordinárias</h2>
+              <p class="subtexto">Reforços eventuais (1, 2 ou mais viaturas extras) sem alterar a escala fixa 24x72.</p>
             </div>
-            <button type="button" class="btn btn-primario" id="btnNovoEvento">+ Novo Evento</button>
+            <button type="button" class="btn btn-primario so-gestao" id="btnNovoEvento">+ Novo Evento</button>
           </div>
           <div class="grid-2-assimetrico">
             <div class="card">
@@ -607,14 +823,14 @@
               <div id="listaEventosSidebar" class="lista-compacta mt-12"></div>
             </div>
             <div class="card">
-              <div id="vazioEvento" class="subtexto" style="padding:24px;text-align:center;">Selecione ou crie um evento extraordinário.</div>
+              <div id="vazioEvento" class="subtexto" style="padding:24px;text-align:center;">Selecione um evento na lista à esquerda.</div>
               <div id="conteudoEditorEvento" class="oculto">
                 <div class="card-cab">
                   <h3 id="tituloEditorEvento">Evento</h3>
                   <div class="acoes-linha">
                     <button type="button" class="btn btn-sec btn-sm" id="btnWhatsAppEvento">WhatsApp</button>
-                    <button type="button" class="btn btn-primario btn-sm" id="btnPdfEvento">PDF do Evento</button>
-                    <button type="button" class="btn btn-sec btn-sm" id="btnExcluirEvento">Excluir</button>
+                    <button type="button" class="btn btn-primario btn-sm" id="btnPdfEvento">PDF Autenticado</button>
+                    <button type="button" class="btn btn-sec btn-sm so-gestao" id="btnExcluirEvento">Excluir</button>
                   </div>
                 </div>
                 <div class="grid-2 mt-12">
@@ -638,17 +854,105 @@
                   <div class="campo"><label for="inpEvMissao">Missão</label><input type="text" id="inpEvMissao"></div>
                 </div>
                 <div class="regra-box mt-12" id="boxDicaFolgaEvento"></div>
-                <div class="card-cab mt-16"><h4>Viaturas Extras</h4><button type="button" class="btn btn-sec btn-sm" id="btnAddVtrEvento">+ Viatura Extra</button></div>
+                <div class="card-cab mt-16"><h4>Viaturas Extras</h4><button type="button" class="btn btn-sec btn-sm so-gestao" id="btnAddVtrEvento">+ Viatura Extra</button></div>
                 <div id="gridViaturasEvento" class="lista-editavel mt-12"></div>
                 <div class="campo mt-12"><label for="inpEvObs">Observações</label><textarea id="inpEvObs" rows="2"></textarea></div>
-                <div class="mt-16"><button type="button" class="btn btn-primario" id="btnSalvarEvento">Salvar Evento</button></div>
+                <div class="mt-16 so-gestao"><button type="button" class="btn btn-primario" id="btnSalvarEvento">Salvar Evento</button></div>
               </div>
             </div>
           </div>
         </section>
 
         <!-- ===================================================== -->
-        <!-- 5. EFETIVO DA GUARDA (64 ATIVOS — NUMERO 01 A 64)     -->
+        <!-- 6. TELA DEDICADA DA EQUIPE (ALFA/BRAVO/CHARLIE/DELTA) -->
+        <!-- ===================================================== -->
+        <section id="secEquipeDetalhe" class="secao-aba">
+          <div class="cab-secao">
+            <div>
+              <h2 id="tituloTelaEquipe">Equipe ALFA — Integrantes e Guarnições</h2>
+              <p class="subtexto" id="subTelaEquipe">—</p>
+            </div>
+            <div class="acoes-linha">
+              <button type="button" class="btn btn-sec btn-sm" data-ver-equipe="ALFA">ALFA</button>
+              <button type="button" class="btn btn-sec btn-sm" data-ver-equipe="BRAVO">BRAVO</button>
+              <button type="button" class="btn btn-sec btn-sm" data-ver-equipe="CHARLIE">CHARLIE</button>
+              <button type="button" class="btn btn-sec btn-sm" data-ver-equipe="DELTA">DELTA</button>
+              <button type="button" class="btn btn-sec btn-sm" id="btnEqVerCartao">Ver Cartão Programa</button>
+              <button type="button" class="btn btn-primario btn-sm" id="btnEqPdfAutenticado">PDF Autenticado da Equipe</button>
+            </div>
+          </div>
+
+          <div id="faixaInfoEquipe" class="faixa-plantao"></div>
+
+          <div class="card mt-16">
+            <h3>Guarnições nas Viaturas (Setor 01 ao Setor 04)</h3>
+            <div id="gridVtrsEquipeDetalhe" class="grid-2 mt-12"></div>
+          </div>
+
+          <div class="card mt-16">
+            <div class="card-cab">
+              <h3 id="tituloListaIntegrantesEq">Todos os Integrantes desta Equipe</h3>
+              <span id="badgeQtdIntegrantesEq" class="badge badge-invertido">0 guardas</span>
+            </div>
+            <div class="tabela-wrap mt-12">
+              <table class="tabela">
+                <thead>
+                  <tr><th>Nº</th><th>Nome Completo</th><th>Nome de Guerra</th><th>Viatura / Setor</th><th>Função</th><th>Saldo Banco de Horas</th><th>Situação</th></tr>
+                </thead>
+                <tbody id="tbodyIntegrantesEquipe"></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- ===================================================== -->
+        <!-- 7. VALIDAR AUTENTICIDADE (PDFs E CADEIA DE PONTO)     -->
+        <!-- ===================================================== -->
+        <section id="secAutenticacao" class="secao-aba">
+          <div class="cab-secao">
+            <div>
+              <h2>Autenticação Verídica e Auditoria Criptográfica (SHA-256)</h2>
+              <p class="subtexto">Confira a autenticidade de qualquer PDF emitido pelo sistema ou protocolo de Folha de Ponto, e audite se houve qualquer alteração indevida.</p>
+            </div>
+            <button type="button" class="btn btn-primario" id="btnAuditarCadeiaPontos">Auditar Integridade de Toda a Folha de Ponto</button>
+          </div>
+
+          <div class="grid-2">
+            <div class="card">
+              <h3>Verificar Código de PDF ou Protocolo de Ponto</h3>
+              <p class="subtexto mt-4">Digite o código impresso no rodapé do PDF (ex.: <code>GCM-VALP-...</code>) ou no Comprovante de Ponto (ex.: <code>PT-...</code>).</p>
+              <div class="filtros-linha mt-12">
+                <div class="campo"><label for="inpCodigoValidar">Código de Autenticação ou Protocolo</label><input type="text" id="inpCodigoValidar" placeholder="Ex.: GCM-VALP-20261127-A1B2C3D4 ou PT-..."></div>
+                <div class="campo campo-btn"><button type="button" class="btn btn-primario" id="btnExecutarValidacao">Verificar Agora</button></div>
+              </div>
+              <div id="resultadoValidacao" class="mt-12 oculto"></div>
+            </div>
+
+            <div class="card">
+              <h3>Integridade da Cadeia Criptográfica de Ponto</h3>
+              <p class="subtexto mt-4">Cada batida de ponto carrega o hash SHA-256 da batida anterior e da foto capturada. Qualquer adulteração manual quebra a cadeia imediatamente.</p>
+              <div id="resultadoAuditoriaCadeia" class="mt-12">
+                <div class="regra-box">Clique em <strong>Auditar Integridade de Toda a Folha de Ponto</strong> para recalcular todos os hashes SHA-256 agora.</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="card mt-16">
+            <div class="card-cab">
+              <h3>Livro Oficial de Documentos PDF Autenticados</h3>
+              <span id="badgeQtdDocsAut" class="badge badge-neutro">0 documentos</span>
+            </div>
+            <div class="tabela-wrap mt-12">
+              <table class="tabela">
+                <thead><tr><th>Código Autenticador</th><th>Documento</th><th>Data e Hora Exata</th><th>Emitido Por</th><th>Hash SHA-256</th></tr></thead>
+                <tbody id="tbodyDocsAutenticados"></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- ===================================================== -->
+        <!-- 8. EFETIVO DA GUARDA (GESTAO: ADMIN E ESCALANTE)      -->
         <!-- ===================================================== -->
         <section id="secEfetivo" class="secao-aba">
           <div class="cab-secao">
@@ -656,7 +960,7 @@
               <h2>Efetivo da Guarda Civil Municipal</h2>
               <p class="subtexto">Todos os 64 guardas com Nº Provisório (01 a 64 — editável quando sair a matrícula oficial) e alocação por equipe.</p>
             </div>
-            <div class="acoes-linha">
+            <div class="acoes-linha so-gestao">
               <button type="button" class="btn btn-sec" id="btnAbrirImportar64">Importar Nomes</button>
               <button type="button" class="btn btn-primario" id="btnNovoAgente">+ Novo Guarda</button>
             </div>
@@ -675,16 +979,15 @@
               <div class="campo"><label for="fltEfArea">Especialidade</label>
                 <select id="fltEfArea">
                   <option value="">Todas</option>
-                  <option value="PATRULHAMENTO">Patrulhamento</option><option value="MARIA_DA_PENHA">Maria da Penha</option>
-                  <option value="ESCOLAR">Patrulha Escolar</option><option value="TRANSITO">Trânsito</option>
-                  <option value="CCO">Operador CCO</option><option value="COMANDO">Administrativo</option>
+                  <option value="PATRULHAMENTO">Patrulhamento (Viaturas)</option>
+                  <option value="COMANDO">Administrativo</option>
                 </select>
               </div>
-              <div class="campo campo-btn"><button type="button" class="btn btn-sec" id="btnDistribuir64">Rebalancear 4 Equipes</button></div>
+              <div class="campo campo-btn so-gestao"><button type="button" class="btn btn-sec" id="btnDistribuir64">Rebalancear 4 Equipes</button></div>
             </div>
             <div class="tabela-wrap mt-12">
               <table class="tabela">
-                <thead><tr><th>Nº / Matrícula</th><th>Nome Completo</th><th>Nome de Guerra</th><th>Equipe</th><th>Especialidade</th><th>Função</th><th>Situação</th><th>Ações</th></tr></thead>
+                <thead><tr><th>Nº / Matrícula</th><th>Nome Completo</th><th>Nome de Guerra</th><th>Equipe</th><th>Especialidade</th><th>Função</th><th>Situação</th><th class="so-gestao">Ações</th></tr></thead>
                 <tbody id="tbodyEfetivo"></tbody>
               </table>
             </div>
@@ -692,23 +995,29 @@
         </section>
 
         <!-- ===================================================== -->
-        <!-- 6. CONTAS, BASE & BANCO DE DADOS                      -->
+        <!-- 9. CONTAS, BASE E BANCO (EXCLUSIVO ADMINISTRADOR!)    -->
         <!-- ===================================================== -->
         <section id="secSistema" class="secao-aba">
           <div class="cab-secao">
             <div>
-              <h2>Contas de Acesso, Base GCM &amp; Banco de Dados</h2>
-              <p class="subtexto">Códigos de acesso de 4 dígitos, configuração da Base GCM e sincronização opcional (separada do CCO Viaturas).</p>
+              <h2>Contas de Acesso, Base GCM e Banco de Dados (Exclusivo Administrador)</h2>
+              <p class="subtexto">Área restrita ao Administrador: gestão de contas, níveis de acesso, base GCM, sincronização e backups.</p>
             </div>
           </div>
           <div class="subtabs">
-            <button type="button" class="subtab ativo" data-sub="subSisContas">Contas &amp; Códigos (4 dígitos)</button>
-            <button type="button" class="subtab" data-sub="subSisBase">Base GCM &amp; Perímetro</button>
-            <button type="button" class="subtab" data-sub="subSisBanco">Banco de Dados &amp; Backup</button>
+            <button type="button" class="subtab ativo" data-sub="subSisContas">Contas e Códigos (4 dígitos)</button>
+            <button type="button" class="subtab" data-sub="subSisBase">Base GCM e Perímetro</button>
+            <button type="button" class="subtab" data-sub="subSisBanco">Banco de Dados e Backup</button>
           </div>
           <div id="subSisContas" class="subpainel ativo">
             <div class="card">
-              <div class="card-cab"><h3>Usuários do Sistema</h3><button type="button" class="btn btn-primario btn-sm" id="btnCriarContaAdmin">+ Criar Conta</button></div>
+              <div class="card-cab">
+                <div>
+                  <h3>Usuários e Níveis de Acesso</h3>
+                  <p class="subtexto"><strong>ADMIN:</strong> acesso total · <strong>ESCALANTE:</strong> gerencia escalas, permutas, banco de horas e cartões · <strong>AGENTE:</strong> consulta escala/cartão, solicita permuta e bate o próprio ponto.</p>
+                </div>
+                <button type="button" class="btn btn-primario btn-sm" id="btnCriarContaAdmin">+ Criar Conta</button>
+              </div>
               <div class="tabela-wrap mt-12">
                 <table class="tabela">
                   <thead><tr><th>Login</th><th>Nome</th><th>Nº / Matrícula</th><th>Perfil</th><th>Status</th><th>Ações</th></tr></thead>
@@ -736,19 +1045,19 @@
             <div class="grid-2">
               <div class="card">
                 <h3>Firebase Próprio (Opcional — Separado do CCO)</h3>
-                <p class="subtexto">Funciona 100% local sem Firebase. Quando quiser conectar um novo banco Firebase ou migrar para o futuro servidor da Guarda, basta configurar aqui.</p>
+                <p class="subtexto">Funciona 100% local sem Firebase. Quando quiser conectar um novo banco Firebase ou migrar para o futuro servidor da Guarda, configure aqui.</p>
                 <div class="campo mt-12"><label for="txtFirebaseConfigJson">Objeto <code>firebaseConfig</code> (Novo Projeto)</label><textarea id="txtFirebaseConfigJson" rows="5" placeholder='{"apiKey":"...","projectId":"escala-gcm-valparaiso",...}'></textarea></div>
                 <label class="check-linha mt-8"><input type="checkbox" id="chkNuvemAtiva"><span>Ativar Sincronização em Nuvem</span></label>
                 <div id="statusDbProprio" class="subtexto mt-8">Modo Local.</div>
                 <div class="acoes-linha mt-12">
-                  <button type="button" class="btn btn-primario btn-sm" id="btnSalvarFirebaseProprio">Salvar &amp; Testar</button>
+                  <button type="button" class="btn btn-primario btn-sm" id="btnSalvarFirebaseProprio">Salvar e Testar</button>
                   <button type="button" class="btn btn-sec btn-sm" id="btnSyncAgora">Sincronizar</button>
                   <button type="button" class="btn btn-sec btn-sm" id="btnDesconectarFirebase">Usar Só Local</button>
                 </div>
               </div>
               <div class="card">
-                <h3>Backup Local &amp; Código de Acesso</h3>
-                <p class="subtexto">Exporte ou restaure todos os dados em JSON e altere seu código de acesso (mínimo 4 dígitos).</p>
+                <h3>Backup Local e Código de Acesso</h3>
+                <p class="subtexto">Exporte ou restaure todos os dados em JSON (incluindo o Livro de Documentos Autenticados, Permutas e Banco de Horas).</p>
                 <div class="acoes-linha mt-16">
                   <button type="button" class="btn btn-primario" id="btnExportarBackup">Exportar Backup JSON</button>
                   <button type="button" class="btn btn-sec" id="btnImportarBackup">Restaurar Backup</button>

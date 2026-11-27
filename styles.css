@@ -1,5 +1,5 @@
 /* =========================================================================
-   GCM VALPARAÍSO DE GOIÁS — v4.0
+   GCM VALPARAÍSO DE GOIÁS — v6.0
    Identidade Policial Tática Sóbria: Branco (Claro) e Preto (Noturno)
    ZERO AZUL · ZERO CORES CHAMATIVAS
    Insígnias Táticas: ALFA (Grafite), BRAVO (Oliva), CHARLIE (Caqui), DELTA (Bordô)
@@ -19,6 +19,7 @@ html[data-tema="claro"] {
   --accent-text: #FFFFFF;
   --ok: #166534; --ok-bg: #E7F4EC;
   --warn: #854D0E; --warn-bg: #F6EFE0;
+  --pend: #C2410C; --pend-bg: #FFEDD5;
   --danger: #991B1B; --danger-bg: #F9E6E6;
   --eq-alfa: #18181B;
   --eq-bravo: #365314;
@@ -41,6 +42,7 @@ html[data-tema="noturno"] {
   --accent-text: #0A0A0A;
   --ok: #4ADE80; --ok-bg: #0C2617;
   --warn: #D4A74A; --warn-bg: #29200C;
+  --pend: #FB923C; --pend-bg: #3A1908;
   --danger: #F87171; --danger-bg: #2D0F0F;
   --eq-alfa: #D4D4D8;
   --eq-bravo: #A3B86C;
@@ -76,6 +78,7 @@ code { background: var(--surface-2); padding: 2px 6px; border-radius: 4px; font-
 .badge-invertido { background: var(--accent); color: var(--accent-text); border-color: var(--accent); }
 .badge-ok { background: var(--ok-bg); color: var(--ok); border-color: var(--ok); }
 .badge-warn { background: var(--warn-bg); color: var(--warn); border-color: var(--warn); }
+.badge-pendente { background: var(--pend-bg); color: var(--pend); border-color: var(--pend); }
 .badge-erro { background: var(--danger-bg); color: var(--danger); border-color: var(--danger); }
 
 .insig {
@@ -163,6 +166,12 @@ code { background: var(--surface-2); padding: 2px 6px; border-radius: 4px; font-
 .faixa-kpi { background: var(--surface-2); border: 1px solid var(--border); border-radius: 6px; padding: 6px 12px; text-align: center; min-width: 96px; }
 .faixa-kpi strong { display: block; font-size: 17px; }
 .faixa-kpi span { font-size: 10.5px; color: var(--text-muted); text-transform: uppercase; font-weight: 700; }
+.faixa-kpi.kpi-ok { border-color: var(--ok); background: var(--ok-bg); }
+.faixa-kpi.kpi-ok strong { color: var(--ok); }
+.faixa-kpi.kpi-pend { border-color: var(--pend); background: var(--pend-bg); }
+.faixa-kpi.kpi-pend strong { color: var(--pend); }
+.faixa-kpi.kpi-falta { border-color: var(--danger); background: var(--danger-bg); }
+.faixa-kpi.kpi-falta strong { color: var(--danger); }
 
 /* IDENTIFICACAO DO GUARDA NO PONTO */
 .sugestoes-box { border: 1px solid var(--border-strong); border-radius: 6px; background: var(--surface); max-height: 185px; overflow-y: auto; margin-top: 4px; }
@@ -227,14 +236,14 @@ code { background: var(--surface-2); padding: 2px 6px; border-radius: 4px; font-
   font-size: 11px; font-weight: 800; box-shadow: 0 2px 6px rgba(0,0,0,0.45);
 }
 
-/* CAMERA & FOTO */
+/* CAMERA E FOTO */
 .camera-box { width: 100%; aspect-ratio: 4 / 3; max-height: 240px; border: 1px dashed var(--border-strong); border-radius: 7px; background: #000000; overflow: hidden; display: flex; align-items: center; justify-content: center; }
 .camera-box video, .camera-box img { width: 100%; height: 100%; object-fit: cover; }
 .camera-placeholder { color: #D4D4D4; font-size: 12.5px; text-align: center; padding: 16px; }
 .gps-resultado { border: 1px solid var(--border); border-radius: 6px; padding: 9px; background: var(--surface); font-size: 12px; display: flex; flex-direction: column; gap: 4px; }
 .foto-thumb { width: 44px; height: 44px; border-radius: 5px; object-fit: cover; border: 1px solid var(--border); cursor: pointer; }
 
-/* MODAL & TOAST */
+/* MODAL E TOAST */
 .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.72); z-index: 200; display: flex; align-items: center; justify-content: center; padding: 16px; }
 .modal-box { width: 100%; max-width: 620px; max-height: 90vh; overflow-y: auto; background: var(--surface); border: 1px solid var(--border); border-radius: 9px; padding: 18px; }
 .modal-cab { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding-bottom: 10px; border-bottom: 1px solid var(--border); }
@@ -255,3 +264,45 @@ code { background: var(--surface-2); padding: 2px 6px; border-radius: 4px; font-
   .linha-editavel { grid-template-columns: 1fr; }
   .topbar-sub { display: none; }
 }
+
+
+/* BOTOES CLICAVEIS ALFA / BRAVO / CHARLIE / DELTA NA SIDEBAR */
+.insig-btn {
+  cursor: pointer;
+  width: 100%;
+  padding: 6px 8px;
+  transition: background 0.14s, transform 0.08s, border-color 0.14s;
+}
+.insig-btn:hover { background: var(--surface); border-color: var(--border-strong); transform: translateY(-1px); }
+.insig-btn.ativa { background: var(--accent); color: var(--accent-text); border-color: var(--accent); }
+
+/* CONTROLE DE ACESSO VISUAL POR PERFIL (RBAC) */
+body[data-perfil="AGENTE"] .so-admin,
+body[data-perfil="AGENTE"] .so-gestao,
+body[data-perfil="ESCALANTE"] .so-admin {
+  display: none !important;
+}
+
+/* SELO DE AUTENTICIDADE & RECIBO */
+.selo-card {
+  border: 1px solid var(--border-strong);
+  border-left: 5px solid var(--ok);
+  border-radius: 7px;
+  padding: 12px 14px;
+  background: var(--surface-2);
+  font-size: 12.5px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.selo-card.invalido { border-left-color: var(--danger); background: var(--danger-bg); }
+.hash-mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 11px; word-break: break-all; background: var(--surface); padding: 4px 6px; border-radius: 4px; border: 1px solid var(--border); }
+
+/* CHECKLIST CARTAO PROGRAMA */
+.checklist-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+@media (max-width: 720px) { .checklist-grid { grid-template-columns: 1fr; } }
+
+/* SALDO BANCO DE HORAS */
+.saldo-pos { color: var(--ok); font-weight: 800; }
+.saldo-neg { color: var(--danger); font-weight: 800; }
+.saldo-zero { color: var(--text-muted); font-weight: 700; }
